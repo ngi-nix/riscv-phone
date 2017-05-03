@@ -1,0 +1,5 @@
++ check for nonce
++ check for seq
+
+- memzero keys after usage
+- implement socket message queue
