@@ -12,11 +12,11 @@ struct ECPConnection;
 struct ECPSocket;
 struct ECPTimerItem;
 
-typedef int ecp_timer_retry_t (struct ECPConnection *, struct ECPTimerItem *);
+typedef ssize_t ecp_timer_retry_t (struct ECPConnection *, struct ECPTimerItem *);
 
 typedef struct ECPTimerItem {
     struct ECPConnection *conn;
-    unsigned char ptype;
+    unsigned char mtype;
     unsigned short cnt;
     unsigned int abstime;
     unsigned int timeout;
@@ -35,9 +35,9 @@ typedef struct ECPTimer {
 
 int ecp_timer_create(ECPTimer *timer);
 void ecp_timer_destroy(ECPTimer *timer);
-int ecp_timer_item_init(ECPTimerItem *ti, struct ECPConnection *conn, unsigned char ptype, unsigned short cnt, unsigned int timeout);
-int ecp_timer_push(struct ECPConnection *conn, ECPTimerItem *ti);
-void ecp_timer_pop(struct ECPConnection *conn, unsigned char ptype);
+int ecp_timer_item_init(ECPTimerItem *ti, struct ECPConnection *conn, unsigned char mtype, unsigned short cnt, unsigned int timeout);
+int ecp_timer_push(ECPTimerItem *ti);
+void ecp_timer_pop(struct ECPConnection *conn, unsigned char mtype);
 void ecp_timer_remove(struct ECPConnection *conn);
 unsigned int ecp_timer_exe(struct ECPSocket *sock);
-int ecp_timer_send(struct ECPConnection *conn, ecp_timer_retry_t *send_f, unsigned char ptype, unsigned short cnt, unsigned int timeout);
+ssize_t ecp_timer_send(struct ECPConnection *conn, ecp_timer_retry_t *send_f, unsigned char mtype, unsigned short cnt, unsigned int timeout);

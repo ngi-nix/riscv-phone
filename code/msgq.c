@@ -24,7 +24,7 @@ static struct timespec *abstime_ts(struct timespec *ts, unsigned int msec) {
 int ecp_conn_msgq_create(ECPConnection *conn) {
     int i;
     
-    for (i=0; i<ECP_MAX_PTYPE; i++) {
+    for (i=0; i<ECP_MAX_MTYPE; i++) {
         int rv = pthread_cond_init(&conn->msgq.cond[i], NULL);
         if (rv) {
             int j;
@@ -42,35 +42,36 @@ int ecp_conn_msgq_create(ECPConnection *conn) {
 void ecp_conn_msgq_destroy(ECPConnection *conn) {
     int i;
     
-    for (i=0; i<ECP_MAX_PTYPE; i++) {
+    for (i=0; i<ECP_MAX_MTYPE; i++) {
         pthread_cond_destroy(&conn->msgq.cond[i]);
     }
 }
 
-ssize_t ecp_conn_msgq_push(ECPConnection *conn, unsigned char *payload, size_t payload_size) {
+ssize_t ecp_conn_msgq_push(ECPConnection *conn, unsigned char *msg, size_t msg_size) {
     ECPConnMsgQ *msgq = &conn->msgq;
     unsigned short msg_idx = msgq->empty_idx;
     unsigned short i;
     unsigned short done = 0;
-    unsigned char ptype;
+    unsigned char mtype;
     
-    if (payload_size == 0) return ECP_OK;
+    if (msg_size == 0) return ECP_OK;
 
-    ptype = *payload;
-    payload++;
-    payload_size--;
+    mtype = *msg;
+    msg++;
+    msg_size--;
 
-    if (ptype >= ECP_MAX_PTYPE) return ECP_ERR_MAX_PTYPE;
-    if (payload_size < ECP_MIN_MSG) return ECP_ERR_MIN_MSG;
+    if (mtype >= ECP_MAX_MTYPE) return ECP_ERR_MAX_MTYPE;
+    if (msg_size >= ECP_MAX_MSG) return ECP_ERR_MAX_MSG;
+    if (msg_size < ECP_MIN_MSG) return ECP_ERR_MIN_MSG;
     
     for (i=0; i<ECP_MAX_CONN_MSG; i++) {
         if (!msgq->occupied[msg_idx]) {
-            ECPMessage *msg = &msgq->msg[msg_idx];
-            if (payload_size > 0) memcpy(msg->payload, payload, payload_size);
-            msg->size = payload_size;
-            if (msgq->r_idx[ptype] == msgq->w_idx[ptype]) pthread_cond_signal(&msgq->cond[ptype]);
-            msgq->msg_idx[ptype][msgq->w_idx[ptype]] = msg_idx;
-            msgq->w_idx[ptype] = MSG_NEXT(msgq->w_idx[ptype], ECP_MAX_CONN_MSG+1);
+            ECPMessage *message = &msgq->msg[msg_idx];
+            if (msg_size > 0) memcpy(message->msg, msg, msg_size);
+            message->size = msg_size;
+            if (msgq->r_idx[mtype] == msgq->w_idx[mtype]) pthread_cond_signal(&msgq->cond[mtype]);
+            msgq->msg_idx[mtype][msgq->w_idx[mtype]] = msg_idx;
+            msgq->w_idx[mtype] = MSG_NEXT(msgq->w_idx[mtype], ECP_MAX_CONN_MSG+1);
 
             msgq->empty_idx = MSG_NEXT(msg_idx, ECP_MAX_CONN_MSG);
             msgq->occupied[msg_idx] = 1;
@@ -80,38 +81,38 @@ ssize_t ecp_conn_msgq_push(ECPConnection *conn, unsigned char *payload, size_t p
         msg_idx = MSG_NEXT(msg_idx, ECP_MAX_CONN_MSG);
     }
     if (done) {
-        return payload_size+1;
+        return msg_size+1;
     } else {
         return ECP_ERR_MAX_CONN_MSG;
     }
 }
 
-ssize_t ecp_conn_msgq_pop(ECPConnection *conn, unsigned char ptype, unsigned char *payload, size_t payload_size, unsigned int timeout) {
+ssize_t ecp_conn_msgq_pop(ECPConnection *conn, unsigned char mtype, unsigned char *msg, size_t msg_size, unsigned int timeout) {
     ECPConnMsgQ *msgq = &conn->msgq;
-    ECPMessage *msg;
+    ECPMessage *message;
     ssize_t rv = ECP_OK;
     unsigned short msg_idx;
 
-    if (ptype >= ECP_MAX_PTYPE) return ECP_ERR_MAX_PTYPE;
+    if (mtype >= ECP_MAX_MTYPE) return ECP_ERR_MAX_MTYPE;
 
-    if (msgq->r_idx[ptype] == msgq->w_idx[ptype]) {
+    if (msgq->r_idx[mtype] == msgq->w_idx[mtype]) {
         if (timeout == -1) {
-            pthread_cond_wait(&msgq->cond[ptype], &conn->mutex);
+            pthread_cond_wait(&msgq->cond[mtype], &conn->mutex);
         } else {
             struct timespec ts;
-            int _rv = pthread_cond_timedwait(&msgq->cond[ptype], &conn->mutex, abstime_ts(&ts, timeout));
+            int _rv = pthread_cond_timedwait(&msgq->cond[mtype], &conn->mutex, abstime_ts(&ts, timeout));
             if (_rv) rv = ECP_ERR_TIMEOUT;
         }
     }
     if (!rv) {
-        msg_idx = msgq->msg_idx[ptype][msgq->r_idx[ptype]];
-        msgq->r_idx[ptype] = MSG_NEXT(msgq->r_idx[ptype], ECP_MAX_CONN_MSG+1);
+        msg_idx = msgq->msg_idx[mtype][msgq->r_idx[mtype]];
+        msgq->r_idx[mtype] = MSG_NEXT(msgq->r_idx[mtype], ECP_MAX_CONN_MSG+1);
         msgq->occupied[msg_idx] = 0;
-        msg = &msgq->msg[msg_idx];
-        rv = msg->size;
+        message = &msgq->msg[msg_idx];
+        rv = message->size;
         if (rv >= 0) {
-            rv = MIN(payload_size, rv);
-            memcpy(payload, msg->payload, rv);
+            rv = MIN(msg_size, rv);
+            memcpy(msg, message->msg, rv);
         }
     }
     return rv;

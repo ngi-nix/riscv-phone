@@ -3,3 +3,9 @@
 
 - memzero keys after usage
 - implement socket message queue
+
+proxy:
+- implement init
+core:
+- msgq marker
+- implement exec

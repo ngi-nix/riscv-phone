@@ -17,11 +17,13 @@ ECPConnHandler handler_c;
 ECPNode node;
 ECPConnection conn;
 
-#define PTYPE_MSG       16
+#define CTYPE_TEST  0
+#define MTYPE_MSG   8
 
-ssize_t handle_open_c(ECPConnection *c, unsigned char t, unsigned char *p, ssize_t s) {
+ssize_t handle_open_c(ECPConnection *conn, unsigned char t, unsigned char *p, ssize_t s) {
     uint32_t seq = 0;
     
+    ecp_conn_handle_open(conn, t, p, s);
     if (s < 0) {
         printf("OPEN ERR:%ld\n", s);
         return 0;
@@ -31,33 +33,29 @@ ssize_t handle_open_c(ECPConnection *c, unsigned char t, unsigned char *p, ssize
     unsigned char *buf = ecp_pld_get_buf(payload);
     char *msg = "PERA JE CAR!";
 
+    ecp_pld_set_type(payload, MTYPE_MSG);
     strcpy((char *)buf, msg);
-    ssize_t _rv = ecp_send(c, PTYPE_MSG, payload, 1000);
+    ssize_t _rv = ecp_send(conn, payload, sizeof(payload));
     return 0;
 }
 
-ssize_t handle_msg_c(ECPConnection *c, unsigned char t, unsigned char *p, ssize_t s) {
+ssize_t handle_msg_c(ECPConnection *conn, unsigned char t, unsigned char *p, ssize_t s) {
     printf("MSG C:%s size:%ld\n", p, s);
-    
     return s;
 }
 
-ssize_t handle_msg_s(ECPConnection *c, unsigned char t, unsigned char *p, ssize_t s) {
+ssize_t handle_msg_s(ECPConnection *conn, unsigned char t, unsigned char *p, ssize_t s) {
     printf("MSG S:%s size:%ld\n", p, s);
 
     unsigned char payload[ECP_SIZE_PLD(1000)];
     unsigned char *buf = ecp_pld_get_buf(payload);
     char *msg = "VAISTINU JE CAR!";
 
+    ecp_pld_set_type(payload, MTYPE_MSG);
     strcpy((char *)buf, msg);
-    ssize_t _rv = ecp_send(c, PTYPE_MSG, payload, 1000);
+    ssize_t _rv = ecp_send(conn, payload, sizeof(payload));
 
     return s;
-}
-
-int conn_create(ECPConnection *c, unsigned char *p, size_t s) {
-    c->handler = &handler_s;
-    return ECP_OK;
 }
 
 int main(int argc, char *argv[]) {
@@ -66,17 +64,16 @@ int main(int argc, char *argv[]) {
     rv = ecp_init(&ctx_s);
     printf("ecp_init RV:%d\n", rv);
     
+    rv = ecp_conn_handler_init(&handler_s);
+    handler_s.msg[MTYPE_MSG] = handle_msg_s;
+    ctx_s.handler[CTYPE_TEST] = &handler_s;
+    
     rv = ecp_dhkey_generate(&ctx_s, &key_perma_s);
     printf("ecp_dhkey_generate RV:%d\n", rv);
     
     rv = ecp_sock_create(&sock_s, &ctx_s, &key_perma_s);
     printf("ecp_sock_create RV:%d\n", rv);
 
-    rv = ecp_conn_hander_init(&handler_s);
-    
-    handler_s.f[PTYPE_MSG] = handle_msg_s;
-    sock_s.conn_create = conn_create;
-    
     rv = ecp_sock_open(&sock_s, "0.0.0.0:3000");
     printf("ecp_sock_open RV:%d\n", rv);
     
@@ -85,6 +82,11 @@ int main(int argc, char *argv[]) {
 
     rv = ecp_init(&ctx_c);
     printf("ecp_init RV:%d\n", rv);
+
+    rv = ecp_conn_handler_init(&handler_c);
+    handler_c.msg[ECP_MTYPE_OPEN] = handle_open_c;
+    handler_c.msg[MTYPE_MSG] = handle_msg_c;
+    ctx_c.handler[CTYPE_TEST] = &handler_c;
     
     rv = ecp_dhkey_generate(&ctx_c, &key_perma_c);
     printf("ecp_dhkey_generate RV:%d\n", rv);
@@ -101,16 +103,10 @@ int main(int argc, char *argv[]) {
     rv = ecp_node_init(&ctx_c, &node, "127.0.0.1:3000", &key_perma_s.public);
     printf("ecp_node_init RV:%d\n", rv);
 
-    rv = ecp_conn_create(&conn, &sock_c);
+    rv = ecp_conn_create(&conn, &sock_c, CTYPE_TEST);
     printf("ecp_conn_create RV:%d\n", rv);
 
-    rv = ecp_conn_hander_init(&handler_c);
-    printf("ecp_conn_hander_init RV:%d\n", rv);
-
-    handler_c.f[ECP_PTYPE_OPEN] = handle_open_c;
-    handler_c.f[PTYPE_MSG] = handle_msg_c;
-    
-    rv = ecp_conn_open(&conn, &node, &handler_c);
+    rv = ecp_conn_open(&conn, &node);
     printf("ecp_conn_open RV:%d\n", rv);
     
     while (1) sleep(1);

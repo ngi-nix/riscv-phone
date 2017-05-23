@@ -14,7 +14,7 @@ static int v_rng(void *buf, size_t bufsize) {
     return 0;
 }
 
-static ECPConnection *conn_alloc(void) {
+static ECPConnection *conn_alloc(unsigned char type) {
     return malloc(sizeof(ECPConnection));
 }
 

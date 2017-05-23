@@ -1,6 +1,6 @@
 CFLAGS=-I.. -O3 -Wno-int-to-void-pointer-cast
 LDFLAGS=-lm -pthread
-dep=../libecpcore.a ../crypto/libecpcr.a ../htable/libecpht.a ../posix/libecptr.a ../posix/libecptm.a
+dep=../libecpcore.a ../crypto/libecpcr.a ../htable/libecpht.a ../posix/libecptr.a ../posix/libecptm.a ../init.o
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<
