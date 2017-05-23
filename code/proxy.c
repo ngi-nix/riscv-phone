@@ -378,6 +378,7 @@ int ecp_proxy_init(ECPContext *ctx) {
     handler_f.conn_destroy = proxyf_destroy;
     handler_f.conn_open = proxyf_open;
     handler_f.msg[ECP_MTYPE_OPEN] = proxyf_handle_open;
+    handler_f.msg[ECP_MTYPE_EXEC] = ecp_conn_handle_exec;
     handler_f.msg[ECP_MTYPE_RELAY] = proxyf_handle_relay;
     ctx->handler[ECP_CTYPE_PROXYF] = &handler_f;
 
@@ -387,6 +388,7 @@ int ecp_proxy_init(ECPContext *ctx) {
     handler_b.conn_destroy = proxyb_destroy;
     handler_b.conn_open = proxyb_open;
     handler_b.msg[ECP_MTYPE_OPEN] = proxyb_handle_open;
+    handler_b.msg[ECP_MTYPE_EXEC] = ecp_conn_handle_exec;
     handler_b.msg[ECP_MTYPE_RELAY] = proxyb_handle_relay;
     ctx->handler[ECP_CTYPE_PROXYB] = &handler_b;
 

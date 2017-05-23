@@ -290,6 +290,7 @@ int ecp_conn_handle_new(ECPSocket *sock, ECPConnection **_conn, ECPConnection *p
 ssize_t ecp_conn_handle_open(ECPConnection *conn, unsigned char mtype, unsigned char *msg, ssize_t size);
 ssize_t ecp_conn_handle_kget(ECPConnection *conn, unsigned char mtype, unsigned char *msg, ssize_t size);
 ssize_t ecp_conn_handle_kput(ECPConnection *conn, unsigned char mtype, unsigned char *msg, ssize_t size);
+ssize_t ecp_conn_handle_exec(ECPConnection *conn, unsigned char mtype, unsigned char *msg, ssize_t size);
 
 int ecp_conn_dhkey_new(ECPConnection *conn);
 int ecp_conn_dhkey_new_pub(ECPConnection *conn, unsigned char idx, unsigned char *public);

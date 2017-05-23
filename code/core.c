@@ -739,6 +739,11 @@ ssize_t ecp_conn_handle_kput(ECPConnection *conn, unsigned char mtype, unsigned 
     return ECP_ERR;
 }
 
+ssize_t ecp_conn_handle_exec(ECPConnection *conn, unsigned char mtype, unsigned char *msg, ssize_t size) {
+    if (size < 0) return size;
+    return ecp_pkt_handle(conn->sock, NULL, conn, msg, size);
+}
+
 static ssize_t _conn_send_kput(ECPConnection *conn, ECPTimerItem *ti) {
     unsigned char payload[ECP_SIZE_PLD(ECP_ECDH_SIZE_KEY+1)];
     unsigned char *buf = ecp_pld_get_buf(payload);
