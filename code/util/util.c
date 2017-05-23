@@ -2,7 +2,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include <core.h>
+#include "core.h"
 #include "util.h"
 
 int ecp_util_key_save(ECPContext *ctx, ECPDHKey *key, char *filename) {

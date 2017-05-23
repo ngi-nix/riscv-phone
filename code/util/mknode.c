@@ -3,7 +3,7 @@
 #include <unistd.h>
 #include <stdio.h>
 
-#include <core.h>
+#include "core.h"
 #include "util.h"
 
 #define FN_LEN  256

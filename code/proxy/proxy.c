@@ -1,4 +1,4 @@
-#include <core.h>
+#include "core.h"
 #include "proxy.h"
 
 #ifdef ECP_WITH_PTHREAD
@@ -24,13 +24,13 @@ static int proxyf_create(ECPConnection *conn, unsigned char *payload, size_t siz
     if (size < 2*ECP_ECDH_SIZE_KEY) return ECP_ERR;
 
     conn_p->key_next_curr = 0;
-    memcpy(conn_p->key_next[0], payload, ECP_ECDH_SIZE_KEY);
+    memcpy(conn_p->key_next[conn_p->key_next_curr], payload, ECP_ECDH_SIZE_KEY);
     memcpy(conn_p->key_out, payload+ECP_ECDH_SIZE_KEY, ECP_ECDH_SIZE_KEY);
 
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&key_next_mutex);
 #endif
-    rv = ctx->ht.init ? ctx->ht.insert(key_next_table, payload+1, conn) : ECP_ERR;
+    rv = ctx->ht.init ? ctx->ht.insert(key_next_table, conn_p->key_next[conn_p->key_next_curr], conn) : ECP_ERR;
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_unlock(&key_next_mutex);
 #endif
@@ -85,7 +85,7 @@ static ssize_t proxyf_open(ECPConnection *conn) {
     ECPConnProxy *conn_p = (ECPConnProxy *)conn;
     ECPConnection *conn_next = conn_p->next;
 
-    rv = ecp_timer_item_init(&ti, conn_next, ECP_MTYPE_KGET, 3, 500);
+    rv = ecp_timer_item_init(&ti, conn_next, ECP_MTYPE_KGET, 3, 3000);
     if (rv) return rv;
 
     ti.retry = _proxyf_retry_kget;
@@ -124,14 +124,12 @@ static ssize_t proxyf_handle_open(ECPConnection *conn, unsigned char mtype, unsi
 
         if (!ecp_conn_is_open(conn)) conn->flags |= ECP_CONN_FLAG_OPEN;
         if (memcmp(conn_p->key_next[conn_p->key_next_curr], msg, ECP_ECDH_SIZE_KEY)) {
-            rv = ctx->ht.init ? ctx->ht.insert(key_next_table, msg, conn) : ECP_ERR;
-            if (!rv) {
-                conn_p->key_next_curr = (conn_p->key_next_curr + 1) % ECP_MAX_NODE_KEY;
-                if (memcmp(conn_p->key_next[conn_p->key_next_curr], key_null, ECP_ECDH_SIZE_KEY)) {
-                    if (ctx->ht.init) ctx->ht.remove(key_next_table, conn_p->key_next[conn_p->key_next_curr]);
-                }
-                memcpy(conn_p->key_next[conn_p->key_next_curr], msg, ECP_ECDH_SIZE_KEY);
+            conn_p->key_next_curr = (conn_p->key_next_curr + 1) % ECP_MAX_NODE_KEY;
+            if (memcmp(conn_p->key_next[conn_p->key_next_curr], key_null, ECP_ECDH_SIZE_KEY)) {
+                if (ctx->ht.init) ctx->ht.remove(key_next_table, conn_p->key_next[conn_p->key_next_curr]);
             }
+            memcpy(conn_p->key_next[conn_p->key_next_curr], msg, ECP_ECDH_SIZE_KEY);
+            rv = ctx->ht.init ? ctx->ht.insert(key_next_table, conn_p->key_next[conn_p->key_next_curr], conn) : ECP_ERR;
         }
 
 #ifdef ECP_WITH_PTHREAD
@@ -143,6 +141,8 @@ static ssize_t proxyf_handle_open(ECPConnection *conn, unsigned char mtype, unsi
 
         return 1+2*ECP_ECDH_SIZE_KEY;
     }
+
+    return ECP_ERR;
 }
 
 static ssize_t proxyf_handle_relay(ECPConnection *conn, unsigned char mtype, unsigned char *msg, ssize_t size) {
@@ -179,7 +179,7 @@ static ssize_t proxyf_handle_relay(ECPConnection *conn, unsigned char mtype, uns
     
     payload = msg - ECP_SIZE_MSG_HDR;
     ecp_pld_set_type(payload, ECP_MTYPE_EXEC);
-    rv = ecp_pld_send(conn_out, payload, ECP_SIZE_PLD(size));
+    rv = ecp_pld_send(conn_out, payload, ECP_SIZE_MSG_HDR+size);
 
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&conn_out->mutex);
@@ -207,7 +207,7 @@ static int proxyb_create(ECPConnection *conn, unsigned char *payload, size_t siz
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&key_perma_mutex);
 #endif
-    rv = ctx->ht.init ? ctx->ht.insert(key_perma_table, payload, conn) : ECP_ERR;
+    rv = ctx->ht.init ? ctx->ht.insert(key_perma_table, ctx->cr.dh_pub_get_buf(&conn->node.public), conn) : ECP_ERR;
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_unlock(&key_perma_mutex);
 #endif
@@ -255,16 +255,19 @@ static ssize_t proxyb_handle_open(ECPConnection *conn, unsigned char mtype, unsi
     
     if (size < 0) return size;
     
-    if (conn->out) return ECP_ERR;
     if (conn->type != ECP_CTYPE_PROXYB) return ECP_ERR;
 
     rv = ecp_conn_handle_open(conn, mtype, msg, size);
     if (rv < 0) return rv;
-    
-    // XXX should verify perma_key
-    if (size < rv+ECP_ECDH_SIZE_KEY) return ECP_ERR;
 
-    return rv+ECP_ECDH_SIZE_KEY;
+    if (conn->out) {
+        return 0;
+    } else {
+        // XXX should verify perma_key
+        if (size < rv+ECP_ECDH_SIZE_KEY) return ECP_ERR;
+        return rv+ECP_ECDH_SIZE_KEY;
+    }
+    return ECP_ERR;
 }
 
 static ssize_t proxyb_handle_relay(ECPConnection *conn, unsigned char mtype, unsigned char *msg, ssize_t size) {
@@ -299,7 +302,7 @@ static ssize_t proxyb_handle_relay(ECPConnection *conn, unsigned char mtype, uns
     
     payload = msg - ECP_SIZE_MSG_HDR;
     ecp_pld_set_type(payload, ECP_MTYPE_EXEC);
-    rv = ecp_pld_send(conn, payload, ECP_SIZE_PLD(size));
+    rv = ecp_pld_send(conn, payload, ECP_SIZE_MSG_HDR+size);
     
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&conn->mutex);
@@ -323,7 +326,7 @@ static ssize_t proxy_set_msg(ECPConnection *conn, unsigned char *pld_out, size_t
             unsigned char *buf = NULL;
             int rv;
 
-            if (pld_out_size < ECP_SIZE_PLD(2+2*ECP_ECDH_SIZE_KEY)) return ECP_ERR;
+            if (pld_out_size < ECP_SIZE_MSG_HDR+2+2*ECP_ECDH_SIZE_KEY) return ECP_ERR;
             if (conn_next == NULL) return ECP_ERR;
 
             ecp_pld_set_type(pld_out, ECP_MTYPE_OPEN);
@@ -336,12 +339,12 @@ static ssize_t proxy_set_msg(ECPConnection *conn, unsigned char *pld_out, size_t
             memcpy(buf+1+ECP_ECDH_SIZE_KEY, ctx->cr.dh_pub_get_buf(&conn_next->node.public), ECP_ECDH_SIZE_KEY);
             buf[1+2*ECP_ECDH_SIZE_KEY] = ECP_MTYPE_RELAY;
 
-            return ECP_SIZE_PLD(2+2*ECP_ECDH_SIZE_KEY);
+            return ECP_SIZE_MSG_HDR+2+2*ECP_ECDH_SIZE_KEY;
         }
     }
 
     ecp_pld_set_type(pld_out, ECP_MTYPE_RELAY);
-    return ECP_SIZE_PLD(0);
+    return ECP_SIZE_MSG_HDR;
 }
 
 static ssize_t proxy_pack(ECPConnection *conn, ECPNetAddr *addr, unsigned char *packet, size_t pkt_size, unsigned char s_idx, unsigned char c_idx, unsigned char *payload, size_t payload_size) {
@@ -365,7 +368,7 @@ static ssize_t proxy_pack_raw(ECPConnection *proxy, ECPNetAddr *addr, unsigned c
     rv = ecp_pack(ctx, payload_+hdr_size, ECP_MAX_PLD-hdr_size, s_idx, c_idx, public, shsec, nonce, seq, payload, payload_size);
     if (rv < 0) return rv;
 
-    return ecp_proxy_pack(proxy, addr, packet, ECP_MAX_PKT, ECP_ECDH_IDX_INV, ECP_ECDH_IDX_INV, payload_, rv+hdr_size);
+    return ecp_proxy_pack(proxy, addr, packet, pkt_size, ECP_ECDH_IDX_INV, ECP_ECDH_IDX_INV, payload_, rv+hdr_size);
 }
 
 int ecp_proxy_init(ECPContext *ctx) {
@@ -409,30 +412,30 @@ int ecp_proxy_init(ECPContext *ctx) {
     return ECP_OK;
 }
 
-int ecp_conn_proxy_init(ECPConnection *conn, ECPNode *conn_node, ECPConnProxy *proxy[], ECPNode *proxy_node[], int size) {
+int ecp_conn_proxy_init(ECPConnection *conn, ECPNode *conn_node, ECPConnProxy proxy[], ECPNode proxy_node[], int size) {
     ECPSocket *sock = conn->sock;
     int i, rv;
     
     rv = ecp_conn_init(conn, conn_node);
     if (rv) return rv;
 
-    conn->proxy = (ECPConnection *)proxy[size-1];
+    conn->proxy = (ECPConnection *)&proxy[size-1];
     for (i=0; i<size; i++) {
-        rv = ecp_conn_create((ECPConnection *)proxy[i], sock, ECP_CTYPE_PROXYF);
+        rv = ecp_conn_create((ECPConnection *)&proxy[i], sock, ECP_CTYPE_PROXYF);
         if (rv) return rv;
 
-        rv = ecp_conn_init((ECPConnection *)proxy[i], proxy_node[i]);
+        rv = ecp_conn_init((ECPConnection *)&proxy[i], &proxy_node[i]);
         if (rv) return rv;
 
         if (i == 0) {
-            proxy[i]->b.proxy = NULL;
+            proxy[i].b.proxy = NULL;
         } else {
-            proxy[i]->b.proxy = (ECPConnection *)proxy[i-1];
+            proxy[i].b.proxy = (ECPConnection *)&proxy[i-1];
         }
         if (i == size-1) {
-            proxy[i]->next = conn;
+            proxy[i].next = conn;
         } else {
-            proxy[i]->next = (ECPConnection *)proxy[i+1];
+            proxy[i].next = (ECPConnection *)&proxy[i+1];
         }
     }
     
@@ -446,12 +449,12 @@ static ssize_t _proxy_send_kget(ECPConnection *conn, ECPTimerItem *ti) {
     return ecp_pld_send_wkey(conn, ECP_ECDH_IDX_PERMA, ECP_ECDH_IDX_INV, payload, sizeof(payload));
 }
 
-int ecp_conn_proxy_open(ECPConnection *conn, ECPNode *conn_node, ECPConnProxy *proxy[], ECPNode *proxy_node[], int size) {
+int ecp_conn_proxy_open(ECPConnection *conn, ECPNode *conn_node, ECPConnProxy proxy[], ECPNode proxy_node[], int size) {
     int rv = ecp_conn_proxy_init(conn, conn_node, proxy, proxy_node, size);
     if (rv) return rv;
-    
-    ssize_t _rv = ecp_timer_send((ECPConnection *)proxy[0], _proxy_send_kget, ECP_MTYPE_KGET, 3, 500);
-    if (_rv < 0) return _rv;
 
+    ssize_t _rv = ecp_timer_send((ECPConnection *)&proxy[0], _proxy_send_kget, ECP_MTYPE_KGET, 3, 500);
+    if (_rv < 0) return _rv;
+    
     return ECP_OK;
 }

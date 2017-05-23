@@ -1,5 +1,5 @@
 MAKE=make
-CFLAGS = -I. -pthread -O3 $(PIC) -DECP_DEBUG
+CFLAGS = -I. -pthread -O3 $(PIC)
 
 obj = core.o timer.o msgq.o
 subdirs = crypto posix htable

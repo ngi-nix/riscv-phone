@@ -6,7 +6,7 @@
 #include <sys/time.h>
 #include <pthread.h>
 
-#include <core.h>
+#include "core.h"
 
 #ifdef __linux__
 #define SIGINFO     SIGTSTP

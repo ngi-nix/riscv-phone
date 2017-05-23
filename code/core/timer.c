@@ -184,12 +184,14 @@ unsigned int ecp_timer_exe(ECPSocket *sock) {
         ecp_conn_handler_msg_t *handler = conn->sock->ctx->handler[conn->type] ? conn->sock->ctx->handler[conn->type]->msg[mtype] : NULL;
         
         if (to_exec[i].cnt) {
+            ssize_t _rv = 0;
             to_exec[i].cnt--;
             to_exec[i].abstime = now + to_exec[i].timeout;
             if (retry) {
-                rv = retry(conn, to_exec+i);
+                _rv = retry(conn, to_exec+i);
+                if (_rv < 0) rv = _rv;
             } else {
-                ssize_t _rv = ecp_pld_send(conn, pld, pld_size);
+                _rv = ecp_pld_send(conn, pld, pld_size);
                 if (_rv < 0) rv = _rv;
             }
             if (!rv) rv = ecp_timer_push(to_exec+i);

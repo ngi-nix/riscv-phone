@@ -2,7 +2,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <core.h>
+#include "core.h"
 
 ECPContext ctx_s;
 ECPSocket sock_s;
