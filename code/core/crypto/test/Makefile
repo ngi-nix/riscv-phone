@@ -1,8 +1,10 @@
-CFLAGS=-I.. -I../include -O3 
+CFLAGS=-I.. -I../include -O3
+
 aead_dep=../compat/explicit_bzero.o ../compat/timingsafe_memcmp.o ../compat/timingsafe_bcmp.o \
 	../chacha/chacha.o ../poly1305/poly1305.o ../curve25519/curve25519.o ../curve25519/curve25519-generic.o \
 	../sha/sha512.o	../e_chacha20poly1305.o
 dsa_dep=../*/*.a
+
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<

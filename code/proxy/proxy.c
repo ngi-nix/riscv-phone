@@ -1,4 +1,4 @@
-#include "core.h"
+#include <core.h>
 #include "proxy.h"
 
 #ifdef ECP_WITH_PTHREAD
@@ -409,7 +409,8 @@ int ecp_proxy_init(ECPContext *ctx) {
     return ECP_OK;
 }
 
-int ecp_conn_proxy_init(ECPConnection *conn, ECPNode *conn_node, ECPConnProxy *proxy[], ECPNode *proxy_node[], int size, ECPSocket *sock) {
+int ecp_conn_proxy_init(ECPConnection *conn, ECPNode *conn_node, ECPConnProxy *proxy[], ECPNode *proxy_node[], int size) {
+    ECPSocket *sock = conn->sock;
     int i, rv;
     
     rv = ecp_conn_init(conn, conn_node);
@@ -438,3 +439,19 @@ int ecp_conn_proxy_init(ECPConnection *conn, ECPNode *conn_node, ECPConnProxy *p
     return ECP_OK;
 }
 
+static ssize_t _proxy_send_kget(ECPConnection *conn, ECPTimerItem *ti) {
+    unsigned char payload[ECP_SIZE_PLD(0)];
+
+    ecp_pld_set_type(payload, ECP_MTYPE_KGET);
+    return ecp_pld_send_wkey(conn, ECP_ECDH_IDX_PERMA, ECP_ECDH_IDX_INV, payload, sizeof(payload));
+}
+
+int ecp_conn_proxy_open(ECPConnection *conn, ECPNode *conn_node, ECPConnProxy *proxy[], ECPNode *proxy_node[], int size) {
+    int rv = ecp_conn_proxy_init(conn, conn_node, proxy, proxy_node, size);
+    if (rv) return rv;
+    
+    ssize_t _rv = ecp_timer_send((ECPConnection *)proxy[0], _proxy_send_kget, ECP_MTYPE_KGET, 3, 500);
+    if (_rv < 0) return _rv;
+
+    return ECP_OK;
+}

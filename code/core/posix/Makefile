@@ -1,6 +1,8 @@
 CFLAGS=-I.. $(PIC)
+
 obj_tr = transport.o
 obj_tm = time.o
+
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<

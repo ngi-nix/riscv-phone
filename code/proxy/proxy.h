@@ -16,4 +16,6 @@ typedef struct ECPConnProxyF {
 } ECPConnProxyF;
 
 int ecp_proxy_init(ECPContext *ctx);
-int ecp_conn_proxy_init(ECPConnection *conn, ECPNode *conn_node, ECPConnProxy *proxy[], ECPNode *proxy_node[], int size, ECPSocket *sock);
+
+int ecp_conn_proxy_init(ECPConnection *conn, ECPNode *conn_node, ECPConnProxy *proxy[], ECPNode *proxy_node[], int size);
+int ecp_conn_proxy_open(ECPConnection *conn, ECPNode *conn_node, ECPConnProxy *proxy[], ECPNode *proxy_node[], int size);

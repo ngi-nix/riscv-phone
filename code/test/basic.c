@@ -100,7 +100,7 @@ int main(int argc, char *argv[]) {
     rv = ecp_start_receiver(&sock_c);
     printf("ecp_start_receiver RV:%d\n", rv);
 
-    rv = ecp_node_init(&ctx_c, &node, "127.0.0.1:3000", &key_perma_s.public);
+    rv = ecp_node_init(&ctx_c, &node, &key_perma_s.public, "127.0.0.1:3000");
     printf("ecp_node_init RV:%d\n", rv);
 
     rv = ecp_conn_create(&conn, &sock_c, CTYPE_TEST);

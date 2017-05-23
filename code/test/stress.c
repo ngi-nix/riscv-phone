@@ -209,7 +209,7 @@ int main(int argc, char *argv[]) {
 
         strcpy(addr, "127.0.0.1:");
         sprintf(addr+strlen(addr), "%d", 3000 + (i % num_s));
-        if (!rv) rv = ecp_node_init(&ctx_c[i], &node[i], addr, &key_perma_s.public);
+        if (!rv) rv = ecp_node_init(&ctx_c[i], &node[i], &key_perma_s.public, addr);
         
         if (!rv) rv = ecp_conn_create(&conn[i], &sock_c[i], CTYPE_TEST);
         conn[i].conn_data = (void *)i;

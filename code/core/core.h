@@ -263,7 +263,7 @@ int ecp_transport_init(ECPTransportIface *t);
 int ecp_time_init(ECPTimeIface *t);
 
 int ecp_dhkey_generate(ECPContext *ctx, ECPDHKey *key);
-int ecp_node_init(ECPContext *ctx, ECPNode *node, void *addr, ecp_dh_public_t *public);
+int ecp_node_init(ECPContext *ctx, ECPNode *node, ecp_dh_public_t *public, void *addr);
 
 int ecp_ctx_create(ECPContext *ctx);
 int ecp_ctx_destroy(ECPContext *ctx);

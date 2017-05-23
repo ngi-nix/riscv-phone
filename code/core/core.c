@@ -14,11 +14,15 @@ int ecp_dhkey_generate(ECPContext *ctx, ECPDHKey *key) {
     return ECP_OK;
 }
 
-int ecp_node_init(ECPContext *ctx, ECPNode *node, void *addr, ecp_dh_public_t *public) {
-    int rv = ctx->tr.addr_set(&node->addr, addr);
+int ecp_node_init(ECPContext *ctx, ECPNode *node, ecp_dh_public_t *public, void *addr) {
+    int rv = ECP_OK;
+    
+    memset(node, 0, sizeof(ECPNode));
+    memcpy(&node->public, public, sizeof(node->public));
+
+    if (addr) rv = ctx->tr.addr_set(&node->addr, addr);
     if (rv) return ECP_ERR_NET_ADDR;
 
-    memcpy(&node->public, public, sizeof(node->public));
     return ECP_OK;
 }
 

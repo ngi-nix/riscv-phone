@@ -1,5 +1,7 @@
 CFLAGS=-I../include -D__BEGIN_HIDDEN_DECLS= -D__END_HIDDEN_DECLS= -O3 $(PIC)
+
 obj = poly1305.o
+
 
 all: libpoly1305.a
 dep: all

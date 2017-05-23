@@ -1,5 +1,7 @@
 CFLAGS=-I../include -D__BEGIN_HIDDEN_DECLS= -D__END_HIDDEN_DECLS= -O3 $(PIC)
+
 obj = chacha.o
+
 
 all: libchacha.a
 dep: all
