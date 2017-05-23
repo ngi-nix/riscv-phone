@@ -1,12 +1,12 @@
 MAKE=make
 CFLAGS = -I. -pthread -O3 -DECP_DEBUG
 obj = core.o timer.o msgq.o
-subdirs = crypto posix htable test
+subdirs = crypto posix htable
 
 %.o: %.c %.h
 	$(CC) $(CFLAGS) -c $<
 
-all: $(obj) init.o init_proxy.o
+all: $(obj)
 	$(AR) rcs libecpcore.a $(obj)
 	for i in $(subdirs); do \
 		(cd $$i && $(MAKE) && cd ..) || exit; \
