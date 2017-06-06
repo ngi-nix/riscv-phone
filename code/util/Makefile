@@ -14,7 +14,7 @@ libecputil.a: $(obj)
 	$(AR) rcs libecputil.a $(obj)
 
 mknode: mknode.o libecputil.a
-	$(CC) -o $@ $(LDFLAGS) $< $(dep)
+	$(CC) -o $@ $< $(dep) $(LDFLAGS)
 
 clean:
 	rm -f *.o *.a
