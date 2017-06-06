@@ -14,8 +14,8 @@ ECPConnHandler handler;
 ECPConnection conn;
 ECPNode node;
 
-ECPConnProxy conn_proxy;
-ECPNode node_proxy;
+ECPConnProxy conn_proxy[20];
+ECPNode node_proxy[20];
 
 #define CTYPE_TEST  0
 #define MTYPE_MSG   8
@@ -47,14 +47,14 @@ ssize_t handle_msg(ECPConnection *conn, unsigned char t, unsigned char *p, ssize
 }
 
 static void usage(char *arg) {
-    fprintf(stderr, "Usage: %s <server.pub> <proxy.pub>\n", arg);
+    fprintf(stderr, "Usage: %s <server.pub> <p1.pub> ... <pn.pub>\n", arg);
     exit(1);
 }
 
 int main(int argc, char *argv[]) {
-    int rv;
+    int rv, i;
     
-    if (argc != 3) usage(argv[0]);
+    if ((argc < 3) || (argc > 22)) usage(argv[0]);
     
     rv = ecp_init(&ctx);
     printf("ecp_init RV:%d\n", rv);
@@ -76,13 +76,15 @@ int main(int argc, char *argv[]) {
     rv = ecp_util_node_load(&ctx, &node, argv[1]);
     printf("ecp_util_node_load RV:%d\n", rv);
 
-    rv = ecp_util_node_load(&ctx, &node_proxy, argv[2]);
-    printf("ecp_util_node_load RV:%d\n", rv);
+    for (i=0; i<argc-2; i++) {
+        rv = ecp_util_node_load(&ctx, &node_proxy[i], argv[i+2]);
+        printf("ecp_util_node_load RV:%d\n", rv);
+    }
 
     rv = ecp_conn_create(&conn, &sock, CTYPE_TEST);
     printf("ecp_conn_create RV:%d\n", rv);
 
-    rv = ecp_conn_proxy_open(&conn, &node, &conn_proxy, &node_proxy, 1);
+    rv = ecp_conn_proxy_open(&conn, &node, conn_proxy, node_proxy, argc-2);
     printf("ecp_conn_proxy_open RV:%d\n", rv);
 
     while (1) sleep(1);
