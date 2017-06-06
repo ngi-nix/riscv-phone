@@ -21,6 +21,7 @@ static int t_addr_set(ECPNetAddr *addr, void *addr_s) {
     char addr_c[ADDR_S_MAX];
     char *colon = NULL;
     char *endptr = NULL;
+	uint16_t hport;
     
     memset(addr_c, 0, sizeof(addr_c));
     strncpy(addr_c, addr_s, ADDR_S_MAX-1);
@@ -31,9 +32,10 @@ static int t_addr_set(ECPNetAddr *addr, void *addr_s) {
     if (*colon == '\0') return -1;
     rv = inet_pton(AF_INET, addr_c, addr->host);
     if (rv != 1) return -1;
-    addr->port = strtol(colon, &endptr, 10);
+    hport = strtol(colon, &endptr, 10);
     if (*endptr != '\0') return -1;
-    
+    addr->port = htons(hport);
+
     return 0;
 }
 
@@ -48,7 +50,7 @@ static int t_open(int *sock, void *addr_s) {
         if (rv) return rv;
 
         memcpy((void *)&_myaddr.sin_addr, addr.host, sizeof(addr.host));
-        _myaddr.sin_port = htons(addr.port);
+        _myaddr.sin_port = addr.port;
     } else {
         _myaddr.sin_addr.s_addr = htonl(INADDR_ANY);
         _myaddr.sin_port = htons(0);
@@ -81,7 +83,7 @@ static ssize_t t_send(int *sock, void *msg, size_t msg_size, ECPNetAddr *addr) {
 
     memset((void *)&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
-    servaddr.sin_port = htons(addr->port);
+    servaddr.sin_port = addr->port;
     memcpy((void *)&servaddr.sin_addr, addr->host, sizeof(addr->host));
     return sendto(*sock, msg, msg_size, 0, (struct sockaddr *)&servaddr, sizeof(servaddr));
 }
@@ -95,7 +97,7 @@ static ssize_t t_recv(int *sock, void *msg, size_t msg_size, ECPNetAddr *addr) {
     if (recvlen < 0) return recvlen;
 
     if (addr) {
-        addr->port = ntohs(servaddr.sin_port);
+        addr->port = servaddr.sin_port;
         memcpy(addr->host, (void *)&servaddr.sin_addr, sizeof(addr->host));
     }
     return recvlen;
