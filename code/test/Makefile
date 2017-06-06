@@ -6,7 +6,10 @@ dep=../core/libecpcore.a ../core/crypto/libecpcr.a ../core/htable/libecpht.a ../
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<
 
-all: client server basic stress proxy pr_server pr_client
+all: basic client server echo stress proxy pr_server pr_client
+
+basic: basic.o init.o $(dep)
+	$(CC) -o $@ $< init.o $(dep) $(LDFLAGS)
 
 client: client.o init.o $(dep)
 	$(CC) -o $@ $< init.o $(dep) $(LDFLAGS)
@@ -14,7 +17,7 @@ client: client.o init.o $(dep)
 server: server.o init.o $(dep)
 	$(CC) -o $@ $< init.o $(dep) $(LDFLAGS)
 
-basic: basic.o init.o $(dep)
+echo: echo.o init.o $(dep)
 	$(CC) -o $@ $< init.o $(dep) $(LDFLAGS)
 
 stress: stress.o init.o $(dep)
@@ -29,8 +32,8 @@ pr_server: pr_server.o init_proxy.o $(dep)
 pr_client: pr_client.o init_proxy.o $(dep)
 	$(CC) -o $@ $< init_proxy.o $(dep) $(LDFLAGS)
 
-opus_root=../../../opus-1.1.5
 
+opus_root=../../../opus-1.1.5
 voip.o: voip.c
 	$(CC) $(CFLAGS) -I $(opus_root)/include -c $<
 
@@ -39,4 +42,4 @@ voip: voip.o init.o $(dep)
 
 clean:
 	rm -f *.o
-	rm -f basic stress client server proxy pr_server pr_client
+	rm -f basic client server echo stress proxy pr_server pr_client voip
