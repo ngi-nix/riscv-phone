@@ -1,7 +1,7 @@
 MAKE=make
 CFLAGS = -I. -pthread -O3 $(PIC)
 
-obj = core.o timer.o msgq.o
+obj = core.o timer.o rbuf_recv.o
 subdirs = crypto posix htable
 
 

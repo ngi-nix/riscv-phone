@@ -70,7 +70,10 @@
 #include "config.h"
 
 #include <stddef.h>
+#include <stdint.h>
+
 typedef long ssize_t;
+typedef uint32_t ecp_seq_t;
 
 #ifdef ECP_WITH_PTHREAD
 #include <pthread.h>
@@ -80,8 +83,8 @@ typedef long ssize_t;
 #include "crypto/crypto.h"
 #include "timer.h"
 
-#ifdef ECP_WITH_PTHREAD
-#include "msgq.h"
+#ifdef ECP_WITH_RBUF
+#include "rbuf.h"
 #endif
 
 #ifdef ECP_DEBUG
@@ -94,8 +97,6 @@ typedef long ssize_t;
 struct ECPContext;
 struct ECPSocket;
 struct ECPConnection;
-
-typedef uint32_t ecp_seq_t;
 
 typedef int ecp_rng_t (void *, size_t);
 
@@ -250,8 +251,10 @@ typedef struct ECPConnection {
     unsigned char key_idx_map[ECP_MAX_SOCK_KEY];
     ECPDHShared shared[ECP_MAX_NODE_KEY][ECP_MAX_NODE_KEY];
     unsigned char nonce[ECP_AEAD_SIZE_NONCE];
+#ifdef ECP_WITH_RBUF
+    ECPConnRBuffer rbuf;
+#endif
 #ifdef ECP_WITH_PTHREAD
-    ECPConnMsgQ msgq;
     pthread_mutex_t mutex;
 #endif
     struct ECPConnection *proxy;

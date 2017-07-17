@@ -1,6 +1,8 @@
 #include "core.h"
 #include "proxy.h"
 
+#include <string.h>
+
 #ifdef ECP_WITH_PTHREAD
 static pthread_mutex_t key_perma_mutex;
 static pthread_mutex_t key_next_mutex;

@@ -426,20 +426,24 @@ int ecp_conn_create(ECPConnection *conn, ECPSocket *sock, unsigned char ctype) {
 #ifdef ECP_WITH_PTHREAD
     int rv = pthread_mutex_init(&conn->mutex, NULL);
     if (rv) return ECP_ERR;
+#endif
 
+#ifdef ECP_WITH_MSGQ
     rv = ecp_conn_msgq_create(conn);
     if (rv) {
         pthread_mutex_destroy(&conn->mutex);
         return ECP_ERR;
     }
 #endif
-
+    
     return ECP_OK;
 }
 
 void ecp_conn_destroy(ECPConnection *conn) {
-#ifdef ECP_WITH_PTHREAD
+#ifdef ECP_WITH_MSGQ
     ecp_conn_msgq_destroy(conn);
+#endif
+#ifdef ECP_WITH_PTHREAD
     pthread_mutex_destroy(&conn->mutex);
 #endif
 }
@@ -1087,8 +1091,8 @@ ssize_t ecp_pkt_handle(ECPSocket *sock, ECPNetAddr *addr, ECPConnection *proxy, 
 
     cnt_size = pld_size-ECP_SIZE_PLD_HDR;
 
-#ifdef WITH_RBUF
-    if  (conn->rbuf.recv) {
+#ifdef ECP_WITH_RBUF
+    if (conn->rbuf.recv) {
         proc_size = ecp_msg_handle(conn, p_seq, payload+pld_size-cnt_size, cnt_size);
     } else {
         proc_size = ecp_rbuf_recv_store(conn, p_seq, payload+pld_size-cnt_size, cnt_size);
@@ -1102,6 +1106,8 @@ ssize_t ecp_pkt_handle(ECPSocket *sock, ECPNetAddr *addr, ECPConnection *proxy, 
 
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&conn->mutex);
+#endif
+#ifdef ECP_WITH_MSGQ
     if (!rv && (cnt_size > 0)) {
         proc_size = ecp_conn_msgq_push(conn, payload+pld_size-cnt_size, cnt_size);
         if (proc_size < 0) rv = ECP_ERR_HANDLE;
@@ -1227,7 +1233,7 @@ ssize_t ecp_send(ECPConnection *conn, unsigned char *payload, size_t payload_siz
 }
 
 ssize_t ecp_receive(ECPConnection *conn, unsigned char mtype, unsigned char *msg, size_t msg_size, unsigned int timeout) {
-#ifdef ECP_WITH_PTHREAD
+#ifdef ECP_WITH_MSGQ
     pthread_mutex_lock(&conn->mutex);
     ssize_t rv = ecp_conn_msgq_pop(conn, mtype, msg, msg_size, timeout);
     pthread_mutex_unlock(&conn->mutex);
