@@ -195,9 +195,9 @@ unsigned int ecp_timer_exe(ECPSocket *sock) {
                 if (_rv < 0) rv = _rv;
             }
             if (!rv) rv = ecp_timer_push(to_exec+i);
-            if (rv && (rv != ECP_ERR_CLOSED) && handler) handler(conn, mtype, NULL, rv);
+            if (rv && (rv != ECP_ERR_CLOSED) && handler) handler(conn, 0, mtype, NULL, rv);
         } else if (handler) {
-            handler(conn, mtype, NULL, ECP_ERR_TIMEOUT);
+            handler(conn, 0, mtype, NULL, ECP_ERR_TIMEOUT);
         }
 #ifdef ECP_WITH_PTHREAD
         pthread_mutex_lock(&conn->mutex);

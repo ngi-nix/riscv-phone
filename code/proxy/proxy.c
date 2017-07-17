@@ -95,7 +95,7 @@ static ssize_t proxyf_open(ECPConnection *conn) {
     return _proxyf_send_open(conn);
 }
 
-static ssize_t proxyf_handle_open(ECPConnection *conn, unsigned char mtype, unsigned char *msg, ssize_t size) {
+static ssize_t proxyf_handle_open(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size) {
     if (conn->type != ECP_CTYPE_PROXYF) return ECP_ERR;
 
     if (conn->out) {
@@ -106,7 +106,7 @@ static ssize_t proxyf_handle_open(ECPConnection *conn, unsigned char mtype, unsi
                 conn = conn_p->next;
             }
             handler = conn->sock->ctx->handler[conn->type] ? conn->sock->ctx->handler[conn->type]->msg[ECP_MTYPE_OPEN] : NULL;
-            return handler ? handler(conn, mtype, msg, size) : size;
+            return handler ? handler(conn, seq, mtype, msg, size) : size;
         }
         return 0;
     } else {
@@ -145,7 +145,7 @@ static ssize_t proxyf_handle_open(ECPConnection *conn, unsigned char mtype, unsi
     return ECP_ERR;
 }
 
-static ssize_t proxyf_handle_relay(ECPConnection *conn, unsigned char mtype, unsigned char *msg, ssize_t size) {
+static ssize_t proxyf_handle_relay(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size) {
     ECPContext *ctx = conn->sock->ctx;
     ECPConnection *conn_out = NULL;
     ECPConnProxyF *conn_p = (ECPConnProxyF *)conn;
@@ -250,14 +250,14 @@ static ssize_t proxyb_open(ECPConnection *conn) {
     return ecp_timer_send(conn, _proxyb_send_open, ECP_MTYPE_OPEN, 3, 500);
 }
 
-static ssize_t proxyb_handle_open(ECPConnection *conn, unsigned char mtype, unsigned char *msg, ssize_t size) {
+static ssize_t proxyb_handle_open(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size) {
     ssize_t rv;
     
     if (size < 0) return size;
     
     if (conn->type != ECP_CTYPE_PROXYB) return ECP_ERR;
 
-    rv = ecp_conn_handle_open(conn, mtype, msg, size);
+    rv = ecp_conn_handle_open(conn, seq, mtype, msg, size);
     if (rv < 0) return rv;
 
     if (conn->out) {
@@ -270,7 +270,7 @@ static ssize_t proxyb_handle_open(ECPConnection *conn, unsigned char mtype, unsi
     return ECP_ERR;
 }
 
-static ssize_t proxyb_handle_relay(ECPConnection *conn, unsigned char mtype, unsigned char *msg, ssize_t size) {
+static ssize_t proxyb_handle_relay(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size) {
     ECPContext *ctx = conn->sock->ctx;
     unsigned char *payload = NULL;
     ssize_t rv;

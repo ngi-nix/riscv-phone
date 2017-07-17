@@ -18,12 +18,12 @@ ECPConnection conn;
 #define CTYPE_TEST  0
 #define MTYPE_MSG   8
 
-ssize_t handle_open(ECPConnection *conn, unsigned char t, unsigned char *p, ssize_t s) {
+ssize_t handle_open(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s) {
     printf("OPEN RECEIVED\n");
-    return ecp_conn_handle_open(conn, t, p, s);
+    return ecp_conn_handle_open(conn, sq, t, p, s);
 }
 
-ssize_t handle_msg(ECPConnection *conn, unsigned char t, unsigned char *p, ssize_t s) {
+ssize_t handle_msg(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s) {
     printf("MSG S:%s size:%ld\n", p, s);
 
     unsigned char payload[ECP_SIZE_PLD(1000)];

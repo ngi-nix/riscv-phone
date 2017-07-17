@@ -123,7 +123,7 @@ int a_init(void) {
 	opus_decoder_init(opus_dec, sample_rate, nchannels);
 }
 
-ssize_t handle_open_c(ECPConnection *conn, unsigned char t, unsigned char *p, ssize_t s) {
+ssize_t handle_open_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s) {
     uint32_t seq = 0;
     
     ecp_conn_handle_open(conn, t, p, s);
@@ -137,7 +137,7 @@ ssize_t handle_open_c(ECPConnection *conn, unsigned char t, unsigned char *p, ss
     return s;
 }
 
-ssize_t handle_msg_c(ECPConnection *conn, unsigned char t, unsigned char *p, ssize_t s) {
+ssize_t handle_msg_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s) {
 	a_write(opus_dec, p, s, handle_plb, alsa_out_buf, alsa_frames);
     return s;
 }

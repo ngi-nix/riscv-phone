@@ -95,11 +95,11 @@ void *sender(ECPConnection *c) {
     }
 }
 
-ssize_t handle_open_c(ECPConnection *conn, unsigned char t, unsigned char *p, ssize_t s) {
+ssize_t handle_open_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s) {
     int idx = (int)(conn->conn_data);
     int rv = 0;
     
-    ecp_conn_handle_open(conn, t, p, s);
+    ecp_conn_handle_open(conn, sq, t, p, s);
     rv = pthread_create(&s_thd[idx], NULL, (void *(*)(void *))sender, (void *)conn);
     if (rv) {
         char msg[256];
@@ -110,7 +110,7 @@ ssize_t handle_open_c(ECPConnection *conn, unsigned char t, unsigned char *p, ss
     return 0;
 }
 
-ssize_t handle_msg_c(ECPConnection *conn, unsigned char t, unsigned char *p, ssize_t s) {
+ssize_t handle_msg_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s) {
     int idx = (int)(conn->conn_data);
     unsigned char payload[ECP_SIZE_PLD(1000)];
 
@@ -125,7 +125,7 @@ ssize_t handle_msg_c(ECPConnection *conn, unsigned char t, unsigned char *p, ssi
     return s;
 }
 
-ssize_t handle_msg_s(ECPConnection *conn, unsigned char t, unsigned char *p, ssize_t s) {
+ssize_t handle_msg_s(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s) {
     unsigned char payload[ECP_SIZE_PLD(1000)];
     ecp_pld_set_type(payload, MTYPE_MSG);
     ssize_t _rv = ecp_send(conn, payload, sizeof(payload));

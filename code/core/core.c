@@ -648,7 +648,7 @@ int ecp_conn_handle_new(ECPSocket *sock, ECPConnection **_conn, ECPConnection *p
     return rv;
 }
 
-ssize_t ecp_conn_handle_open(ECPConnection *conn, unsigned char mtype, unsigned char *msg, ssize_t size) {
+ssize_t ecp_conn_handle_open(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size) {
     if (size < 0) return size;
 
 #ifdef ECP_WITH_PTHREAD
@@ -677,7 +677,7 @@ ssize_t ecp_conn_handle_open(ECPConnection *conn, unsigned char mtype, unsigned 
     return ECP_ERR;
 }
 
-ssize_t ecp_conn_handle_kget(ECPConnection *conn, unsigned char mtype, unsigned char *msg, ssize_t size) {
+ssize_t ecp_conn_handle_kget(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size) {
     if (conn->out) {
         ECPContext *ctx = conn->sock->ctx;
 #ifdef ECP_WITH_PTHREAD
@@ -690,7 +690,7 @@ ssize_t ecp_conn_handle_kget(ECPConnection *conn, unsigned char mtype, unsigned 
 
         if ((size < 0) && !conn_is_open) {
             ecp_conn_handler_msg_t *handler = ctx->handler[conn->type] ? ctx->handler[conn->type]->msg[ECP_MTYPE_OPEN] : NULL;
-            return handler ? handler(conn, mtype, msg, size) : size;
+            return handler ? handler(conn, seq, mtype, msg, size) : size;
         }
 
         if (size < 0) return size;
@@ -722,7 +722,7 @@ ssize_t ecp_conn_handle_kget(ECPConnection *conn, unsigned char mtype, unsigned 
     return ECP_ERR;
 }
  
-ssize_t ecp_conn_handle_kput(ECPConnection *conn, unsigned char mtype, unsigned char *msg, ssize_t size) {
+ssize_t ecp_conn_handle_kput(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size) {
     if (size < 0) return size;
 
     if (conn->out) {
@@ -743,7 +743,7 @@ ssize_t ecp_conn_handle_kput(ECPConnection *conn, unsigned char mtype, unsigned 
     return ECP_ERR;
 }
 
-ssize_t ecp_conn_handle_exec(ECPConnection *conn, unsigned char mtype, unsigned char *msg, ssize_t size) {
+ssize_t ecp_conn_handle_exec(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size) {
     if (size < 0) return size;
     return ecp_pkt_handle(conn->sock, NULL, conn, msg, size);
 }
@@ -951,7 +951,8 @@ ssize_t ecp_pkt_handle(ECPSocket *sock, ECPNetAddr *addr, ECPConnection *proxy, 
     ECPConnection *conn = NULL;
     ECPDHKey *key = NULL;
     int rv = ECP_OK;
-    uint32_t c_seq, p_seq, n_seq, seq_bitmap;
+    ecp_seq_t c_seq, p_seq, n_seq;
+    uint32_t seq_bitmap;
     ssize_t pld_size, cnt_size, proc_size;
     
     s_idx = (packet[ECP_SIZE_PROTO] & 0xF0) >> 4;
@@ -1085,7 +1086,17 @@ ssize_t ecp_pkt_handle(ECPSocket *sock, ECPNetAddr *addr, ECPConnection *proxy, 
 #endif
 
     cnt_size = pld_size-ECP_SIZE_PLD_HDR;
-    proc_size = ecp_msg_handle(conn, payload+pld_size-cnt_size, cnt_size);
+
+#ifdef WITH_RBUF
+    if  (conn->rbuf.recv) {
+        proc_size = ecp_msg_handle(conn, p_seq, payload+pld_size-cnt_size, cnt_size);
+    } else {
+        proc_size = ecp_rbuf_recv_store(conn, p_seq, payload+pld_size-cnt_size, cnt_size);
+    }
+#else
+    proc_size = ecp_msg_handle(conn, p_seq, payload+pld_size-cnt_size, cnt_size);
+#endif
+
     if (proc_size < 0) rv = ECP_ERR_HANDLE;
     if (!rv) cnt_size -= proc_size;
 
@@ -1139,7 +1150,7 @@ ssize_t ecp_pkt_recv(ECPSocket *sock, ECPNetAddr *addr, unsigned char *packet, s
     return rv;
 }
 
-ssize_t ecp_msg_handle(ECPConnection *conn, unsigned char *msg, size_t msg_size) {
+ssize_t ecp_msg_handle(ECPConnection *conn, ecp_seq_t seq, unsigned char *msg, size_t msg_size) {
     ecp_conn_handler_msg_t *handler = NULL;
     ssize_t rv = 0;
     unsigned char mtype = 0;
@@ -1156,7 +1167,7 @@ ssize_t ecp_msg_handle(ECPConnection *conn, unsigned char *msg, size_t msg_size)
         if (conn->out) ecp_timer_pop(conn, mtype);
         handler = conn->sock->ctx->handler[conn->type] ? conn->sock->ctx->handler[conn->type]->msg[mtype] : NULL;
         if (handler) {
-            rv = handler(conn, mtype, msg, rem_size);
+            rv = handler(conn, seq, mtype, msg, rem_size);
             if (rv < 0) return rv;
             if (rv == 0) rv = rem_size;
             if (rv < ECP_MIN_MSG) rv = ECP_MIN_MSG;

@@ -20,10 +20,10 @@ ECPNode node_proxy[20];
 #define CTYPE_TEST  0
 #define MTYPE_MSG   8
 
-ssize_t handle_open(ECPConnection *conn, unsigned char t, unsigned char *p, ssize_t s) {
+ssize_t handle_open(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s) {
     uint32_t seq = 0;
     
-    ecp_conn_handle_open(conn, t, p, s);
+    ecp_conn_handle_open(conn, sq, t, p, s);
     if (s < 0) {
         printf("OPEN ERR:%ld\n", s);
         return 0;
@@ -41,7 +41,7 @@ ssize_t handle_open(ECPConnection *conn, unsigned char t, unsigned char *p, ssiz
     return 0;
 }
 
-ssize_t handle_msg(ECPConnection *conn, unsigned char t, unsigned char *p, ssize_t s) {
+ssize_t handle_msg(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s) {
     printf("MSG S:%s size:%ld\n", p, s);
     return s;
 }
