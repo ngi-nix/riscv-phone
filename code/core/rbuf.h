@@ -1,5 +1,5 @@
-#define ECP_ERR_RBUF_IDX    -1
-#define ECP_ERR_RBUF_DUP    -1
+#define ECP_ERR_RBUF_IDX    -100
+#define ECP_ERR_RBUF_DUP    -101
 
 #define ECP_MAX_RBUF_MSGR    256
 
@@ -11,7 +11,7 @@ typedef struct ECPRBMessage {
     char present;
 } ECPRBMessage;
 
-typedef struct ECPRBuffer {
+typedef struct ECPRBRecvBuffer {
     unsigned char reliable;
     unsigned char deliver_delay;
     unsigned char hole_max;
@@ -23,11 +23,11 @@ typedef struct ECPRBuffer {
     ecp_ack_t hole_mask_full;
     ecp_ack_t hole_mask_empty;
     ECPRBMessage msg[ECP_MAX_RBUF_MSGR];
-} ECPRBuffer;
+} ECPRBRecvBuffer;
 
 
 typedef struct ECPConnRBuffer {
-    ECPRBuffer *recv;
+    ECPRBRecvBuffer *recv;
     // ECPSBuffer *send;
 } ECPConnRBuffer;
 
