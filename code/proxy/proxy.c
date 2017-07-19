@@ -389,6 +389,7 @@ int ecp_proxy_init(ECPContext *ctx) {
 
     rv = ecp_conn_handler_init(&handler_b);
     if (rv) return rv;
+
     handler_b.conn_create = proxyb_create;
     handler_b.conn_destroy = proxyb_destroy;
     handler_b.conn_open = proxyb_open;
@@ -402,7 +403,7 @@ int ecp_proxy_init(ECPContext *ctx) {
     ctx->pr.pack_raw = proxy_pack_raw;
 
 #ifdef ECP_WITH_PTHREAD
-    pthread_mutex_init(&key_next_mutex, NULL);
+    pthread_mutex_init(&key_perma_mutex, NULL);
     pthread_mutex_init(&key_next_mutex, NULL);
 #endif
 
