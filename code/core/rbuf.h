@@ -1,20 +1,27 @@
 #define ECP_RBUF_FLAG_PRESENT        1
-#define ECP_RBUF_SEQ_LT(a,b)         ((ecp_seq_t)((ecp_seq_t)(a) - (ecp_seq_t)(b)) > SEQ_HALF)
-#define ECP_RBUF_SEQ_LTE(a,b)        ((ecp_seq_t)((ecp_seq_t)(b) - (ecp_seq_t)(a)) < SEQ_HALF)
-
-#define ECP_RBUF_IDX_MASK(idx, size) ((idx) & ((size) - 1))
-/* If size not 2^x:
-#define ECP_RBUF_IDX_MASK(idx, size) ((idx) % (size))
-*/
 
 #define ECP_ERR_RBUF_FLAG   -100
 #define ECP_ERR_RBUF_IDX    -101
 #define ECP_ERR_RBUF_DUP    -102
 
 typedef uint32_t ecp_ack_t;
+typedef uint32_t ecp_win_t;
+
+#define ECP_RBUF_SEQ_HALF            ((ecp_seq_t)1 << (sizeof(ecp_seq_t)*8-1))
+
+#define ECP_RBUF_ACK_FULL            (~(ecp_ack_t)0)
+#define ECP_RBUF_ACK_SIZE            (sizeof(ecp_ack_t)*8)
+
+#define ECP_RBUF_SEQ_LT(a,b)         ((ecp_seq_t)((ecp_seq_t)(a) - (ecp_seq_t)(b)) > ECP_RBUF_SEQ_HALF)
+#define ECP_RBUF_SEQ_LTE(a,b)        ((ecp_seq_t)((ecp_seq_t)(b) - (ecp_seq_t)(a)) < ECP_RBUF_SEQ_HALF)
+
+#define ECP_RBUF_IDX_MASK(idx, size) ((idx) & ((size) - 1))
+/* If size not 2^x:
+#define ECP_RBUF_IDX_MASK(idx, size) ((idx) % (size))
+*/
 
 typedef struct ECPRBMessage {
-    unsigned char msg[ECP_MAX_MSG];
+    unsigned char msg[ECP_MAX_PKT];
     ssize_t size;
     unsigned char flags;
 } ECPRBMessage;
@@ -42,6 +49,9 @@ typedef struct ECPRBRecv {
 
 typedef struct ECPRBSend {
     unsigned char reliable;
+    ecp_win_t win_size;
+    ecp_win_t in_transit;
+    unsigned int nack_rate;
     ECPRBuffer rbuf;
 } ECPRBSend;
 

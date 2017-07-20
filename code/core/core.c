@@ -1214,6 +1214,7 @@ ssize_t ecp_pld_send_wkey(ECPConnection *conn, unsigned char s_idx, unsigned cha
     rv = ecp_proxy_pack(conn, &addr, packet, ECP_MAX_PKT, s_idx, c_idx, payload, payload_size);
     if (rv < 0) return rv;
 
+    // XXX insert ecp_rbuf_send_store 
     return ecp_pkt_send(sock, &addr, packet, rv);
 }
 
