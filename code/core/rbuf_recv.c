@@ -79,6 +79,7 @@ int ecp_rbuf_recv_create(ECPRBRecv *buf, ECPRBMessage *msg, unsigned int msg_siz
     ecp_rbuf_init(&buf->rbuf, msg, msg_size);
     buf->ack_map = ECP_RBUF_ACK_FULL;
     buf->ack_rate = ACK_RATE;
+
     return ECP_OK;
 }
 
