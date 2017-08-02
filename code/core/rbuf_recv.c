@@ -75,7 +75,6 @@ static int ack_shift(ECPRBRecv *buf) {
 
 int ecp_rbuf_recv_create(ECPRBRecv *buf, ECPRBMessage *msg, unsigned int msg_size) {
     memset(buf, 0, sizeof(ECPRBRecv));
-    memset(msg, 0, sizeof(ECPRBMessage) * msg_size);
     ecp_rbuf_init(&buf->rbuf, msg, msg_size);
     buf->ack_map = ECP_RBUF_ACK_FULL;
     buf->ack_rate = ACK_RATE;

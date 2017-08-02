@@ -57,7 +57,6 @@ static ssize_t handle_ack(ECPConnection *conn, ecp_seq_t seq, unsigned char mtyp
 
 int ecp_rbuf_send_create(ECPRBSend *buf, ECPRBMessage *msg, unsigned int msg_size) {
     memset(buf, 0, sizeof(ECPRBRecv));
-    memset(msg, 0, sizeof(ECPRBMessage) * msg_size);
     ecp_rbuf_init(&buf->rbuf, msg, msg_size);
 
     return ECP_OK;
