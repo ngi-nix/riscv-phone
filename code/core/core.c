@@ -33,6 +33,9 @@ int ecp_ctx_create(ECPContext *ctx) {
 
     memset(ctx, 0, sizeof(ECPContext));
 
+    ctx->pack = ecp_conn_pack;
+    ctx->pack_raw = ecp_pack_raw;
+
     rv = ecp_crypto_init(&ctx->cr);
     if (rv) return rv;
 #ifdef ECP_WITH_HTABLE
@@ -869,6 +872,12 @@ ssize_t ecp_pack(ECPContext *ctx, unsigned char *packet, size_t pkt_size, unsign
         
     return rv+ECP_SIZE_PKT_HDR;
 }
+
+ssize_t ecp_pack_raw(ECPSocket *sock, ECPConnection *proxy, ECPNetAddr *addr, unsigned char *packet, size_t pkt_size, unsigned char s_idx, unsigned char c_idx, ecp_dh_public_t *public, ecp_aead_key_t *shsec, unsigned char *nonce, ecp_seq_t seq, unsigned char *payload, size_t payload_size) {
+    ECPContext *ctx = sock->ctx;
+    
+    return ecp_pack(ctx, packet, pkt_size, s_idx, c_idx, public, shsec, nonce, seq, payload, payload_size);
+}
     
 ssize_t ecp_conn_pack(ECPConnection *conn, ECPNetAddr *addr, ecp_seq_t *seq, unsigned char *packet, size_t pkt_size, unsigned char s_idx, unsigned char c_idx, unsigned char *payload, size_t payload_size) {
     ecp_aead_key_t shsec;
@@ -932,26 +941,6 @@ ssize_t ecp_conn_pack(ECPConnection *conn, ECPNetAddr *addr, ecp_seq_t *seq, uns
 #endif
 
     return _rv;
-}
-
-ssize_t ecp_proxy_pack(ECPConnection *conn, ECPNetAddr *addr, ecp_seq_t *seq, unsigned char *packet, size_t pkt_size, unsigned char s_idx, unsigned char c_idx, unsigned char *payload, size_t payload_size) {
-    ECPContext *ctx = conn->sock->ctx;
-    
-    if (conn->proxy && ctx->pr.init) {
-        return ctx->pr.pack(conn, addr, seq, packet, pkt_size, s_idx, c_idx, payload, payload_size);
-    } else {
-        return ecp_conn_pack(conn, addr, seq, packet, pkt_size, s_idx, c_idx, payload, payload_size);
-    }
-}
-
-ssize_t ecp_proxy_pack_raw(ECPSocket *sock, ECPConnection *proxy, ECPNetAddr *addr, unsigned char *packet, size_t pkt_size, unsigned char s_idx, unsigned char c_idx, ecp_dh_public_t *public, ecp_aead_key_t *shsec, unsigned char *nonce, ecp_seq_t seq, unsigned char *payload, size_t payload_size) {
-    ECPContext *ctx = sock->ctx;
-    
-    if (proxy && ctx->pr.init) {
-        return ctx->pr.pack_raw(proxy, addr, packet, pkt_size, s_idx, c_idx, public, shsec, nonce, seq, payload, payload_size);
-    } else {
-        return ecp_pack(ctx, packet, pkt_size, s_idx, c_idx, public, shsec, nonce, seq, payload, payload_size);
-    }
 }
 
 ssize_t ecp_pkt_handle(ECPSocket *sock, ECPNetAddr *addr, ECPConnection *proxy, unsigned char *packet, size_t pkt_size) {
@@ -1216,10 +1205,11 @@ ssize_t ecp_pld_send(ECPConnection *conn, unsigned char *payload, size_t payload
 ssize_t ecp_pld_send_wkey(ECPConnection *conn, ecp_seq_t *seq, unsigned char s_idx, unsigned char c_idx, unsigned char *payload, size_t payload_size) {
     unsigned char packet[ECP_MAX_PKT];
     ECPSocket *sock = conn->sock;
+    ECPContext *ctx = sock->ctx;
     ECPNetAddr addr;
     ssize_t rv;
 
-    rv = ecp_proxy_pack(conn, &addr, seq, packet, ECP_MAX_PKT, s_idx, c_idx, payload, payload_size);
+    rv = ctx->pack(conn, &addr, seq, packet, ECP_MAX_PKT, s_idx, c_idx, payload, payload_size);
     if (rv < 0) return rv;
 
 #ifdef ECP_WITH_RBUF
@@ -1233,10 +1223,11 @@ ssize_t ecp_pld_send_wkey(ECPConnection *conn, ecp_seq_t *seq, unsigned char s_i
 
 ssize_t ecp_pld_send_raw(ECPSocket *sock, ECPConnection *proxy, ECPNetAddr *addr, unsigned char s_idx, unsigned char c_idx, ecp_dh_public_t *public, ecp_aead_key_t *shsec, unsigned char *nonce, ecp_seq_t seq, unsigned char *payload, size_t payload_size) {
     unsigned char packet[ECP_MAX_PKT];
+    ECPContext *ctx = sock->ctx;
     ECPNetAddr _addr;
     ssize_t rv;
 
-    rv = ecp_proxy_pack_raw(sock, proxy, &_addr, packet, ECP_MAX_PKT, s_idx, c_idx, public, shsec, nonce, seq, payload, payload_size);
+    rv = ctx->pack_raw(sock, proxy, &_addr, packet, ECP_MAX_PKT, s_idx, c_idx, public, shsec, nonce, seq, payload, payload_size);
     if (rv < 0) return rv;
     
     return ecp_pkt_send(sock, proxy ? &_addr : addr, packet, rv);

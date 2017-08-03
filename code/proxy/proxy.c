@@ -362,30 +362,41 @@ static ssize_t proxy_set_msg(ECPConnection *conn, unsigned char *pld_out, size_t
     return ECP_SIZE_MSG_HDR;
 }
 
+
 static ssize_t proxy_pack(ECPConnection *conn, ECPNetAddr *addr, ecp_seq_t *seq, unsigned char *packet, size_t pkt_size, unsigned char s_idx, unsigned char c_idx, unsigned char *payload, size_t payload_size) {
     ECPContext *ctx = conn->sock->ctx;
-    unsigned char payload_[ECP_MAX_PLD];
-    ecp_seq_t _seq;
-    ssize_t rv, hdr_size = proxy_set_msg(conn->proxy, payload_, sizeof(payload_), payload, payload_size);
-    if (hdr_size < 0) return hdr_size;
 
-    rv = ecp_conn_pack(conn, NULL, &_seq, payload_+hdr_size, ECP_MAX_PLD-hdr_size, s_idx, c_idx, payload, payload_size);
-    if (rv < 0) return rv;
+    if (conn->proxy) {
+        unsigned char payload_[ECP_MAX_PLD];
+        ecp_seq_t _seq;
+        ssize_t rv, hdr_size = proxy_set_msg(conn->proxy, payload_, sizeof(payload_), payload, payload_size);
+        if (hdr_size < 0) return hdr_size;
 
-    return ecp_proxy_pack(conn->proxy, addr, seq, packet, pkt_size, ECP_ECDH_IDX_INV, ECP_ECDH_IDX_INV, payload_, rv+hdr_size);
+        rv = ecp_conn_pack(conn, NULL, &_seq, payload_+hdr_size, ECP_MAX_PLD-hdr_size, s_idx, c_idx, payload, payload_size);
+        if (rv < 0) return rv;
+
+        return proxy_pack(conn->proxy, addr, seq, packet, pkt_size, ECP_ECDH_IDX_INV, ECP_ECDH_IDX_INV, payload_, rv+hdr_size);
+    } else {
+        return ecp_conn_pack(conn, addr, seq, packet, pkt_size, s_idx, c_idx, payload, payload_size);
+    }
 }
 
-static ssize_t proxy_pack_raw(ECPConnection *proxy, ECPNetAddr *addr, unsigned char *packet, size_t pkt_size, unsigned char s_idx, unsigned char c_idx, ecp_dh_public_t *public, ecp_aead_key_t *shsec, unsigned char *nonce, ecp_seq_t seq, unsigned char *payload, size_t payload_size) {
-    ECPContext *ctx = proxy->sock->ctx;
-    unsigned char payload_[ECP_MAX_PLD];
-    ecp_seq_t _seq;
-    ssize_t rv, hdr_size = proxy_set_msg(proxy, payload_, sizeof(payload_), payload, payload_size);
-    if (hdr_size < 0) return hdr_size;
+static ssize_t proxy_pack_raw(ECPSocket *sock, ECPConnection *proxy, ECPNetAddr *addr, unsigned char *packet, size_t pkt_size, unsigned char s_idx, unsigned char c_idx, ecp_dh_public_t *public, ecp_aead_key_t *shsec, unsigned char *nonce, ecp_seq_t seq, unsigned char *payload, size_t payload_size) {
+    ECPContext *ctx = sock->ctx;
 
-    rv = ecp_pack(ctx, payload_+hdr_size, ECP_MAX_PLD-hdr_size, s_idx, c_idx, public, shsec, nonce, seq, payload, payload_size);
-    if (rv < 0) return rv;
+    if (proxy) {
+        unsigned char payload_[ECP_MAX_PLD];
+        ecp_seq_t _seq;
+        ssize_t rv, hdr_size = proxy_set_msg(proxy, payload_, sizeof(payload_), payload, payload_size);
+        if (hdr_size < 0) return hdr_size;
 
-    return ecp_proxy_pack(proxy, addr, &_seq, packet, pkt_size, ECP_ECDH_IDX_INV, ECP_ECDH_IDX_INV, payload_, rv+hdr_size);
+        rv = ecp_pack(ctx, payload_+hdr_size, ECP_MAX_PLD-hdr_size, s_idx, c_idx, public, shsec, nonce, seq, payload, payload_size);
+        if (rv < 0) return rv;
+
+        return proxy_pack(proxy, addr, &_seq, packet, pkt_size, ECP_ECDH_IDX_INV, ECP_ECDH_IDX_INV, payload_, rv+hdr_size);
+    } else {
+        return ecp_pack(ctx, packet, pkt_size, s_idx, c_idx, public, shsec, nonce, seq, payload, payload_size);
+    }
 }
 
 int ecp_proxy_init(ECPContext *ctx) {
@@ -413,9 +424,8 @@ int ecp_proxy_init(ECPContext *ctx) {
     handler_b.msg[ECP_MTYPE_RELAY] = proxyb_handle_relay;
     ctx->handler[ECP_CTYPE_PROXYB] = &handler_b;
 
-    ctx->pr.init = 1;
-    ctx->pr.pack = proxy_pack;
-    ctx->pr.pack_raw = proxy_pack_raw;
+    ctx->pack = proxy_pack;
+    ctx->pack_raw = proxy_pack_raw;
 
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_init(&key_perma_mutex, NULL);
