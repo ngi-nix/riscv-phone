@@ -67,18 +67,17 @@ struct hashtable;
  * create_hashtable
    
  * @name                    create_hashtable
- * @name    h               hashtable to create
  * @param   minsize         minimum initial size of hashtable
  * @param   hash_fn         function for hashing keys
  * @param   eq_fn           function for determining key equality
  * @param   malloc_fn       function malloc
  * @param   realloc_fn      function realloc
  * @param   free_fn         function free
- * @return                  non-zero on success
+ * @return                  hashtable created
  */
 
-int
-create_hashtable(struct hashtable *h, unsigned int minsize,
+struct hashtable *
+create_hashtable(unsigned int minsize,
                  unsigned int (*hash_fn) (void*),
                  int (*eq_fn) (void*,void*),
                  void *(*malloc_fn) (size_t),

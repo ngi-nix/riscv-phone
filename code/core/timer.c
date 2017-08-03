@@ -22,7 +22,7 @@ void ecp_timer_destroy(ECPTimer *timer) {
 int ecp_timer_item_init(ECPTimerItem *ti, ECPConnection *conn, unsigned char mtype, unsigned short cnt, unsigned int timeout) {
     unsigned int abstime = conn->sock->ctx->tm.abstime_ms(timeout);
 
-    if (mtype >= ECP_MAX_MTYPE) return ECP_ERR_MAX_MTYPE;
+    if ((mtype & ECP_MTYPE_MASK) >= ECP_MAX_MTYPE) return ECP_ERR_MAX_MTYPE;
     
     ti->conn = conn;
     ti->mtype = mtype;
@@ -181,7 +181,7 @@ unsigned int ecp_timer_exe(ECPSocket *sock) {
         unsigned char *pld = to_exec[i].pld;
         unsigned char pld_size = to_exec[i].pld_size;
         ecp_timer_retry_t *retry = to_exec[i].retry;
-        ecp_conn_handler_msg_t *handler = conn->sock->ctx->handler[conn->type] ? conn->sock->ctx->handler[conn->type]->msg[mtype] : NULL;
+        ecp_conn_handler_msg_t *handler = conn->sock->ctx->handler[conn->type] ? conn->sock->ctx->handler[conn->type]->msg[mtype & ECP_MTYPE_MASK] : NULL;
         
         if (to_exec[i].cnt) {
             ssize_t _rv = 0;

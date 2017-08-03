@@ -24,34 +24,44 @@ const unsigned int prime_table_length = sizeof(primes)/sizeof(primes[0]);
 const float max_load_factor = 0.65;
 
 /*****************************************************************************/
-int
-create_hashtable(struct hashtable *h, unsigned int minsize,
+struct hashtable *
+create_hashtable(unsigned int minsize,
                  unsigned int (*hash_fn) (void*),
                  int (*eq_fn) (void*,void*),
                  void *(*malloc_fn) (size_t),
                  void *(*realloc_fn) (void*,size_t),
                  void (*free_fn) (void*))
 {
+    struct hashtable *h = NULL;
     unsigned int pindex, size = primes[0];
+    
     /* Check requested hashtable isn't too large */
-    if (minsize > (1u << 30)) return 0;
+    if (minsize > (1u << 30)) return NULL;
+
+    malloc_fn = malloc_fn ? malloc_fn : malloc;
+    realloc_fn = realloc_fn ? realloc_fn : realloc;
+    free_fn = free_fn ? free_fn : free;
+    h = malloc_fn(sizeof(struct hashtable));
+    if (NULL == h) return NULL;
+    memset(h, 0, sizeof(struct hashtable));
+    
     /* Enforce size as prime */
     for (pindex=0; pindex < prime_table_length; pindex++) {
         if (primes[pindex] > minsize) { size = primes[pindex]; break; }
     }
-    h->fn_malloc    = malloc_fn ? malloc_fn : malloc;
-    h->fn_realloc   = realloc_fn ? realloc_fn : realloc;
-    h->fn_free      = free_fn ? free_fn : free;
+    h->fn_malloc    = malloc_fn;
+    h->fn_realloc   = realloc_fn;
+    h->fn_free      = free_fn;
     h->tablelength  = size;
     h->primeindex   = pindex;
     h->entrycount   = 0;
     h->fn_hash      = hash_fn;
     h->fn_eq        = eq_fn;
     h->loadlimit    = (unsigned int) ceil(size * max_load_factor);
-    h->table = h->fn_malloc(sizeof(struct entry *) * size);
-    if (NULL == h->table) return 0; /*oom*/
+    h->table = malloc_fn(sizeof(struct entry *) * size);
+    if (NULL == h->table) { free_fn(h); return NULL; } /*oom*/
     memset(h->table, 0, size * sizeof(struct entry *));
-    return -1;
+    return h;
 }
 
 /*****************************************************************************/
@@ -190,7 +200,7 @@ hashtable_remove(struct hashtable *h, void *k)
     unsigned int hashvalue, index;
 
     hashvalue = hashtable_hash(h,k);
-    index = indexFor(h->tablelength,hashtable_hash(h,k));
+    index = indexFor(h->tablelength,hashvalue);
     pE = &(h->table[index]);
     e = *pE;
     while (NULL != e)
@@ -227,6 +237,7 @@ hashtable_destroy(struct hashtable *h)
         { f = e; e = e->next; if (h->fn_free_k) h->fn_free_k(f->k); if (h->fn_free_v) h->fn_free_v(f->v); h->fn_free(f); }
     }
     h->fn_free(h->table);
+    h->fn_free(h);
 }
 
 /*

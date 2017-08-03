@@ -53,10 +53,20 @@
 #define ECP_ECDH_IDX_INV            0xFF
 #define ECP_ECDH_IDX_PERMA          0x0F
 
+#define ECP_MTYPE_MASK              0x7f
+#define ECP_MTYPE_FLAG_REP          0x80
+
 #define ECP_MTYPE_OPEN              0x00
 #define ECP_MTYPE_KGET              0x01
 #define ECP_MTYPE_KPUT              0x02
 #define ECP_MTYPE_EXEC              0x03
+
+#define ECP_MTYPE_OPEN_REQ          (ECP_MTYPE_OPEN)
+#define ECP_MTYPE_OPEN_REP          (ECP_MTYPE_OPEN | ECP_MTYPE_FLAG_REP)
+#define ECP_MTYPE_KGET_REQ          (ECP_MTYPE_KGET)
+#define ECP_MTYPE_KGET_REP          (ECP_MTYPE_KGET | ECP_MTYPE_FLAG_REP)
+#define ECP_MTYPE_KPUT_REQ          (ECP_MTYPE_KPUT)
+#define ECP_MTYPE_KPUT_REP          (ECP_MTYPE_KPUT | ECP_MTYPE_FLAG_REP)
 
 #define ECP_SIZE_PLD(X)             ((X) < ECP_MIN_MSG ? ECP_MIN_MSG + ECP_SIZE_MSG_HDR : (X) + ECP_SIZE_MSG_HDR)
 #define ECP_SIZE_PKT(X)             ((X) < ECP_MIN_MSG ? ECP_MIN_MSG + ECP_SIZE_PKT_HDR+ECP_SIZE_MSG_HDR+ECP_AEAD_SIZE_TAG : (X) + ECP_SIZE_PKT_HDR+ECP_SIZE_MSG_HDR+ECP_AEAD_SIZE_TAG)

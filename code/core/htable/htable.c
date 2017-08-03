@@ -3,33 +3,17 @@
 #include <string.h>
 
 #include "hashtable.h"
-#include "hashtable_private.h"
-
-static unsigned int hash_fn(void *k) {
-    return *((unsigned int *)k);
-}
-
-static int eq_fn(void *k1, void *k2) {
-    return !memcmp(k1, k2, ECP_ECDH_SIZE_KEY);
-}
 
 static void *h_create(ECPContext *ctx) {
     int rv;
-    struct hashtable *h = malloc(sizeof(struct hashtable));
+    struct hashtable *h = create_hashtable(1000, (unsigned int (*)(void *))ctx->cr.dh_pub_hash_fn, (int (*)(void *, void *))ctx->cr.dh_pub_hash_eq, NULL, NULL, NULL);
     if (h == NULL) return NULL;
         
-    rv = create_hashtable(h, 1000, (unsigned int (*)(void *))ctx->cr.dh_pub_hash_fn, (int (*)(void *, void *))ctx->cr.dh_pub_hash_eq, NULL, NULL, NULL);
-    if (!rv) {
-        free(h);
-        return NULL;
-    }
-    
     return h;
 }
 
 static void h_destroy(void *h) {
     hashtable_destroy(h);
-    free(h);
 }
 
 static int h_insert(void *h, unsigned char *k, ECPConnection *v) {
@@ -39,6 +23,7 @@ static int h_insert(void *h, unsigned char *k, ECPConnection *v) {
 }
 
 static ECPConnection *h_remove(void *h, unsigned char *k) {
+    printf("REMOVE!!!\n");
     return hashtable_remove(h, k);
 }
 
