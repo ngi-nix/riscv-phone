@@ -65,8 +65,8 @@ static int ctable_create(ECPSockCTable *conn, ECPContext *ctx) {
 
 #ifdef ECP_WITH_PTHREAD
     rv = pthread_mutex_init(&conn->mutex, NULL);
-    if (rv && ctx->ht.init) ctx->ht.destroy(conn->htable);
 #endif
+    if (rv && ctx->ht.init) ctx->ht.destroy(conn->htable);
     return rv;
 }
 
@@ -189,6 +189,7 @@ int ecp_sock_create(ECPSocket *sock, ECPContext *ctx, ECPDHKey *key) {
     rv = ecp_timer_create(&sock->timer);
     if (rv) {
         ctable_destroy(&sock->conn, sock->ctx);
+        return rv;
     }
     
 #ifdef ECP_WITH_PTHREAD
@@ -196,6 +197,7 @@ int ecp_sock_create(ECPSocket *sock, ECPContext *ctx, ECPDHKey *key) {
     if (rv) {
         ecp_timer_destroy(&sock->timer);
         ctable_destroy(&sock->conn, sock->ctx);
+        return rv;
     }
 #endif
 
@@ -404,7 +406,7 @@ static int conn_shsec_set(ECPConnection *conn, unsigned char s_idx, unsigned cha
 }
 
 int ecp_conn_create(ECPConnection *conn, ECPSocket *sock, unsigned char ctype) {
-    int i;
+    int i, rv = ECP_OK;
     
     if (conn == NULL) return ECP_ERR;
     if (sock == NULL) return ECP_ERR;
@@ -427,7 +429,7 @@ int ecp_conn_create(ECPConnection *conn, ECPSocket *sock, unsigned char ctype) {
     conn->sock = sock;
 
 #ifdef ECP_WITH_PTHREAD
-    int rv = pthread_mutex_init(&conn->mutex, NULL);
+    rv = pthread_mutex_init(&conn->mutex, NULL);
     if (rv) return ECP_ERR;
 #endif
 
@@ -528,11 +530,6 @@ int ecp_conn_close(ECPConnection *conn, unsigned int timeout) {
     ECPSocket *sock = conn->sock;
     int refcount = 0;
     
-    if (!conn->out) {
-        ecp_conn_destroy_t *handler = conn->sock->ctx->handler[conn->type] ? conn->sock->ctx->handler[conn->type]->conn_destroy : NULL;
-        if (handler) handler(conn);
-        if (sock->conn_destroy) sock->conn_destroy(conn);
-    }
     ecp_conn_unregister(conn);
     ecp_timer_remove(conn);
 
@@ -552,6 +549,8 @@ int ecp_conn_close(ECPConnection *conn, unsigned int timeout) {
 #endif
 
     if (!conn->out) {
+        ecp_conn_destroy_t *handler = conn->sock->ctx->handler[conn->type] ? conn->sock->ctx->handler[conn->type]->conn_destroy : NULL;
+        if (handler) handler(conn);
         if (conn->proxy) {
 #ifdef ECP_WITH_PTHREAD
             pthread_mutex_lock(&conn->proxy->mutex);
@@ -612,7 +611,6 @@ int ecp_conn_handle_new(ECPSocket *sock, ECPConnection **_conn, ECPConnection *p
     }
     
     conn->refcount = 1;
-    conn->type = ctype;
     conn->proxy = proxy;
     handle_create = conn->sock->ctx->handler[conn->type] ? conn->sock->ctx->handler[conn->type]->conn_create : NULL;
     handle_destroy = conn->sock->ctx->handler[conn->type] ? conn->sock->ctx->handler[conn->type]->conn_destroy : NULL;
@@ -620,7 +618,6 @@ int ecp_conn_handle_new(ECPSocket *sock, ECPConnection **_conn, ECPConnection *p
     rv = conn_dhkey_new_pub_local(conn, s_idx);
     if (!rv) rv = conn_dhkey_new_pub_remote(conn, c_idx, c_public);
     if (!rv) rv = conn_shsec_set(conn, s_idx, c_idx, shsec);
-    if (!rv && sock->conn_create) rv = sock->conn_create(conn, payload+1, payload_size-1);
     if (rv) {
         ecp_conn_destroy(conn);
         if (sock->ctx->conn_free) sock->ctx->conn_free(conn);
@@ -628,7 +625,6 @@ int ecp_conn_handle_new(ECPSocket *sock, ECPConnection **_conn, ECPConnection *p
     }
     if (handle_create) rv = handle_create(conn, payload+1, payload_size-1);
     if (rv) {
-        if (sock->conn_destroy) sock->conn_destroy(conn);
         ecp_conn_destroy(conn);
         if (sock->ctx->conn_free) sock->ctx->conn_free(conn);
         return rv;
@@ -637,7 +633,6 @@ int ecp_conn_handle_new(ECPSocket *sock, ECPConnection **_conn, ECPConnection *p
     rv = ecp_conn_register(conn);
     if (rv) {
         if (handle_destroy) handle_destroy(conn);
-        if (sock->conn_destroy) sock->conn_destroy(conn);
         ecp_conn_destroy(conn);
         if (sock->ctx->conn_free) sock->ctx->conn_free(conn);
         return rv;

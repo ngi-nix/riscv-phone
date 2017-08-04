@@ -3,10 +3,11 @@
 #include <string.h>
 
 int ecp_timer_create(ECPTimer *timer) {
+    int rv = ECP_OK;
     timer->head = -1;
 
 #ifdef ECP_WITH_PTHREAD
-    int rv = pthread_mutex_init(&timer->mutex, NULL);
+    rv = pthread_mutex_init(&timer->mutex, NULL);
     if (rv) return ECP_ERR;
 #endif
     
@@ -118,7 +119,6 @@ void ecp_timer_remove(ECPConnection *conn) {
 
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&timer->mutex);
-    pthread_mutex_lock(&conn->mutex);
 #endif
 
     for (i=timer->head; i>=0; i--) {
@@ -130,13 +130,18 @@ void ecp_timer_remove(ECPConnection *conn) {
             } else {
                 memset(timer->item+i, 0, sizeof(ECPTimerItem));
             }
+#ifdef ECP_WITH_PTHREAD
+            pthread_mutex_lock(&conn->mutex);
+#endif
             conn->refcount--;
+#ifdef ECP_WITH_PTHREAD
+            pthread_mutex_unlock(&conn->mutex);
+#endif
             timer->head--;
         }
     }
 
 #ifdef ECP_WITH_PTHREAD
-    pthread_mutex_unlock(&conn->mutex);
     pthread_mutex_unlock(&timer->mutex);
 #endif
     

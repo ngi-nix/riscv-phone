@@ -230,8 +230,6 @@ typedef struct ECPSocket {
     ECPSockCTable conn;
     ECPTimer timer;
     ecp_conn_handler_new_t *conn_new;
-    ecp_conn_create_t *conn_create;
-    ecp_conn_destroy_t *conn_destroy;
 #ifdef ECP_WITH_PTHREAD
     pthread_t rcvr_thd;
     pthread_mutex_t mutex;
