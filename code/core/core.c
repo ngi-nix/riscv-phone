@@ -38,14 +38,14 @@ int ecp_ctx_create(ECPContext *ctx) {
 
     rv = ecp_crypto_init(&ctx->cr);
     if (rv) return rv;
-#ifdef ECP_WITH_HTABLE
-    rv = ecp_htable_init(&ctx->ht);
-    if (rv) return rv;
-#endif
     rv = ecp_transport_init(&ctx->tr);
     if (rv) return rv;
     rv = ecp_time_init(&ctx->tm);
     if (rv) return rv;
+#ifdef ECP_WITH_HTABLE
+    rv = ecp_htable_init(&ctx->ht);
+    if (rv) return rv;
+#endif
     
     return ECP_OK;
 }
@@ -58,15 +58,19 @@ static int ctable_create(ECPSockCTable *conn, ECPContext *ctx) {
     int rv = ECP_OK;
     
     memset(conn, 0, sizeof(ECPSockCTable));
+#ifdef ECP_WITH_HTABLE
     if (ctx->ht.init) {
         conn->htable = ctx->ht.create(ctx);
         if (conn->htable == NULL) return ECP_ERR_ALLOC;
     }
-
+#endif
 #ifdef ECP_WITH_PTHREAD
     rv = pthread_mutex_init(&conn->mutex, NULL);
 #endif
+#ifdef ECP_WITH_HTABLE
     if (rv && ctx->ht.init) ctx->ht.destroy(conn->htable);
+#endif
+    
     return rv;
 }
 
@@ -74,14 +78,22 @@ static void ctable_destroy(ECPSockCTable *conn, ECPContext *ctx) {
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_destroy(&conn->mutex);
 #endif
+#ifdef ECP_WITH_HTABLE
     if (ctx->ht.init) ctx->ht.destroy(conn->htable);
+#endif
 }
 
 static int ctable_insert(ECPConnection *conn) {
+    int with_htable = 0;
     ECPSocket *sock = conn->sock;
     ECPContext *ctx = sock->ctx;
 
-    if (ctx->ht.init) {
+#ifdef ECP_WITH_HTABLE
+    if (ctx->ht.init) with_htable = 1;
+#endif
+    
+    if (with_htable) {
+#ifdef ECP_WITH_HTABLE
         int i, rv = ECP_OK;
         if (conn->out) {
             for (i=0; i<ECP_MAX_CONN_KEY; i++) {
@@ -104,6 +116,7 @@ static int ctable_insert(ECPConnection *conn) {
                 }
             }
         }
+#endif
     } else {
         if (sock->conn.size == ECP_MAX_SOCK_CONN) return ECP_ERR_MAX_SOCK_CONN;
         sock->conn.array[sock->conn.size] = conn;
@@ -114,18 +127,23 @@ static int ctable_insert(ECPConnection *conn) {
 }
 
 static void ctable_remove(ECPConnection *conn) {
-    int i;
+    int i, with_htable = 0;
     ECPSocket *sock = conn->sock;
     ECPContext *ctx = sock->ctx;
     
-    if (ctx->ht.init) {
-        int i;
+#ifdef ECP_WITH_HTABLE
+    if (ctx->ht.init) with_htable = 1;
+#endif
+
+    if (with_htable) {
+#ifdef ECP_WITH_HTABLE
         if (conn->out) {
             for (i=0; i<ECP_MAX_CONN_KEY; i++) if (conn->key[i].valid) ctx->ht.remove(sock->conn.htable, ctx->cr.dh_pub_get_buf(&conn->key[i].public));
         } else {
             ECPDHRKeyBucket *remote = &conn->remote;
             for (i=0; i<ECP_MAX_NODE_KEY; i++) if (remote->key[i].idx != ECP_ECDH_IDX_INV) ctx->ht.remove(sock->conn.htable, ctx->cr.dh_pub_get_buf(&remote->key[i].public));
         }
+#endif
     } else {
         for (i=0; i<sock->conn.size; i++) {
             if (conn == sock->conn.array[i]) {
@@ -139,11 +157,17 @@ static void ctable_remove(ECPConnection *conn) {
 }
 
 static ECPConnection *ctable_search(ECPSocket *sock, unsigned char c_idx, unsigned char *c_public, ECPNetAddr *addr) {
+    int i, with_htable = 0;
     ECPConnection *conn = NULL;
-    int i;
     
-    if (sock->ctx->ht.init) {
+#ifdef ECP_WITH_HTABLE
+    if (sock->ctx->ht.init) with_htable = 1;
+#endif
+
+    if (with_htable) {
+#ifdef ECP_WITH_HTABLE
         return sock->ctx->ht.search(sock->conn.htable, c_public);
+#endif
     } else {
         if (c_public) {
             for (i=0; i<sock->conn.size; i++) {
@@ -273,17 +297,22 @@ static int conn_dhkey_new_pair(ECPConnection *conn, ECPDHKey *key) {
     ECPContext *ctx = sock->ctx;
 
     conn->key_curr = conn->key_curr == ECP_ECDH_IDX_INV ? 0 : (conn->key_curr+1) % ECP_MAX_CONN_KEY;
+#ifdef ECP_WITH_HTABLE
     if (ctx->ht.init && conn->out && ecp_conn_is_reg(conn) && conn->key[conn->key_curr].valid) {
         ctx->ht.remove(sock->conn.htable, ctx->cr.dh_pub_get_buf(&conn->key[conn->key_curr].public));
     }
+#endif
+    
     conn->key[conn->key_curr] = *key;
     conn->key_idx_map[conn->key_curr] = ECP_ECDH_IDX_INV;
 
+#ifdef ECP_WITH_HTABLE
     if (ctx->ht.init && conn->out && ecp_conn_is_reg(conn)) {
         int rv = ctx->ht.insert(sock->conn.htable, ctx->cr.dh_pub_get_buf(&conn->key[conn->key_curr].public), conn);
         if (rv) return rv;
     }
-
+#endif
+    
     return ECP_OK;
 }
 
@@ -317,21 +346,25 @@ static int conn_dhkey_new_pub_remote(ECPConnection *conn, unsigned char idx, uns
     if (idx >= ECP_MAX_SOCK_KEY) return ECP_ERR_ECDH_IDX;
     if ((remote->key_idx_map[idx] != ECP_ECDH_IDX_INV) && ctx->cr.dh_pub_eq(public, &remote->key[remote->key_idx_map[idx]].public)) return ECP_ERR_ECDH_KEY_DUP;
 
+#ifdef ECP_WITH_HTABLE
     if (ctx->ht.init && !conn->out && ecp_conn_is_reg(conn) && (remote->key[new].idx != ECP_ECDH_IDX_INV)) {
         ctx->ht.remove(sock->conn.htable, ctx->cr.dh_pub_get_buf(&remote->key[new].public));
     }
-    
+#endif
+        
     if (remote->key[new].idx != ECP_ECDH_IDX_INV) remote->key_idx_map[remote->key[new].idx] = ECP_ECDH_IDX_INV;
     remote->key_idx_map[idx] = new;
     ctx->cr.dh_pub_from_buf(&remote->key[new].public, public);
     remote->key[new].idx = idx;
     remote->key_curr = new;
 
+#ifdef ECP_WITH_HTABLE
     if (ctx->ht.init && !conn->out && ecp_conn_is_reg(conn)) {
         int rv = ctx->ht.insert(sock->conn.htable, ctx->cr.dh_pub_get_buf(&remote->key[new].public), conn);
         if (rv) return rv;
     }
-
+#endif
+    
     for (i=0; i<ECP_MAX_NODE_KEY; i++) {
         conn->shared[i][new].valid = 0;
     }

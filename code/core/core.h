@@ -137,15 +137,6 @@ typedef struct ECPCryptoIface {
     int (*dsa_verify) (unsigned char *m, size_t ml, unsigned char *sig, ecp_dsa_public_t *p);
 } ECPCryptoIface;
 
-typedef struct ECPHTableIface {
-    int init;
-    void *(*create) (struct ECPContext *c);
-    void (*destroy) (void *t);
-    int (*insert) (void *t, unsigned char *k, struct ECPConnection *v);
-    struct ECPConnection *(*remove) (void *t, unsigned char *k);
-    struct ECPConnection *(*search) (void *t, unsigned char *k);
-} ECPHTableIface;
-
 typedef struct ECPTransportIface {
     int init;
     int (*open) (ECPNetSock *, void *addr);
@@ -162,6 +153,17 @@ typedef struct ECPTimeIface {
     unsigned int (*abstime_ms) (unsigned int);
     void (*sleep_ms) (unsigned int);
 } ECPTimeIface;
+
+#ifdef ECP_WITH_HTABLE
+typedef struct ECPHTableIface {
+    int init;
+    void *(*create) (struct ECPContext *c);
+    void (*destroy) (void *t);
+    int (*insert) (void *t, unsigned char *k, struct ECPConnection *v);
+    struct ECPConnection *(*remove) (void *t, unsigned char *k);
+    struct ECPConnection *(*search) (void *t, unsigned char *k);
+} ECPHTableIface;
+#endif
 
 typedef struct ECPDHKey {
     ecp_dh_public_t public;
@@ -211,9 +213,11 @@ typedef struct ECPContext {
     ecp_conn_alloc_t *conn_alloc;
     ecp_conn_free_t *conn_free;
     ECPCryptoIface cr;
-    ECPHTableIface ht;
     ECPTransportIface tr;
     ECPTimeIface tm;
+#ifdef ECP_WITH_HTABLE
+    ECPHTableIface ht;
+#endif
     ssize_t (*pack) (struct ECPConnection *conn, ECPNetAddr *addr, ecp_seq_t *seq, unsigned char *packet, size_t pkt_size, unsigned char s_idx, unsigned char c_idx, unsigned char *payload, size_t payload_size);
     ssize_t (*pack_raw) (struct ECPSocket *sock, struct ECPConnection *proxy, ECPNetAddr *addr, unsigned char *packet, size_t pkt_size, unsigned char s_idx, unsigned char c_idx, ecp_dh_public_t *public, ecp_aead_key_t *shsec, unsigned char *nonce, ecp_seq_t seq, unsigned char *payload, size_t payload_size);
     ECPConnHandler *handler[ECP_MAX_CTYPE];
@@ -266,9 +270,11 @@ typedef struct ECPConnection {
 
 int ecp_init(ECPContext *ctx);
 int ecp_crypto_init(ECPCryptoIface *t);
-int ecp_htable_init(ECPHTableIface *h);
 int ecp_transport_init(ECPTransportIface *t);
 int ecp_time_init(ECPTimeIface *t);
+#ifdef ECP_WITH_HTABLE
+int ecp_htable_init(ECPHTableIface *h);
+#endif
 
 int ecp_dhkey_generate(ECPContext *ctx, ECPDHKey *key);
 int ecp_node_init(ECPContext *ctx, ECPNode *node, ecp_dh_public_t *public, void *addr);
