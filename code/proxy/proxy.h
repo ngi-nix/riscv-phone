@@ -1,7 +1,8 @@
 #define ECP_CTYPE_PROXYF    1
 #define ECP_CTYPE_PROXYB    2
 
-#define ECP_MTYPE_RELAY     0x04
+#define ECP_MTYPE_RELAY     0x08
+#define ECP_MTYPE_EXEC      0x09
 
 typedef struct ECPConnProxy {
     ECPConnection b;

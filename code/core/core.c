@@ -521,10 +521,9 @@ void ecp_conn_unregister(ECPConnection *conn) {
 
 static ssize_t _conn_send_kget(ECPConnection *conn, ECPTimerItem *ti) {
     unsigned char payload[ECP_SIZE_PLD(0)];
-    ecp_seq_t seq;
 
     ecp_pld_set_type(payload, ECP_MTYPE_KGET_REQ);
-    return ecp_pld_send_wkey(conn, &seq, ECP_ECDH_IDX_PERMA, ECP_ECDH_IDX_INV, payload, sizeof(payload));
+    return ecp_pld_send_wkey(conn, ECP_ECDH_IDX_PERMA, ECP_ECDH_IDX_INV, payload, sizeof(payload));
 }
 
 int ecp_conn_init(ECPConnection *conn, ECPNode *node) {
@@ -686,18 +685,31 @@ int ecp_conn_handle_new(ECPSocket *sock, ECPConnection **_conn, ECPConnection *p
 }
 
 ssize_t ecp_conn_handle_open(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size) {
+    int is_open;
     if (size < 0) return size;
 
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&conn->mutex);
 #endif
-    if (!ecp_conn_is_open(conn)) conn->flags |= ECP_CONN_FLAG_OPEN;
+    is_open = ecp_conn_is_open(conn);
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_unlock(&conn->mutex);
 #endif
 
+    if (!is_open) conn->flags |= ECP_CONN_FLAG_OPEN;
+
     if (mtype & ECP_MTYPE_FLAG_REP) {
+        int rv;
+        
         if (!conn->out) return ECP_ERR;
+
+#ifdef ECP_WITH_RBUF
+        if (!is_open && conn->rbuf.recv) {
+            rv = ecp_conn_rbuf_recv_start(conn, seq);
+            if (rv) return rv;
+        }
+#endif
+
         return 0;
     } else {
         unsigned char payload[ECP_SIZE_PLD(0)];
@@ -901,15 +913,16 @@ ssize_t ecp_pack(ECPContext *ctx, unsigned char *packet, size_t pkt_size, unsign
     return rv+ECP_SIZE_PKT_HDR;
 }
 
-ssize_t ecp_pack_raw(ECPSocket *sock, ECPConnection *proxy, ECPNetAddr *addr, unsigned char *packet, size_t pkt_size, unsigned char s_idx, unsigned char c_idx, ecp_dh_public_t *public, ecp_aead_key_t *shsec, unsigned char *nonce, ecp_seq_t seq, unsigned char *payload, size_t payload_size) {
+ssize_t ecp_pack_raw(ECPSocket *sock, ECPConnection *proxy, unsigned char *packet, size_t pkt_size, unsigned char s_idx, unsigned char c_idx, ecp_dh_public_t *public, ecp_aead_key_t *shsec, unsigned char *nonce, ecp_seq_t seq, unsigned char *payload, size_t payload_size, ECPNetAddr *addr) {
     ECPContext *ctx = sock->ctx;
     
     return ecp_pack(ctx, packet, pkt_size, s_idx, c_idx, public, shsec, nonce, seq, payload, payload_size);
 }
     
-ssize_t ecp_conn_pack(ECPConnection *conn, ECPNetAddr *addr, ecp_seq_t *seq, unsigned char *packet, size_t pkt_size, unsigned char s_idx, unsigned char c_idx, unsigned char *payload, size_t payload_size) {
+ssize_t ecp_conn_pack(ECPConnection *conn, unsigned char *packet, size_t pkt_size, unsigned char s_idx, unsigned char c_idx, unsigned char *payload, size_t payload_size, ECPNetAddr *addr, ecp_seq_t *seq, int *rbuf_idx) {
     ecp_aead_key_t shsec;
     ecp_dh_public_t public;
+    ecp_seq_t _seq;
     unsigned char nonce[ECP_AEAD_SIZE_NONCE];
     int rv = ECP_OK;
 
@@ -941,13 +954,27 @@ ssize_t ecp_conn_pack(ECPConnection *conn, ECPNetAddr *addr, ecp_seq_t *seq, uns
         } else {
             memcpy(&public, &conn->remote.key[conn->remote.key_curr].public, sizeof(public));
         }
-
     }
     if (!rv) {
-        if (seq) {
-            conn->seq_out++;
-            *seq = conn->seq_out;
+        _seq = conn->seq_out;
+#ifdef ECP_WITH_RBUF
+        if (conn->rbuf.send && rbuf_idx) {
+            ECPRBSend *buf = conn->rbuf.send;
+#ifdef ECP_WITH_PTHREAD
+            pthread_mutex_lock(&buf->mutex);
+#endif
+            
+            *rbuf_idx = ecp_rbuf_msg_idx(&buf->rbuf, _seq);
+            if (*rbuf_idx < 0) rv = ECP_ERR_RBUF_FULL;
+
+#ifdef ECP_WITH_PTHREAD
+            pthread_mutex_unlock(&buf->mutex);
+#endif
         }
+#endif
+    }
+    if (!rv) {
+        conn->seq_out = _seq + 1;
         if (addr) *addr = conn->node.addr;
     }
 
@@ -957,7 +984,7 @@ ssize_t ecp_conn_pack(ECPConnection *conn, ECPNetAddr *addr, ecp_seq_t *seq, uns
     
     if (rv) return rv;
     
-    ssize_t _rv = ecp_pack(conn->sock->ctx, packet, pkt_size, s_idx, c_idx, &public, &shsec, nonce, seq ? *seq : 0, payload, payload_size);
+    ssize_t _rv = ecp_pack(conn->sock->ctx, packet, pkt_size, s_idx, c_idx, &public, &shsec, nonce, _seq, payload, payload_size);
     if (_rv < 0) return _rv;
     
 #ifdef ECP_WITH_PTHREAD
@@ -968,6 +995,7 @@ ssize_t ecp_conn_pack(ECPConnection *conn, ECPNetAddr *addr, ecp_seq_t *seq, uns
     pthread_mutex_unlock(&conn->mutex);
 #endif
 
+    if (seq) *seq = _seq;
     return _rv;
 }
 
@@ -1041,7 +1069,7 @@ ssize_t ecp_pkt_handle(ECPSocket *sock, ECPNetAddr *addr, ECPConnection *proxy, 
     }
 
     pld_size = sock->ctx->cr.aead_dec(payload, ECP_MAX_PLD, packet+ECP_SIZE_PKT_HDR, pkt_size-ECP_SIZE_PKT_HDR, &shsec, packet+ECP_SIZE_PROTO+1+ECP_ECDH_SIZE_KEY);
-    if (pld_size < ECP_MIN_PLD) rv = ECP_ERR_DECRYPT;
+    if (pld_size < ECP_SIZE_MSG_HDR) rv = ECP_ERR_DECRYPT;
     if (rv) goto pkt_handle_err;
 
     p_seq = \
@@ -1121,7 +1149,7 @@ ssize_t ecp_pkt_handle(ECPSocket *sock, ECPNetAddr *addr, ECPConnection *proxy, 
 #endif
 
 #ifdef ECP_WITH_RBUF
-    if (conn->rbuf.recv && conn->rbuf.recv->open) proc_size = ecp_rbuf_recv_store(conn, p_seq, payload+pld_size-cnt_size, cnt_size);
+    if (conn->rbuf.recv) proc_size = ecp_conn_rbuf_recv_store(conn, p_seq, payload+pld_size-cnt_size, cnt_size);
 #endif
     if (proc_size == 0) proc_size = ecp_msg_handle(conn, p_seq, payload+pld_size-cnt_size, cnt_size);
 
@@ -1186,21 +1214,20 @@ ssize_t ecp_msg_handle(ECPConnection *conn, ecp_seq_t seq, unsigned char *msg, s
     unsigned char mtype = 0;
     size_t rem_size = msg_size;
     
+    if (msg_size < 1) return ECP_ERR_MIN_MSG;
+    
     while (rem_size) {
         mtype = msg[0];
         msg++;
         rem_size--;
 
         if ((mtype & ECP_MTYPE_MASK) >= ECP_MAX_MTYPE) return ECP_ERR_MAX_MTYPE;
-        if (rem_size < ECP_MIN_MSG) return ECP_ERR_MIN_MSG;
 
         ecp_timer_pop(conn, mtype);
         handler = conn->sock->ctx->handler[conn->type] ? conn->sock->ctx->handler[conn->type]->msg[mtype & ECP_MTYPE_MASK] : NULL;
         if (handler) {
             rv = handler(conn, seq, mtype, msg, rem_size);
             if (rv < 0) return rv;
-            if (rv == 0) rv = rem_size;
-            if (rv < ECP_MIN_MSG) rv = ECP_MIN_MSG;
             if (rv > rem_size) return ECP_ERR;
 
             rem_size -= rv;
@@ -1226,26 +1253,25 @@ unsigned char ecp_pld_get_type(unsigned char *payload) {
 }
 
 ssize_t ecp_pld_send(ECPConnection *conn, unsigned char *payload, size_t payload_size) {
-    ecp_seq_t seq;
-    return ecp_pld_send_wkey(conn, &seq, ECP_ECDH_IDX_INV, ECP_ECDH_IDX_INV, payload, payload_size);
+    return ecp_pld_send_wkey(conn, ECP_ECDH_IDX_INV, ECP_ECDH_IDX_INV, payload, payload_size);
 }
 
-ssize_t ecp_pld_send_wkey(ECPConnection *conn, ecp_seq_t *seq, unsigned char s_idx, unsigned char c_idx, unsigned char *payload, size_t payload_size) {
+ssize_t ecp_pld_send_wkey(ECPConnection *conn, unsigned char s_idx, unsigned char c_idx, unsigned char *payload, size_t payload_size) {
     unsigned char packet[ECP_MAX_PKT];
     ECPSocket *sock = conn->sock;
     ECPContext *ctx = sock->ctx;
     ECPNetAddr addr;
+    ecp_seq_t seq;
     ssize_t rv;
+    int rbuf_idx = -1;
 
-    rv = ctx->pack(conn, &addr, seq, packet, ECP_MAX_PKT, s_idx, c_idx, payload, payload_size);
+    rv = ctx->pack(conn, packet, ECP_MAX_PKT, s_idx, c_idx, payload, payload_size, &addr, &seq, &rbuf_idx);
     if (rv < 0) return rv;
 
 #ifdef ECP_WITH_RBUF
-    if (conn->rbuf.send && conn->rbuf.send->open && seq) {
-        ssize_t _rv = ecp_rbuf_send_store(conn, *seq, packet, rv);
-        if (_rv < 0) return _rv;
-    }
+    if (conn->rbuf.send) return ecp_conn_rbuf_pkt_send(conn, &addr, packet, rv, seq, rbuf_idx);
 #endif
+    
     return ecp_pkt_send(sock, &addr, packet, rv);
 }
 
@@ -1255,7 +1281,7 @@ ssize_t ecp_pld_send_raw(ECPSocket *sock, ECPConnection *proxy, ECPNetAddr *addr
     ECPNetAddr _addr;
     ssize_t rv;
 
-    rv = ctx->pack_raw(sock, proxy, &_addr, packet, ECP_MAX_PKT, s_idx, c_idx, public, shsec, nonce, seq, payload, payload_size);
+    rv = ctx->pack_raw(sock, proxy, packet, ECP_MAX_PKT, s_idx, c_idx, public, shsec, nonce, seq, payload, payload_size, &_addr);
     if (rv < 0) return rv;
     
     return ecp_pkt_send(sock, proxy ? &_addr : addr, packet, rv);

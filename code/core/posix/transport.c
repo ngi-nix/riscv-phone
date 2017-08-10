@@ -112,5 +112,5 @@ int ecp_transport_init(ECPTransportIface *t) {
     t->recv = t_recv;
     t->addr_eq = t_addr_eq;
     t->addr_set = t_addr_set;
-    return 0;
+    return ECP_OK;
 }

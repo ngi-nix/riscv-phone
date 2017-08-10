@@ -107,7 +107,7 @@ ssize_t handle_open_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsign
         perror(msg);
         exit(1);
     }
-    return 0;
+    return s;
 }
 
 ssize_t handle_msg_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s) {

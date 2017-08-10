@@ -5,11 +5,7 @@
 #include "hashtable.h"
 
 static void *h_create(ECPContext *ctx) {
-    int rv;
-    struct hashtable *h = create_hashtable(1000, (unsigned int (*)(void *))ctx->cr.dh_pub_hash_fn, (int (*)(void *, void *))ctx->cr.dh_pub_hash_eq, NULL, NULL, NULL);
-    if (h == NULL) return NULL;
-        
-    return h;
+    return create_hashtable(1000, (unsigned int (*)(void *))ctx->cr.dh_pub_hash_fn, (int (*)(void *, void *))ctx->cr.dh_pub_hash_eq, NULL, NULL, NULL);
 }
 
 static void h_destroy(void *h) {
@@ -23,7 +19,6 @@ static int h_insert(void *h, unsigned char *k, ECPConnection *v) {
 }
 
 static ECPConnection *h_remove(void *h, unsigned char *k) {
-    printf("REMOVE!!!\n");
     return hashtable_remove(h, k);
 }
 
@@ -38,5 +33,5 @@ int ecp_htable_init(ECPHTableIface *h) {
     h->insert = h_insert;
     h->remove = h_remove;
     h->search = h_search;
-    return 0;
+    return ECP_OK;
 }

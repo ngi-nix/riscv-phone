@@ -62,7 +62,7 @@ ssize_t ecp_conn_msgq_push(ECPConnection *conn, unsigned char *msg, size_t msg_s
 
     if (mtype >= ECP_MAX_MTYPE) return ECP_ERR_MAX_MTYPE;
     if (msg_size >= ECP_MAX_MSG) return ECP_ERR_MAX_MSG;
-    if (msg_size < ECP_MIN_MSG) return ECP_ERR_MIN_MSG;
+    if (msg_size < 1) return ECP_ERR_MIN_MSG;
     
     for (i=0; i<ECP_MAX_CONN_MSG; i++) {
         if (!msgq->occupied[msg_idx]) {

@@ -26,7 +26,7 @@ ssize_t handle_open_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsign
     ecp_conn_handle_open(conn, sq, t, p, s);
     if (s < 0) {
         printf("OPEN ERR:%ld\n", s);
-        return 0;
+        return s;
     }
     
     unsigned char payload[ECP_SIZE_PLD(1000)];
@@ -36,7 +36,7 @@ ssize_t handle_open_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsign
     ecp_pld_set_type(payload, MTYPE_MSG);
     strcpy((char *)buf, msg);
     ssize_t _rv = ecp_send(conn, payload, sizeof(payload));
-    return 0;
+    return s;
 }
 
 ssize_t handle_msg_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s) {

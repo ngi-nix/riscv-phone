@@ -52,7 +52,7 @@ int a_open(char *dev_name, snd_pcm_t **handle, snd_pcm_hw_params_t **hw_params, 
 	frame_size = *nchannels * (bits / 8);
 	*buf_size = frame_size * *frames;
 
-	return 0;
+	return ECP_OK;
 }
 
 int a_prepare(snd_pcm_t *handle, snd_pcm_hw_params_t *hw_params, unsigned char *buf, snd_pcm_uframes_t frames) {
@@ -68,7 +68,7 @@ int a_prepare(snd_pcm_t *handle, snd_pcm_hw_params_t *hw_params, unsigned char *
 
 		for (i=0; i<fragments; i++) snd_pcm_writei(handle, buf, frames);
 	}
-	return 0;
+	return ECP_OK;
 }
 
 opus_int32 a_read(snd_pcm_t *handle, unsigned char *buf, snd_pcm_uframes_t frames, OpusEncoder *enc, unsigned char *opus_buf, opus_int32 opus_size) {
@@ -121,6 +121,8 @@ int a_init(void) {
 	size = opus_decoder_get_size(nchannels);
 	opus_dec = malloc(size);
 	opus_decoder_init(opus_dec, sample_rate, nchannels);
+    
+    return ECP_OK;
 }
 
 ssize_t handle_open_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s) {
@@ -129,7 +131,7 @@ ssize_t handle_open_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsign
     ecp_conn_handle_open(conn, t, p, s);
     if (s < 0) {
         printf("OPEN ERR:%ld\n", s);
-        return 0;
+        return s;
     }
     
 	a_init();
