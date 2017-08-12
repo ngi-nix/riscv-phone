@@ -81,9 +81,9 @@ static ssize_t _proxyf_send_open(ECPConnection *conn) {
 }
 
 static ssize_t _proxyf_retry_kget(ECPConnection *conn, ECPTimerItem *ti) {
-    if (conn->proxy == NULL) return ECP_ERR;
+    if (conn->parent == NULL) return ECP_ERR;
     
-    return _proxyf_send_open(conn->proxy);
+    return _proxyf_send_open(conn->parent);
 }
 
 static ssize_t proxyf_open(ECPConnection *conn) {
@@ -410,32 +410,32 @@ static ssize_t proxy_set_msg(ECPConnection *conn, unsigned char *pld_out, size_t
 static ssize_t proxy_pack(ECPConnection *conn, unsigned char *packet, size_t pkt_size, unsigned char s_idx, unsigned char c_idx, unsigned char *payload, size_t payload_size, ECPNetAddr *addr, ecp_seq_t *seq, int *rbuf_idx) {
     ECPContext *ctx = conn->sock->ctx;
 
-    if (conn->proxy) {
+    if (conn->parent) {
         unsigned char payload_[ECP_MAX_PLD];
-        ssize_t rv, hdr_size = proxy_set_msg(conn->proxy, payload_, sizeof(payload_), payload, payload_size);
+        ssize_t rv, hdr_size = proxy_set_msg(conn->parent, payload_, sizeof(payload_), payload, payload_size);
         if (hdr_size < 0) return hdr_size;
 
         rv = ecp_conn_pack(conn, payload_+hdr_size, ECP_MAX_PLD-hdr_size, s_idx, c_idx, payload, payload_size, NULL, seq, rbuf_idx);
         if (rv < 0) return rv;
 
-        return proxy_pack(conn->proxy, packet, pkt_size, ECP_ECDH_IDX_INV, ECP_ECDH_IDX_INV, payload_, rv+hdr_size, addr, NULL, NULL);
+        return proxy_pack(conn->parent, packet, pkt_size, ECP_ECDH_IDX_INV, ECP_ECDH_IDX_INV, payload_, rv+hdr_size, addr, NULL, NULL);
     } else {
         return ecp_conn_pack(conn, packet, pkt_size, s_idx, c_idx, payload, payload_size, addr, seq, rbuf_idx);
     }
 }
 
-static ssize_t proxy_pack_raw(ECPSocket *sock, ECPConnection *proxy, unsigned char *packet, size_t pkt_size, unsigned char s_idx, unsigned char c_idx, ecp_dh_public_t *public, ecp_aead_key_t *shsec, unsigned char *nonce, ecp_seq_t seq, unsigned char *payload, size_t payload_size, ECPNetAddr *addr) {
+static ssize_t proxy_pack_raw(ECPSocket *sock, ECPConnection *parent, unsigned char *packet, size_t pkt_size, unsigned char s_idx, unsigned char c_idx, ecp_dh_public_t *public, ecp_aead_key_t *shsec, unsigned char *nonce, ecp_seq_t seq, unsigned char *payload, size_t payload_size, ECPNetAddr *addr) {
     ECPContext *ctx = sock->ctx;
 
-    if (proxy) {
+    if (parent) {
         unsigned char payload_[ECP_MAX_PLD];
-        ssize_t rv, hdr_size = proxy_set_msg(proxy, payload_, sizeof(payload_), payload, payload_size);
+        ssize_t rv, hdr_size = proxy_set_msg(parent, payload_, sizeof(payload_), payload, payload_size);
         if (hdr_size < 0) return hdr_size;
 
         rv = ecp_pack(ctx, payload_+hdr_size, ECP_MAX_PLD-hdr_size, s_idx, c_idx, public, shsec, nonce, seq, payload, payload_size);
         if (rv < 0) return rv;
 
-        return proxy_pack(proxy, packet, pkt_size, ECP_ECDH_IDX_INV, ECP_ECDH_IDX_INV, payload_, rv+hdr_size, addr, NULL, NULL);
+        return proxy_pack(parent, packet, pkt_size, ECP_ECDH_IDX_INV, ECP_ECDH_IDX_INV, payload_, rv+hdr_size, addr, NULL, NULL);
     } else {
         return ecp_pack(ctx, packet, pkt_size, s_idx, c_idx, public, shsec, nonce, seq, payload, payload_size);
     }
@@ -492,7 +492,7 @@ int ecp_conn_proxy_init(ECPConnection *conn, ECPNode *conn_node, ECPConnProxy pr
     rv = ecp_conn_init(conn, conn_node);
     if (rv) return rv;
 
-    conn->proxy = (ECPConnection *)&proxy[size-1];
+    conn->parent = (ECPConnection *)&proxy[size-1];
     for (i=0; i<size; i++) {
         rv = ecp_conn_create((ECPConnection *)&proxy[i], sock, ECP_CTYPE_PROXYF);
         if (rv) return rv;
@@ -501,9 +501,9 @@ int ecp_conn_proxy_init(ECPConnection *conn, ECPNode *conn_node, ECPConnProxy pr
         if (rv) return rv;
 
         if (i == 0) {
-            proxy[i].b.proxy = NULL;
+            proxy[i].b.parent = NULL;
         } else {
-            proxy[i].b.proxy = (ECPConnection *)&proxy[i-1];
+            proxy[i].b.parent = (ECPConnection *)&proxy[i-1];
         }
         if (i == size-1) {
             proxy[i].next = conn;

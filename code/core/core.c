@@ -586,13 +586,13 @@ int ecp_conn_close(ECPConnection *conn, unsigned int timeout) {
     } else {
         ecp_conn_destroy_t *handler = conn->sock->ctx->handler[conn->type] ? conn->sock->ctx->handler[conn->type]->conn_destroy : NULL;
         if (handler) handler(conn);
-        if (conn->proxy) {
+        if (conn->parent) {
 #ifdef ECP_WITH_PTHREAD
-            pthread_mutex_lock(&conn->proxy->mutex);
+            pthread_mutex_lock(&conn->parent->mutex);
 #endif
-            conn->proxy->refcount--;
+            conn->parent->refcount--;
 #ifdef ECP_WITH_PTHREAD
-            pthread_mutex_unlock(&conn->proxy->mutex);
+            pthread_mutex_unlock(&conn->parent->mutex);
 #endif
         }
         ecp_conn_destroy(conn);
@@ -625,7 +625,7 @@ ssize_t ecp_conn_send_open(ECPConnection *conn) {
     return ecp_timer_send(conn, _conn_send_open, ECP_MTYPE_OPEN_REP, 3, 500);
 }
 
-int ecp_conn_handle_new(ECPSocket *sock, ECPConnection **_conn, ECPConnection *proxy, unsigned char s_idx, unsigned char c_idx, unsigned char *c_public, ecp_aead_key_t *shsec, unsigned char *payload, size_t payload_size) {
+int ecp_conn_handle_new(ECPSocket *sock, ECPConnection **_conn, ECPConnection *parent, unsigned char s_idx, unsigned char c_idx, unsigned char *c_public, ecp_aead_key_t *shsec, unsigned char *payload, size_t payload_size) {
     ECPConnection *conn = NULL;
     int rv = ECP_OK;
     unsigned char ctype = 0;
@@ -646,7 +646,7 @@ int ecp_conn_handle_new(ECPSocket *sock, ECPConnection **_conn, ECPConnection *p
     }
     
     conn->refcount = 1;
-    conn->proxy = proxy;
+    conn->parent = parent;
     handle_create = conn->sock->ctx->handler[conn->type] ? conn->sock->ctx->handler[conn->type]->conn_create : NULL;
     handle_destroy = conn->sock->ctx->handler[conn->type] ? conn->sock->ctx->handler[conn->type]->conn_destroy : NULL;
     
@@ -673,13 +673,13 @@ int ecp_conn_handle_new(ECPSocket *sock, ECPConnection **_conn, ECPConnection *p
         return rv;
     }
 
-    if (proxy) {
+    if (parent) {
 #ifdef ECP_WITH_PTHREAD
-        pthread_mutex_lock(&proxy->mutex);
+        pthread_mutex_lock(&parent->mutex);
 #endif
-        proxy->refcount++;
+        parent->refcount++;
 #ifdef ECP_WITH_PTHREAD
-        pthread_mutex_unlock(&proxy->mutex);
+        pthread_mutex_unlock(&parent->mutex);
 #endif
     }
 
@@ -916,7 +916,7 @@ ssize_t ecp_pack(ECPContext *ctx, unsigned char *packet, size_t pkt_size, unsign
     return rv+ECP_SIZE_PKT_HDR;
 }
 
-ssize_t ecp_pack_raw(ECPSocket *sock, ECPConnection *proxy, unsigned char *packet, size_t pkt_size, unsigned char s_idx, unsigned char c_idx, ecp_dh_public_t *public, ecp_aead_key_t *shsec, unsigned char *nonce, ecp_seq_t seq, unsigned char *payload, size_t payload_size, ECPNetAddr *addr) {
+ssize_t ecp_pack_raw(ECPSocket *sock, ECPConnection *parent, unsigned char *packet, size_t pkt_size, unsigned char s_idx, unsigned char c_idx, ecp_dh_public_t *public, ecp_aead_key_t *shsec, unsigned char *nonce, ecp_seq_t seq, unsigned char *payload, size_t payload_size, ECPNetAddr *addr) {
     ECPContext *ctx = sock->ctx;
     
     return ecp_pack(ctx, packet, pkt_size, s_idx, c_idx, public, shsec, nonce, seq, payload, payload_size);
@@ -1002,7 +1002,7 @@ ssize_t ecp_conn_pack(ECPConnection *conn, unsigned char *packet, size_t pkt_siz
     return _rv;
 }
 
-ssize_t ecp_pkt_handle(ECPSocket *sock, ECPNetAddr *addr, ECPConnection *proxy, unsigned char *packet, size_t pkt_size) {
+ssize_t ecp_pkt_handle(ECPSocket *sock, ECPNetAddr *addr, ECPConnection *parent, unsigned char *packet, size_t pkt_size) {
     unsigned char s_idx;
     unsigned char c_idx;
     unsigned char l_idx = ECP_ECDH_IDX_INV;
@@ -1085,7 +1085,7 @@ ssize_t ecp_pkt_handle(ECPSocket *sock, ECPNetAddr *addr, ECPConnection *proxy, 
 
     if (conn == NULL) {
         if (payload[ECP_SIZE_PLD_HDR] == ECP_MTYPE_OPEN_REQ) {
-            rv = sock->conn_new(sock, &conn, proxy, s_idx, c_idx, packet+ECP_SIZE_PROTO+1, &shsec, payload+ECP_SIZE_MSG_HDR, pld_size-ECP_SIZE_MSG_HDR);
+            rv = sock->conn_new(sock, &conn, parent, s_idx, c_idx, packet+ECP_SIZE_PROTO+1, &shsec, payload+ECP_SIZE_MSG_HDR, pld_size-ECP_SIZE_MSG_HDR);
             if (rv) return rv;
 
             seq_bitmap = 0;
@@ -1097,7 +1097,7 @@ ssize_t ecp_pkt_handle(ECPSocket *sock, ECPNetAddr *addr, ECPConnection *proxy, 
             
             rv = ecp_sock_dhkey_get_curr(sock, buf, buf+1);
             if (!rv) {
-                ssize_t _rv = ecp_pld_send_raw(sock, proxy, addr, s_idx, c_idx, &public, &shsec, nonce, p_seq, payload_, sizeof(payload_));
+                ssize_t _rv = ecp_pld_send_raw(sock, parent, addr, s_idx, c_idx, &public, &shsec, nonce, p_seq, payload_, sizeof(payload_));
                 if (_rv < 0) rv = _rv;
             }
             return ECP_MIN_PKT;
@@ -1278,16 +1278,16 @@ ssize_t ecp_pld_send_wkey(ECPConnection *conn, unsigned char s_idx, unsigned cha
     return ecp_pkt_send(sock, &addr, packet, rv);
 }
 
-ssize_t ecp_pld_send_raw(ECPSocket *sock, ECPConnection *proxy, ECPNetAddr *addr, unsigned char s_idx, unsigned char c_idx, ecp_dh_public_t *public, ecp_aead_key_t *shsec, unsigned char *nonce, ecp_seq_t seq, unsigned char *payload, size_t payload_size) {
+ssize_t ecp_pld_send_raw(ECPSocket *sock, ECPConnection *parent, ECPNetAddr *addr, unsigned char s_idx, unsigned char c_idx, ecp_dh_public_t *public, ecp_aead_key_t *shsec, unsigned char *nonce, ecp_seq_t seq, unsigned char *payload, size_t payload_size) {
     unsigned char packet[ECP_MAX_PKT];
     ECPContext *ctx = sock->ctx;
     ECPNetAddr _addr;
     ssize_t rv;
 
-    rv = ctx->pack_raw(sock, proxy, packet, ECP_MAX_PKT, s_idx, c_idx, public, shsec, nonce, seq, payload, payload_size, &_addr);
+    rv = ctx->pack_raw(sock, parent, packet, ECP_MAX_PKT, s_idx, c_idx, public, shsec, nonce, seq, payload, payload_size, &_addr);
     if (rv < 0) return rv;
     
-    return ecp_pkt_send(sock, proxy ? &_addr : addr, packet, rv);
+    return ecp_pkt_send(sock, parent ? &_addr : addr, packet, rv);
 }
 
 ssize_t ecp_send(ECPConnection *conn, unsigned char *payload, size_t payload_size) {
