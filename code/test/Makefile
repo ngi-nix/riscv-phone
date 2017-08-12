@@ -1,12 +1,12 @@
-CFLAGS=-I../core -I../proxy -I../util -O3 -Wno-int-to-void-pointer-cast
+CFLAGS=-I../core -I../vconn -I../util -O3 -Wno-int-to-void-pointer-cast
 LDFLAGS=-lm -pthread
 
-dep=../core/libecpcore.a ../core/crypto/libecpcr.a ../core/htable/libecpht.a ../core/posix/libecptr.a ../core/posix/libecptm.a ../proxy/libecpproxy.a ../util/libecputil.a
+dep=../core/libecpcore.a ../core/crypto/libecpcr.a ../core/htable/libecpht.a ../core/posix/libecptr.a ../core/posix/libecptm.a ../vconn/libecpvconn.a ../util/libecputil.a
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<
 
-all: basic client server echo stress proxy pr_server pr_client
+all: basic client server echo stress vcs vc_server vc_client
 
 basic: basic.o init.o $(dep)
 	$(CC) -o $@ $< init.o $(dep) $(LDFLAGS)
@@ -23,14 +23,14 @@ echo: echo.o init.o $(dep)
 stress: stress.o init.o $(dep)
 	$(CC) -o $@ $< init.o $(dep) $(LDFLAGS)
 
-proxy: proxy.o init_proxy.o $(dep)
-	$(CC) -o $@ $< init_proxy.o $(dep) $(LDFLAGS)
+vcs: vcs.o init_vconn.o $(dep)
+	$(CC) -o $@ $< init_vconn.o $(dep) $(LDFLAGS)
 
-pr_server: pr_server.o init_proxy.o $(dep)
-	$(CC) -o $@ $< init_proxy.o $(dep) $(LDFLAGS)
+vc_server: vc_server.o init_vconn.o $(dep)
+	$(CC) -o $@ $< init_vconn.o $(dep) $(LDFLAGS)
 
-pr_client: pr_client.o init_proxy.o $(dep)
-	$(CC) -o $@ $< init_proxy.o $(dep) $(LDFLAGS)
+vc_client: vc_client.o init_vconn.o $(dep)
+	$(CC) -o $@ $< init_vconn.o $(dep) $(LDFLAGS)
 
 
 opus_root=../../../opus-1.1.5
@@ -42,4 +42,4 @@ voip: voip.o init.o $(dep)
 
 clean:
 	rm -f *.o
-	rm -f basic client server echo stress proxy pr_server pr_client voip
+	rm -f basic client server echo stress vcs vc_server vc_client voip

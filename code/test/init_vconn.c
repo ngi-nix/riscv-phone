@@ -3,7 +3,7 @@
 #include <unistd.h>
 
 #include "core.h"
-#include "proxy.h"
+#include "vconn.h"
 
 static int v_rng(void *buf, size_t bufsize) {
     int fd;
@@ -17,8 +17,8 @@ static int v_rng(void *buf, size_t bufsize) {
 
 static ECPConnection *conn_alloc(unsigned char type) {
     switch (type) {
-        case ECP_CTYPE_PROXYF:
-            return malloc(sizeof(ECPConnProxyF));
+        case ECP_CTYPE_VCONN:
+            return malloc(sizeof(ECPVConnIn));
         default:
             return malloc(sizeof(ECPConnection));
     }
@@ -38,5 +38,5 @@ int ecp_init(ECPContext *ctx) {
     ctx->conn_alloc = conn_alloc;
     ctx->conn_free = conn_free;
     
-    return ecp_proxy_init(ctx);
+    return ecp_ctx_vconn_init(ctx);
 }

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-subdirs="core proxy util test"
+subdirs="core vconn util test"
 
 for i in $subdirs; do
 	(cd $i && make $1 && cd ..) || exit;

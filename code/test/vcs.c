@@ -5,7 +5,7 @@
 
 #include "core.h"
 #include "util.h"
-#include "proxy.h"
+#include "vconn.h"
 
 ECPContext ctx;
 ECPSocket sock;
@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
         rv = ecp_util_node_load(&ctx, &node, argv[3]);
         printf("ecp_util_node_load RV:%d\n", rv);
 
-        rv = ecp_conn_create(&conn, &sock, ECP_CTYPE_PROXYB);
+        rv = ecp_conn_create(&conn, &sock, ECP_CTYPE_VLINK);
         printf("ecp_conn_create RV:%d\n", rv);
 
         rv = ecp_conn_open(&conn, &node);
