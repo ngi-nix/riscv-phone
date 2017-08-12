@@ -272,6 +272,10 @@ static ssize_t proxyb_open(ECPConnection *conn) {
     return ecp_timer_send(conn, _proxyb_send_open, ECP_MTYPE_OPEN_REP, 3, 500);
 }
 
+static void proxyb_close(ECPConnection *conn) {
+    proxyb_remove(conn);
+}
+
 static ssize_t proxyb_handle_open(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size) {
     ssize_t rv;
     int is_open;
@@ -299,13 +303,10 @@ static ssize_t proxyb_handle_open(ECPConnection *conn, ecp_seq_t seq, unsigned c
         }
         return rv;
     } else {
-        unsigned char ctype = 0;
-
         if (conn->out) return ECP_ERR;
         if (size < rv+ECP_ECDH_SIZE_KEY) return ECP_ERR;
 
-        ctype = msg[0];
-        msg++;
+        msg += rv;
 
         // XXX should verify perma_key
         return rv+ECP_ECDH_SIZE_KEY;
@@ -445,6 +446,7 @@ int ecp_proxy_init(ECPContext *ctx) {
     handler_b.conn_create = proxyb_create;
     handler_b.conn_destroy = proxyb_destroy;
     handler_b.conn_open = proxyb_open;
+    handler_b.conn_close = proxyb_close;
     handler_b.msg[ECP_MTYPE_OPEN] = proxyb_handle_open;
     handler_b.msg[ECP_MTYPE_EXEC] = ecp_conn_handle_exec;
     handler_b.msg[ECP_MTYPE_RELAY] = proxyb_handle_relay;

@@ -117,6 +117,7 @@ typedef void ecp_conn_free_t (struct ECPConnection *c);
 typedef int ecp_conn_create_t (struct ECPConnection *c, unsigned char *msg, size_t sz);
 typedef void ecp_conn_destroy_t (struct ECPConnection *c);
 typedef ssize_t ecp_conn_open_t (struct ECPConnection *c);
+typedef void ecp_conn_close_t (struct ECPConnection *c);
 
 typedef struct ECPCryptoIface {
     int init;
@@ -196,6 +197,7 @@ typedef struct ECPConnHandler {
     ecp_conn_create_t *conn_create;
     ecp_conn_destroy_t *conn_destroy;
     ecp_conn_open_t *conn_open;
+    ecp_conn_close_t *conn_close;
 } ECPConnHandler;
 
 typedef struct ECPSockCTable {

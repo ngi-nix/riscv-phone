@@ -51,7 +51,7 @@ int ecp_conn_rbuf_start(ECPConnection *conn, ecp_seq_t seq) {
     return ECP_OK;
 }
 
-ssize_t ecp_conn_rbuf_pkt_send(struct ECPConnection *conn, ECPNetAddr *addr, unsigned char *packet, size_t pkt_size, ecp_seq_t seq, int idx) {
+ssize_t ecp_conn_rbuf_pkt_send(ECPConnection *conn, ECPNetAddr *addr, unsigned char *packet, size_t pkt_size, ecp_seq_t seq, int idx) {
     int do_send;
     ECPRBSend *buf = conn->rbuf.send;
     

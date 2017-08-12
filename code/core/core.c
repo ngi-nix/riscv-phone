@@ -580,7 +580,10 @@ int ecp_conn_close(ECPConnection *conn, unsigned int timeout) {
     if (refcount) return ECP_ERR_TIMEOUT;
 #endif
 
-    if (!conn->out) {
+    if (conn->out) {
+        ecp_conn_close_t *handler = conn->sock->ctx->handler[conn->type] ? conn->sock->ctx->handler[conn->type]->conn_close : NULL;
+        if (handler) handler(conn);
+    } else {
         ecp_conn_destroy_t *handler = conn->sock->ctx->handler[conn->type] ? conn->sock->ctx->handler[conn->type]->conn_destroy : NULL;
         if (handler) handler(conn);
         if (conn->proxy) {
