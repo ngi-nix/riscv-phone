@@ -19,7 +19,7 @@ static ECPConnHandler handler_b;
 static int proxyf_create(ECPConnection *conn, unsigned char *payload, size_t size) {
     ECPContext *ctx = conn->sock->ctx;
     ECPConnProxyF *conn_p = (ECPConnProxyF *)conn;
-    int rv;
+    int rv = ECP_OK;
     
     if (conn->out) return ECP_ERR;
     if (conn->type != ECP_CTYPE_PROXYF) return ECP_ERR;
@@ -34,13 +34,14 @@ static int proxyf_create(ECPConnection *conn, unsigned char *payload, size_t siz
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&key_next_mutex);
 #endif
+#ifdef ECP_WITH_HTABLE
     rv = ctx->ht.init ? ctx->ht.insert(key_next_table, conn_p->key_next[conn_p->key_next_curr], conn) : ECP_ERR;
+#endif
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_unlock(&key_next_mutex);
 #endif
-    if (rv) return rv;
-
-    return ECP_OK;
+    
+    return rv;
 }
 
 static void proxyf_destroy(ECPConnection *conn) {
@@ -54,12 +55,14 @@ static void proxyf_destroy(ECPConnection *conn) {
     pthread_mutex_lock(&key_next_mutex);
     pthread_mutex_lock(&conn->mutex);
 #endif
+#ifdef ECP_WITH_HTABLE
     if (ctx->ht.init) {
         int i;
         for (i=0; i<ECP_MAX_NODE_KEY; i++) {
             if (memcmp(conn_p->key_next[i], key_null, ECP_ECDH_SIZE_KEY)) ctx->ht.remove(key_next_table, conn_p->key_next[i]);
         }
     }
+#endif
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_unlock(&conn->mutex);
     pthread_mutex_unlock(&key_next_mutex);
@@ -136,11 +139,15 @@ static ssize_t proxyf_handle_open(ECPConnection *conn, ecp_seq_t seq, unsigned c
         if (!ecp_conn_is_open(conn)) conn->flags |= ECP_CONN_FLAG_OPEN;
         if (memcmp(conn_p->key_next[conn_p->key_next_curr], msg, ECP_ECDH_SIZE_KEY)) {
             conn_p->key_next_curr = (conn_p->key_next_curr + 1) % ECP_MAX_NODE_KEY;
-            if (memcmp(conn_p->key_next[conn_p->key_next_curr], key_null, ECP_ECDH_SIZE_KEY)) {
-                if (ctx->ht.init) ctx->ht.remove(key_next_table, conn_p->key_next[conn_p->key_next_curr]);
+#ifdef ECP_WITH_HTABLE
+            if (ctx->ht.init) {
+                if (memcmp(conn_p->key_next[conn_p->key_next_curr], key_null, ECP_ECDH_SIZE_KEY)) ctx->ht.remove(key_next_table, conn_p->key_next[conn_p->key_next_curr]);
+                rv = ctx->ht.insert(key_next_table, conn_p->key_next[conn_p->key_next_curr], conn);
+            } else {
+                rv = ECP_ERR;
             }
-            memcpy(conn_p->key_next[conn_p->key_next_curr], msg, ECP_ECDH_SIZE_KEY);
-            rv = ctx->ht.init ? ctx->ht.insert(key_next_table, conn_p->key_next[conn_p->key_next_curr], conn) : ECP_ERR;
+#endif
+            if (!rv) memcpy(conn_p->key_next[conn_p->key_next_curr], msg, ECP_ECDH_SIZE_KEY);
         }
 
 #ifdef ECP_WITH_PTHREAD
@@ -172,7 +179,9 @@ static ssize_t proxyf_handle_relay(ECPConnection *conn, ecp_seq_t seq, unsigned 
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&key_perma_mutex);
 #endif
+#ifdef ECP_WITH_HTABLE
     conn_out = ctx->ht.init ? ctx->ht.search(key_perma_table, conn_p->key_out) : NULL;
+#endif
     if (conn_out) {
 #ifdef ECP_WITH_PTHREAD
         pthread_mutex_lock(&conn_out->mutex);
@@ -205,13 +214,15 @@ static ssize_t proxyf_handle_relay(ECPConnection *conn, ecp_seq_t seq, unsigned 
 }
 
 static int proxyb_insert(ECPConnection *conn) {
-    int rv;
+    int rv = ECP_OK;
     ECPContext *ctx = conn->sock->ctx;
     
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&key_perma_mutex);
 #endif
-    rv = ctx->ht.init ? ctx->ht.insert(key_perma_table, ctx->cr.dh_pub_get_buf(&conn->node.public), conn) : ECP_ERR;
+#ifdef ECP_WITH_HTABLE
+    rv = ctx->ht.init ? ctx->ht.insert(key_perma_table, ctx->cr.dh_pub_get_buf(&conn->node.public), conn) : ECP_OK;
+#endif
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_unlock(&key_perma_mutex);
 #endif
@@ -225,7 +236,9 @@ static void proxyb_remove(ECPConnection *conn) {
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&key_perma_mutex);
 #endif
+#ifdef ECP_WITH_HTABLE
     if (ctx->ht.init) ctx->ht.remove(key_perma_table, ctx->cr.dh_pub_get_buf(&conn->node.public));
+#endif
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_unlock(&key_perma_mutex);
 #endif
@@ -328,7 +341,9 @@ static ssize_t proxyb_handle_relay(ECPConnection *conn, ecp_seq_t seq, unsigned 
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&key_next_mutex);
 #endif
+#ifdef ECP_WITH_HTABLE
     conn = ctx->ht.init ? ctx->ht.search(key_next_table, msg+ECP_SIZE_PROTO+1) : NULL;
+#endif
     if (conn) {
 #ifdef ECP_WITH_PTHREAD
         pthread_mutex_lock(&conn->mutex);
@@ -460,11 +475,13 @@ int ecp_proxy_init(ECPContext *ctx) {
     pthread_mutex_init(&key_next_mutex, NULL);
 #endif
 
+#ifdef ECP_WITH_HTABLE
     if (ctx->ht.init) {
         key_perma_table = ctx->ht.create(ctx);
         key_next_table = ctx->ht.create(ctx);
     }
-
+#endif
+    
     return ECP_OK;
 }
 
