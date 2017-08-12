@@ -204,16 +204,9 @@ static ssize_t proxyf_handle_relay(ECPConnection *conn, ecp_seq_t seq, unsigned 
     return size;
 }
 
-static int proxyb_create(ECPConnection *conn, unsigned char *payload, size_t size) {
-    ECPContext *ctx = conn->sock->ctx;
+static int proxyb_insert(ECPConnection *conn) {
     int rv;
-    
-    if (conn->out) return ECP_ERR;
-    if (conn->type != ECP_CTYPE_PROXYB) return ECP_ERR;
-
-    // XXX should verify perma_key
-    if (size < ECP_ECDH_SIZE_KEY) return ECP_ERR;
-    ctx->cr.dh_pub_from_buf(&conn->node.public, payload);
+    ECPContext *ctx = conn->sock->ctx;
     
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&key_perma_mutex);
@@ -222,9 +215,33 @@ static int proxyb_create(ECPConnection *conn, unsigned char *payload, size_t siz
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_unlock(&key_perma_mutex);
 #endif
-    if (rv) return rv;
+
+    return rv;
+}
+
+static void proxyb_remove(ECPConnection *conn) {
+    ECPContext *ctx = conn->sock->ctx;
     
-    return ECP_OK;
+#ifdef ECP_WITH_PTHREAD
+    pthread_mutex_lock(&key_perma_mutex);
+#endif
+    if (ctx->ht.init) ctx->ht.remove(key_perma_table, ctx->cr.dh_pub_get_buf(&conn->node.public));
+#ifdef ECP_WITH_PTHREAD
+    pthread_mutex_unlock(&key_perma_mutex);
+#endif
+}
+
+static int proxyb_create(ECPConnection *conn, unsigned char *payload, size_t size) {
+    ECPContext *ctx = conn->sock->ctx;
+    
+    if (conn->out) return ECP_ERR;
+    if (conn->type != ECP_CTYPE_PROXYB) return ECP_ERR;
+
+    // XXX should verify perma_key
+    if (size < ECP_ECDH_SIZE_KEY) return ECP_ERR;
+    ctx->cr.dh_pub_from_buf(&conn->node.public, payload);
+
+    return proxyb_insert(conn);
 }
 
 static void proxyb_destroy(ECPConnection *conn) {
@@ -233,13 +250,7 @@ static void proxyb_destroy(ECPConnection *conn) {
     if (conn->out) return;
     if (conn->type != ECP_CTYPE_PROXYB) return;
 
-#ifdef ECP_WITH_PTHREAD
-    pthread_mutex_lock(&key_perma_mutex);
-#endif
-    if (ctx->ht.init) ctx->ht.remove(key_perma_table, ctx->cr.dh_pub_get_buf(&conn->node.public));
-#ifdef ECP_WITH_PTHREAD
-    pthread_mutex_unlock(&key_perma_mutex);
-#endif
+    proxyb_remove(conn);
 }
 
 static ssize_t _proxyb_send_open(ECPConnection *conn, ECPTimerItem *ti) {
@@ -263,24 +274,43 @@ static ssize_t proxyb_open(ECPConnection *conn) {
 
 static ssize_t proxyb_handle_open(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size) {
     ssize_t rv;
+    int is_open;
     
     if (conn->type != ECP_CTYPE_PROXYB) return ECP_ERR;
 
     if (size < 0) return size;
     
+#ifdef ECP_WITH_PTHREAD
+    pthread_mutex_lock(&conn->mutex);
+#endif
+    is_open = ecp_conn_is_open(conn);
+#ifdef ECP_WITH_PTHREAD
+    pthread_mutex_unlock(&conn->mutex);
+#endif
+
     rv = ecp_conn_handle_open(conn, seq, mtype, msg, size);
     if (rv < 0) return rv;
 
     if (mtype & ECP_MTYPE_FLAG_REP) {
         if (!conn->out) return ECP_ERR;
-        return 0;
+        if (!is_open) {
+            int rv = proxyb_insert(conn);
+            if (rv) return rv;
+        }
+        return rv;
     } else {
+        unsigned char ctype = 0;
+
         if (conn->out) return ECP_ERR;
         if (size < rv+ECP_ECDH_SIZE_KEY) return ECP_ERR;
+
+        ctype = msg[0];
+        msg++;
 
         // XXX should verify perma_key
         return rv+ECP_ECDH_SIZE_KEY;
     }
+
     return ECP_ERR;
 }
 
@@ -289,12 +319,11 @@ static ssize_t proxyb_handle_relay(ECPConnection *conn, ecp_seq_t seq, unsigned 
     unsigned char *payload = NULL;
     ssize_t rv;
 
-    if (conn->out) return ECP_ERR;
     if (conn->type != ECP_CTYPE_PROXYB) return ECP_ERR;
 
     if (size < 0) return size;
     if (size < ECP_MIN_PKT) return ECP_ERR_MIN_PKT;
-    
+
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&key_next_mutex);
 #endif
@@ -313,11 +342,11 @@ static ssize_t proxyb_handle_relay(ECPConnection *conn, ecp_seq_t seq, unsigned 
 #endif
 
     if (conn == NULL) return ECP_ERR;
-    
+
     payload = msg - ECP_SIZE_MSG_HDR;
     ecp_pld_set_type(payload, ECP_MTYPE_EXEC);
     rv = ecp_pld_send(conn, payload, ECP_SIZE_MSG_HDR+size);
-    
+
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&conn->mutex);
 #endif
@@ -325,7 +354,7 @@ static ssize_t proxyb_handle_relay(ECPConnection *conn, ecp_seq_t seq, unsigned 
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_unlock(&conn->mutex);
 #endif
-    
+
     if (rv < 0) return rv;
     return size;
 }
