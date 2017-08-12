@@ -13,8 +13,8 @@ static void *key_next_table;
     
 static unsigned char key_null[ECP_ECDH_SIZE_KEY] = { 0 };
 
-static ECPConnHandler handler_f;
-static ECPConnHandler handler_b;
+static ECPConnHandler handler_vc;
+static ECPConnHandler handler_vl;
 
 static int vconn_create(ECPConnection *conn, unsigned char *payload, size_t size) {
     ECPContext *ctx = conn->sock->ctx;
@@ -444,28 +444,28 @@ static ssize_t vconn_pack_raw(ECPSocket *sock, ECPConnection *parent, unsigned c
 int ecp_ctx_vconn_init(ECPContext *ctx) {
     int rv;
     
-    rv = ecp_conn_handler_init(&handler_f);
+    rv = ecp_conn_handler_init(&handler_vc);
     if (rv) return rv;
     
-    handler_f.conn_create = vconn_create;
-    handler_f.conn_destroy = vconn_destroy;
-    handler_f.conn_open = vconn_open;
-    handler_f.msg[ECP_MTYPE_OPEN] = vconn_handle_open;
-    handler_f.msg[ECP_MTYPE_EXEC] = ecp_conn_handle_exec;
-    handler_f.msg[ECP_MTYPE_RELAY] = vconn_handle_relay;
-    ctx->handler[ECP_CTYPE_VCONN] = &handler_f;
+    handler_vc.conn_create = vconn_create;
+    handler_vc.conn_destroy = vconn_destroy;
+    handler_vc.conn_open = vconn_open;
+    handler_vc.msg[ECP_MTYPE_OPEN] = vconn_handle_open;
+    handler_vc.msg[ECP_MTYPE_EXEC] = ecp_conn_handle_exec;
+    handler_vc.msg[ECP_MTYPE_RELAY] = vconn_handle_relay;
+    ctx->handler[ECP_CTYPE_VCONN] = &handler_vc;
 
-    rv = ecp_conn_handler_init(&handler_b);
+    rv = ecp_conn_handler_init(&handler_vl);
     if (rv) return rv;
 
-    handler_b.conn_create = vlink_create;
-    handler_b.conn_destroy = vlink_destroy;
-    handler_b.conn_open = vlink_open;
-    handler_b.conn_close = vlink_close;
-    handler_b.msg[ECP_MTYPE_OPEN] = vlink_handle_open;
-    handler_b.msg[ECP_MTYPE_EXEC] = ecp_conn_handle_exec;
-    handler_b.msg[ECP_MTYPE_RELAY] = vlink_handle_relay;
-    ctx->handler[ECP_CTYPE_VLINK] = &handler_b;
+    handler_vl.conn_create = vlink_create;
+    handler_vl.conn_destroy = vlink_destroy;
+    handler_vl.conn_open = vlink_open;
+    handler_vl.conn_close = vlink_close;
+    handler_vl.msg[ECP_MTYPE_OPEN] = vlink_handle_open;
+    handler_vl.msg[ECP_MTYPE_EXEC] = ecp_conn_handle_exec;
+    handler_vl.msg[ECP_MTYPE_RELAY] = vlink_handle_relay;
+    ctx->handler[ECP_CTYPE_VLINK] = &handler_vl;
 
     ctx->pack = vconn_pack;
     ctx->pack_raw = vconn_pack_raw;

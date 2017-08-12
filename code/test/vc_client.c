@@ -47,7 +47,7 @@ ssize_t handle_msg(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned 
 }
 
 static void usage(char *arg) {
-    fprintf(stderr, "Usage: %s <server.pub> <v1.pub> ... <vn.pub>\n", arg);
+    fprintf(stderr, "Usage: %s <server.pub> <vcs1.pub> ... <vcsn.pub>\n", arg);
     exit(1);
 }
 
