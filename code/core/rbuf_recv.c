@@ -34,13 +34,13 @@ static ssize_t msg_store(ECPConnection *conn, ecp_seq_t seq, unsigned char *msg,
     
     if (flags & ECP_RBUF_FLAG_DELIVERED) ecp_msg_handle(conn, seq, msg, msg_size);
 
-    if (ECP_RBUF_SEQ_LT(buf->seq_max, seq)) buf->seq_max = seq;
+    if (ECP_RBUF_SEQ_LT(buf->rbuf.seq_max, seq)) buf->rbuf.seq_max = seq;
     return rv;
 }
 
 static void msg_flush(ECPConnection *conn) {
     ECPRBRecv *buf = conn->rbuf.recv;
-    ecp_seq_t msg_cnt = buf->seq_max - buf->rbuf.seq_start + 1;
+    ecp_seq_t msg_cnt = buf->rbuf.seq_max - buf->rbuf.seq_start + 1;
     ecp_seq_t i = 0;
     unsigned int idx = buf->rbuf.msg_start;
     
@@ -94,7 +94,7 @@ static int ack_shift(ECPRBRecv *buf) {
     idx = ecp_rbuf_msg_idx(&buf->rbuf, buf->seq_ack);
     if (idx < 0) return idx;
 
-    while (ECP_RBUF_SEQ_LT(buf->seq_ack, buf->seq_max)) {
+    while (ECP_RBUF_SEQ_LT(buf->seq_ack, buf->rbuf.seq_max)) {
         idx = ECP_RBUF_IDX_MASK(idx + 1, buf->rbuf.msg_size);
         buf->seq_ack++;
 
@@ -103,14 +103,14 @@ static int ack_shift(ECPRBRecv *buf) {
         buf->ack_map = buf->ack_map << 1;
         if (buf->rbuf.msg[idx].flags & ECP_RBUF_FLAG_RECEIVED) {
             buf->ack_map |= 1;
-        } else if (!do_ack && ECP_RBUF_SEQ_LTE(buf->seq_ack, buf->seq_max - 2 * buf->hole_max)) {
+        } else if (!do_ack && ECP_RBUF_SEQ_LTE(buf->seq_ack, buf->rbuf.seq_max - 2 * buf->hole_max)) {
             do_ack = 1;
         }
 
         if ((buf->ack_map & ACK_MASK_FIRST) == 0) break;
     }
     
-    if (!do_ack && (buf->seq_ack == buf->seq_max) && ((buf->ack_map & buf->hole_mask_full) != buf->hole_mask_full)) {
+    if (!do_ack && (buf->seq_ack == buf->rbuf.seq_max) && ((buf->ack_map & buf->hole_mask_full) != buf->hole_mask_full)) {
         ecp_ack_t hole_mask = buf->ack_map;
 
         for (i=0; i<buf->hole_max-1; i++) {
@@ -137,6 +137,10 @@ int ecp_conn_rbuf_recv_create(ECPConnection *conn, ECPRBRecv *buf, ECPRBMessage 
     conn->rbuf.recv = buf;
     
     return ECP_OK;
+}
+
+void ecp_conn_rbuf_recv_destroy(ECPConnection *conn) {
+    
 }
 
 int ecp_conn_rbuf_recv_set_hole(ECPConnection *conn, unsigned short hole_max) {
@@ -166,10 +170,7 @@ int ecp_conn_rbuf_recv_start(ECPConnection *conn, ecp_seq_t seq) {
     if (buf == NULL) return ECP_ERR;
     
     buf->seq_ack = seq;
-    buf->seq_max = seq;
-    buf->rbuf.seq_start = seq + 1;
-
-    return ECP_OK;
+    return ecp_rbuf_start(&buf->rbuf, seq);
 }
 
 ssize_t ecp_conn_rbuf_recv_store(ECPConnection *conn, ecp_seq_t seq, unsigned char *msg, size_t msg_size) {
@@ -181,7 +182,7 @@ ssize_t ecp_conn_rbuf_recv_store(ECPConnection *conn, ecp_seq_t seq, unsigned ch
     if (buf == NULL) return ECP_ERR;
     if (msg_size < 1) return ECP_ERR_MIN_MSG;
     
-    if (ECP_RBUF_SEQ_LT(buf->seq_max, seq)) ack_pkt = seq - buf->seq_max;
+    if (ECP_RBUF_SEQ_LT(buf->rbuf.seq_max, seq)) ack_pkt = seq - buf->rbuf.seq_max;
     if (ECP_RBUF_SEQ_LTE(seq, buf->seq_ack)) {
         ecp_seq_t seq_offset = buf->seq_ack - seq;
         if (seq_offset < ECP_RBUF_ACK_SIZE) {
@@ -204,7 +205,7 @@ ssize_t ecp_conn_rbuf_recv_store(ECPConnection *conn, ecp_seq_t seq, unsigned ch
             } else {
                 ecp_msg_handle(conn, seq, msg, msg_size);
                 rv = msg_size;
-                buf->seq_max++;
+                buf->rbuf.seq_max++;
                 buf->rbuf.seq_start++;
                 buf->rbuf.msg_start = ECP_RBUF_IDX_MASK(buf->rbuf.msg_start + 1, buf->rbuf.msg_size);
             }

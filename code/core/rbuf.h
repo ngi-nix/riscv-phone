@@ -1,5 +1,6 @@
 #define ECP_RBUF_FLAG_RECEIVED      0x01
 #define ECP_RBUF_FLAG_DELIVERED     0x02
+#define ECP_RBUF_FLAG_CCWAIT        0x04
 
 #define ECP_RBUF_FLAG_RELIABLE      0x01
 #define ECP_RBUF_FLAG_MSGQ          0x02
@@ -46,6 +47,7 @@ typedef struct ECPRBMessage {
 
 typedef struct ECPRBuffer {
     ecp_seq_t seq_start;
+    ecp_seq_t seq_max;
     unsigned int msg_size;
     unsigned int msg_start;
     ECPRBMessage *msg;
@@ -58,7 +60,6 @@ typedef struct ECPRBRecv {
     unsigned short hole_max;
     unsigned short ack_rate;
     ecp_seq_t seq_ack;
-    ecp_seq_t seq_max;
     ecp_seq_t ack_pkt;
     ecp_ack_t ack_map;
     ecp_ack_t hole_mask_full;
@@ -71,7 +72,9 @@ typedef struct ECPRBSend {
     unsigned char flush;
     ecp_win_t win_size;
     ecp_win_t in_transit;
+    ecp_win_t cc_wait;
     ecp_seq_t seq_flush;
+    ecp_seq_t seq_cc;
     unsigned int nack_rate;
     ECPRBuffer rbuf;
 #ifdef ECP_WITH_PTHREAD
@@ -86,18 +89,24 @@ typedef struct ECPConnRBuffer {
 
 
 int ecp_rbuf_init(ECPRBuffer *rbuf, ECPRBMessage *msg, unsigned int msg_size);
+int ecp_rbuf_start(ECPRBuffer *rbuf, ecp_seq_t seq);
 int ecp_rbuf_msg_idx(ECPRBuffer *rbuf, ecp_seq_t seq);
 ssize_t ecp_rbuf_msg_store(ECPRBuffer *rbuf, ecp_seq_t seq, int idx, unsigned char *msg, size_t msg_size, unsigned char test_flags, unsigned char set_flags);
-int ecp_conn_rbuf_start(struct ECPConnection *conn, ecp_seq_t seq);
 ssize_t ecp_conn_rbuf_pkt_send(struct ECPConnection *conn, ECPNetAddr *addr, unsigned char *packet, size_t pkt_size, ecp_seq_t seq, int idx);
 
+int ecp_conn_rbuf_create(struct ECPConnection *conn, ECPRBSend *buf_s, ECPRBMessage *msg_s, unsigned int msg_s_size, ECPRBRecv *buf_r, ECPRBMessage *msg_r, unsigned int msg_r_size);
+void ecp_conn_rbuf_destroy(struct ECPConnection *conn);
+int ecp_conn_rbuf_start(struct ECPConnection *conn, ecp_seq_t seq);
+
 int ecp_conn_rbuf_recv_create(struct ECPConnection *conn, ECPRBRecv *buf, ECPRBMessage *msg, unsigned int msg_size);
+void ecp_conn_rbuf_recv_destroy(struct ECPConnection *conn);
+int ecp_conn_rbuf_recv_set_hole(struct ECPConnection *conn, unsigned short hole_max);
+int ecp_conn_rbuf_recv_set_delay(struct ECPConnection *conn, unsigned short delay);
 int ecp_conn_rbuf_recv_start(struct ECPConnection *conn, ecp_seq_t seq);
 ssize_t ecp_conn_rbuf_recv_store(struct ECPConnection *conn, ecp_seq_t seq, unsigned char *msg, size_t msg_size);
 
 int ecp_conn_rbuf_send_create(struct ECPConnection *conn, ECPRBSend *buf, ECPRBMessage *msg, unsigned int msg_size);
+void ecp_conn_rbuf_send_destroy(struct ECPConnection *conn);
 int ecp_conn_rbuf_send_start(struct ECPConnection *conn);
-int ecp_conn_rbuf_recv_set_hole(struct ECPConnection *conn, unsigned short hole_max);
-int ecp_conn_rbuf_recv_set_delay(struct ECPConnection *conn, unsigned short delay);
 ssize_t ecp_conn_rbuf_send_store(struct ECPConnection *conn, ecp_seq_t seq, int idx, unsigned char *msg, size_t msg_size);
 

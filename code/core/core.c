@@ -466,21 +466,10 @@ int ecp_conn_create(ECPConnection *conn, ECPSocket *sock, unsigned char ctype) {
     if (rv) return ECP_ERR;
 #endif
 
-#ifdef ECP_WITH_MSGQ
-    rv = ecp_conn_msgq_create(conn);
-    if (rv) {
-        pthread_mutex_destroy(&conn->mutex);
-        return ECP_ERR;
-    }
-#endif
-    
     return ECP_OK;
 }
 
 void ecp_conn_destroy(ECPConnection *conn) {
-#ifdef ECP_WITH_MSGQ
-    ecp_conn_msgq_destroy(conn);
-#endif
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_destroy(&conn->mutex);
 #endif
@@ -959,7 +948,7 @@ ssize_t ecp_conn_pack(ECPConnection *conn, unsigned char *packet, size_t pkt_siz
         }
     }
     if (!rv) {
-        _seq = conn->seq_out;
+        _seq = conn->seq_out + 1;
 #ifdef ECP_WITH_RBUF
         if (conn->rbuf.send && rbuf_idx) {
             ECPRBSend *buf = conn->rbuf.send;
@@ -977,7 +966,7 @@ ssize_t ecp_conn_pack(ECPConnection *conn, unsigned char *packet, size_t pkt_siz
 #endif
     }
     if (!rv) {
-        conn->seq_out = _seq + 1;
+        conn->seq_out = _seq;
         if (addr) *addr = conn->node.addr;
     }
 
@@ -1161,13 +1150,6 @@ ssize_t ecp_pkt_handle(ECPSocket *sock, ECPNetAddr *addr, ECPConnection *parent,
 
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&conn->mutex);
-#endif
-#ifdef ECP_WITH_MSGQ
-    if (!rv && (cnt_size > 0)) {
-        proc_size = ecp_conn_msgq_push(conn, payload+pld_size-cnt_size, cnt_size);
-        if (proc_size < 0) rv = ECP_ERR_HANDLE;
-        if (!rv) cnt_size -= proc_size;
-    }
 #endif
     if (!rv) {
         conn->seq_in = n_seq;
