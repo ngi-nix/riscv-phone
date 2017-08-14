@@ -1,8 +1,9 @@
 + check for nonce
-+ check for seq
 
+- check for seq (without rbuf)
 - memzero keys after usage
 - implement socket message queue
 
-core:
-- msgq marker
+rbuf:
+- implement _wait variants of open / send
+- consider adding one buffer for all msgs (frag. issue)

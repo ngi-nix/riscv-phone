@@ -1278,9 +1278,9 @@ ssize_t ecp_send(ECPConnection *conn, unsigned char *payload, size_t payload_siz
 
 ssize_t ecp_receive(ECPConnection *conn, unsigned char mtype, unsigned char *msg, size_t msg_size, unsigned int timeout) {
 #ifdef ECP_WITH_MSGQ
-    pthread_mutex_lock(&conn->mutex);
+    pthread_mutex_lock(&conn->rbuf.recv->msgq.mutex);
     ssize_t rv = ecp_conn_msgq_pop(conn, mtype, msg, msg_size, timeout);
-    pthread_mutex_unlock(&conn->mutex);
+    pthread_mutex_unlock(&conn->rbuf.recv->msgq.mutex);
     return rv;
 #else
     return ECP_ERR_NOT_IMPLEMENTED;

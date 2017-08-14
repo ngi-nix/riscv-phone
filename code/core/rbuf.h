@@ -42,7 +42,6 @@ typedef struct ECPRBMessage {
     unsigned char msg[ECP_MAX_PKT];
     ssize_t size;
     unsigned char flags;
-    ECPNetAddr addr;
 } ECPRBMessage;
 
 typedef struct ECPRBuffer {
@@ -65,6 +64,9 @@ typedef struct ECPRBRecv {
     ecp_ack_t hole_mask_full;
     ecp_ack_t hole_mask_empty;
     ECPRBuffer rbuf;
+#ifdef ECP_WITH_MSGQ
+    ECPConnMsgQ msgq;
+#endif
 } ECPRBRecv;
 
 typedef struct ECPRBSend {
