@@ -20,16 +20,23 @@ static void cc_flush(ECPConnection *conn) {
     int i;
     
     if (pkt_to_send) {
-        unsigned int _idx = ecp_rbuf_msg_idx(rbuf, buf->seq_cc);
+        unsigned int idx = ecp_rbuf_msg_idx(rbuf, buf->seq_cc);
+        unsigned int _idx = idx;
+
+        for (i=0; i<pkt_to_send; i++) {
+            if (!(rbuf->msg[_idx].flags & ECP_RBUF_FLAG_CCWAIT)) break;
+            rbuf->msg[_idx].flags &= ~ECP_RBUF_FLAG_CCWAIT;
+            _idx = ECP_RBUF_IDX_MASK(_idx + 1, rbuf->msg_size);
+        }
+        pkt_to_send = i;
+        _idx = idx;
 
 #ifdef ECP_WITH_PTHREAD
         pthread_mutex_unlock(&buf->mutex);
 #endif
 
         for (i=0; i<pkt_to_send; i++) {
-            if (!(rbuf->msg[_idx].flags & ECP_RBUF_FLAG_CCWAIT)) break;
             ecp_pkt_send(conn->sock, &conn->node.addr, rbuf->msg[_idx].msg, rbuf->msg[_idx].size);
-            rbuf->msg[_idx].flags &= ~ECP_RBUF_FLAG_CCWAIT;
             _idx = ECP_RBUF_IDX_MASK(_idx + 1, rbuf->msg_size);
         }
 
@@ -37,9 +44,9 @@ static void cc_flush(ECPConnection *conn) {
         pthread_mutex_lock(&buf->mutex);
 #endif
 
-        buf->in_transit += (ecp_win_t)i;
-        buf->cc_wait -= (ecp_win_t)i; 
-        buf->seq_cc += (ecp_seq_t)i;
+        buf->in_transit += (ecp_win_t)pkt_to_send;
+        buf->cc_wait -= (ecp_win_t)pkt_to_send; 
+        buf->seq_cc += (ecp_seq_t)pkt_to_send;
     }
 }
 
