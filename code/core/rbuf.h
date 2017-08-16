@@ -1,26 +1,16 @@
-#define ECP_RBUF_FLAG_RECEIVED      0x01
-#define ECP_RBUF_FLAG_DELIVERED     0x02
-#define ECP_RBUF_FLAG_CCWAIT        0x04
+#define ECP_RBUF_FLAG_IN_RBUF       0x01
+#define ECP_RBUF_FLAG_IN_MSGQ       0x02
+#define ECP_RBUF_FLAG_DELIVERED     0x04
+#define ECP_RBUF_FLAG_CCWAIT        0x08
 
 #define ECP_RBUF_FLAG_RELIABLE      0x01
 #define ECP_RBUF_FLAG_MSGQ          0x02
 
-#define ECP_MTYPE_RBOPEN            0x04
-#define ECP_MTYPE_RBCLOSE           0x05
-#define ECP_MTYPE_RBFLUSH           0x06
-#define ECP_MTYPE_RBACK             0x07
+#define ECP_MTYPE_RBACK             0x04
+#define ECP_MTYPE_RBFLUSH           0x05
 
-#define ECP_MTYPE_RBOPEN_REQ        (ECP_MTYPE_RBOPEN)
-#define ECP_MTYPE_RBOPEN_REP        (ECP_MTYPE_RBOPEN | ECP_MTYPE_FLAG_REP)
-#define ECP_MTYPE_RBCLOSE_REQ       (ECP_MTYPE_RBCLOSE)
-#define ECP_MTYPE_RBCLOSE_REP       (ECP_MTYPE_RBCLOSE | ECP_MTYPE_FLAG_REP)
-#define ECP_MTYPE_RBFLUSH_REQ       (ECP_MTYPE_RBFLUSH)
-#define ECP_MTYPE_RBFLUSH_REP       (ECP_MTYPE_RBFLUSH | ECP_MTYPE_FLAG_REP)
-
-#define ECP_ERR_RBUF_FLAG           -100
-#define ECP_ERR_RBUF_IDX            -101
-#define ECP_ERR_RBUF_DUP            -102
-#define ECP_ERR_RBUF_FULL           -103
+#define ECP_ERR_RBUF_DUP            -100
+#define ECP_ERR_RBUF_FULL           -101
 
 typedef uint32_t ecp_ack_t;
 typedef uint32_t ecp_win_t;
@@ -33,10 +23,12 @@ typedef uint32_t ecp_win_t;
 #define ECP_RBUF_SEQ_LT(a,b)            ((ecp_seq_t)((ecp_seq_t)(a) - (ecp_seq_t)(b)) > ECP_RBUF_SEQ_HALF)
 #define ECP_RBUF_SEQ_LTE(a,b)           ((ecp_seq_t)((ecp_seq_t)(b) - (ecp_seq_t)(a)) < ECP_RBUF_SEQ_HALF)
 
+/* size must be power of 2 */
 #define ECP_RBUF_IDX_MASK(idx, size)    ((idx) & ((size) - 1))
-/* If size not 2^x:
-#define ECP_RBUF_IDX_MASK(idx, size) ((idx) % (size))
-*/
+
+#ifdef ECP_WITH_MSGQ
+#include "msgq.h"
+#endif
 
 typedef struct ECPRBMessage {
     unsigned char msg[ECP_MAX_PKT];
@@ -112,3 +104,5 @@ void ecp_conn_rbuf_send_destroy(struct ECPConnection *conn);
 int ecp_conn_rbuf_send_start(struct ECPConnection *conn);
 ssize_t ecp_conn_rbuf_send_store(struct ECPConnection *conn, ecp_seq_t seq, int idx, unsigned char *msg, size_t msg_size);
 
+ssize_t ecp_rbuf_handle_ack(struct ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size);
+ssize_t ecp_rbuf_handle_flush(struct ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size);

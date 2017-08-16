@@ -58,20 +58,25 @@ static int ctable_create(ECPSockCTable *conn, ECPContext *ctx) {
     int rv = ECP_OK;
     
     memset(conn, 0, sizeof(ECPSockCTable));
+
 #ifdef ECP_WITH_HTABLE
     if (ctx->ht.init) {
         conn->htable = ctx->ht.create(ctx);
         if (conn->htable == NULL) return ECP_ERR_ALLOC;
     }
 #endif
+
 #ifdef ECP_WITH_PTHREAD
     rv = pthread_mutex_init(&conn->mutex, NULL);
-#endif
+    if (rv) {
 #ifdef ECP_WITH_HTABLE
-    if (rv && ctx->ht.init) ctx->ht.destroy(conn->htable);
+        if (ctx->ht.init) ctx->ht.destroy(conn->htable);
+#endif
+        return ECP_ERR;
+    }
 #endif
     
-    return rv;
+    return ECP_OK;
 }
 
 static void ctable_destroy(ECPSockCTable *conn, ECPContext *ctx) {
@@ -217,15 +222,15 @@ int ecp_sock_create(ECPSocket *sock, ECPContext *ctx, ECPDHKey *key) {
     }
     
 #ifdef ECP_WITH_PTHREAD
-    if (!rv) rv = pthread_mutex_init(&sock->mutex, NULL);
+    rv = pthread_mutex_init(&sock->mutex, NULL);
     if (rv) {
         ecp_timer_destroy(&sock->timer);
         ctable_destroy(&sock->conn, sock->ctx);
-        return rv;
+        return ECP_ERR;
     }
 #endif
 
-    return rv;
+    return ECP_OK;
 }
 
 void ecp_sock_destroy(ECPSocket *sock) {
@@ -596,6 +601,10 @@ int ecp_conn_handler_init(ECPConnHandler *handler) {
     handler->msg[ECP_MTYPE_OPEN] = ecp_conn_handle_open;
     handler->msg[ECP_MTYPE_KGET] = ecp_conn_handle_kget;
     handler->msg[ECP_MTYPE_KPUT] = ecp_conn_handle_kput;
+#ifdef ECP_WITH_RBUF
+    handler->msg[ECP_MTYPE_RBACK] = ecp_rbuf_handle_ack;
+    handler->msg[ECP_MTYPE_RBFLUSH] = ecp_rbuf_handle_flush;
+#endif
     handler->conn_open = ecp_conn_send_open;
     return ECP_OK;
 }
@@ -957,7 +966,7 @@ ssize_t ecp_conn_pack(ECPConnection *conn, unsigned char *packet, size_t pkt_siz
 #endif
             
             *rbuf_idx = ecp_rbuf_msg_idx(&buf->rbuf, _seq);
-            if (*rbuf_idx < 0) rv = ECP_ERR_RBUF_FULL;
+            if (*rbuf_idx < 0) rv = *rbuf_idx;
 
 #ifdef ECP_WITH_PTHREAD
             pthread_mutex_unlock(&buf->mutex);

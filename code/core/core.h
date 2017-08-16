@@ -93,9 +93,6 @@ typedef uint32_t ecp_seq_t;
 #include "timer.h"
 
 #ifdef ECP_WITH_RBUF
-#ifdef ECP_WITH_MSGQ
-#include "msgq.h"
-#endif
 #include "rbuf.h"
 #endif
 

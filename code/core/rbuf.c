@@ -27,7 +27,7 @@ int ecp_rbuf_msg_idx(ECPRBuffer *rbuf, ecp_seq_t seq) {
 
     // This also checks for seq_start <= seq if seq type range >> rbuf->msg_size
     if (seq_offset < rbuf->msg_size) return ECP_RBUF_IDX_MASK(rbuf->msg_start + seq_offset, rbuf->msg_size);
-    return ECP_ERR_RBUF_IDX;
+    return ECP_ERR_RBUF_FULL;
 }
 
 ssize_t ecp_rbuf_msg_store(ECPRBuffer *rbuf, ecp_seq_t seq, int idx, unsigned char *msg, size_t msg_size, unsigned char test_flags, unsigned char set_flags) {
@@ -35,8 +35,10 @@ ssize_t ecp_rbuf_msg_store(ECPRBuffer *rbuf, ecp_seq_t seq, int idx, unsigned ch
     if (idx < 0) return idx;
 
     if (rbuf->msg == NULL) return 0;
-    if (test_flags && (test_flags & rbuf->msg[idx].flags)) return ECP_ERR_RBUF_FLAG;
+    if (test_flags && (test_flags & rbuf->msg[idx].flags)) return ECP_ERR_RBUF_DUP;
     
+    if (ECP_RBUF_SEQ_LT(rbuf->seq_max, seq)) rbuf->seq_max = seq;
+
     if (!(set_flags & ECP_RBUF_FLAG_DELIVERED)) {
         memcpy(rbuf->msg[idx].msg, msg, msg_size);
         rbuf->msg[idx].size = msg_size;

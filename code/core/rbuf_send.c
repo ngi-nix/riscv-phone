@@ -7,7 +7,7 @@
 static ssize_t _rbuf_send_flush(ECPConnection *conn, ECPTimerItem *ti) {
     unsigned char payload[ECP_SIZE_PLD(0)];
 
-    ecp_pld_set_type(payload, ECP_MTYPE_RBFLUSH_REQ);
+    ecp_pld_set_type(payload, ECP_MTYPE_RBFLUSH);
     return ecp_pld_send(conn, payload, sizeof(payload));
 }
 
@@ -50,7 +50,7 @@ static void cc_flush(ECPConnection *conn) {
     }
 }
 
-static ssize_t handle_ack(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size) {
+ssize_t ecp_rbuf_handle_ack(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size) {
     ECPRBSend *buf;
     ssize_t rsize = sizeof(ecp_seq_t)+sizeof(ecp_ack_t);
     ecp_seq_t seq_ack = 0;
@@ -158,13 +158,23 @@ int ecp_conn_rbuf_send_create(ECPConnection *conn, ECPRBSend *buf, ECPRBMessage 
     rv = ecp_rbuf_init(&buf->rbuf, msg, msg_size);
     if (rv) return rv;
 
-    conn->rbuf.send = buf;
+#ifdef ECP_WITH_PTHREAD
+    rv = pthread_mutex_init(&buf->mutex, NULL);
+    if (rv) return ECP_ERR;
+#endif
 
+    conn->rbuf.send = buf;
     return ECP_OK;
 }
 
 void ecp_conn_rbuf_send_destroy(ECPConnection *conn) {
+    ECPRBSend *buf = conn->rbuf.send;
     
+    if (buf == NULL) return;
+    
+#ifdef ECP_WITH_PTHREAD
+    pthread_mutex_destroy(&buf->mutex);
+#endif
 }
 
 int ecp_conn_rbuf_send_set_wsize(ECPConnection *conn, ecp_win_t size) {

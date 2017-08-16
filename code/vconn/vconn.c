@@ -471,14 +471,16 @@ int ecp_ctx_vconn_init(ECPContext *ctx) {
     ctx->pack_raw = vconn_pack_raw;
 
 #ifdef ECP_WITH_PTHREAD
-    pthread_mutex_init(&key_perma_mutex, NULL);
-    pthread_mutex_init(&key_next_mutex, NULL);
+    rv = pthread_mutex_init(&key_perma_mutex, NULL);
+    if (!rv) pthread_mutex_init(&key_next_mutex, NULL);
+    if (rv) return ECP_ERR;
 #endif
 
 #ifdef ECP_WITH_HTABLE
     if (ctx->ht.init) {
         key_perma_table = ctx->ht.create(ctx);
         key_next_table = ctx->ht.create(ctx);
+        if ((key_perma_table == NULL) || (key_next_table == NULL)) return ECP_ERR;
     }
 #endif
     

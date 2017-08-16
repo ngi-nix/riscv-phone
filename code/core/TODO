@@ -7,3 +7,7 @@
 rbuf:
 - implement _wait variants of open / send
 - consider adding one buffer for all msgs (frag. issue)
+
+should implement:
+- send flush (seq)
+- sending ack with congestion control
