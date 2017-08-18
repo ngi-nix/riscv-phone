@@ -79,7 +79,9 @@ int ecp_conn_msgq_push(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype) 
     ECPRBRecv *buf = conn->rbuf.recv;
     ECPConnMsgQ *msgq = buf ? &buf->msgq : NULL;
 
+    mtype &= ECP_MTYPE_MASK;
     if (msgq == NULL) return ECP_ERR;
+    if (mtype >= ECP_MAX_MTYPE) return ECP_ERR_MAX_MTYPE;
     
     if (msgq->idx_w[mtype] - msgq->idx_r[mtype] == ECP_MSGQ_MAX_MSG) return ECP_MSGQ_ERR_MAX_MSG;
     if (msgq->idx_w[mtype] == msgq->idx_r[mtype]) pthread_cond_signal(&msgq->cond[mtype]);

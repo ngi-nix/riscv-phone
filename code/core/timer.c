@@ -196,10 +196,9 @@ unsigned int ecp_timer_exe(ECPSocket *sock) {
                 _rv = retry(conn, to_exec+i);
                 if (_rv < 0) rv = _rv;
             } else {
-                _rv = ecp_pld_send(conn, pld, pld_size);
+                _rv = ecp_pld_send_wtimer(conn, to_exec+i, pld, pld_size);
                 if (_rv < 0) rv = _rv;
             }
-            if (!rv) rv = ecp_timer_push(to_exec+i);
             if (rv && (rv != ECP_ERR_CLOSED) && handler) handler(conn, 0, mtype, NULL, rv);
         } else if (handler) {
             handler(conn, 0, mtype, NULL, ECP_ERR_TIMEOUT);
@@ -224,8 +223,5 @@ ssize_t ecp_timer_send(ECPConnection *conn, ecp_timer_retry_t *send_f, unsigned 
     if (rv) return rv;
 
     ti.retry = send_f;
-    rv = ecp_timer_push(&ti);
-    if (rv) return rv;
-
-    return send_f(conn, NULL);
+    return send_f(conn, &ti);
 }
