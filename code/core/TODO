@@ -6,8 +6,6 @@
 
 rbuf:
 - implement _wait variants of open / send
+- msgq should subtract ECP_MTYPE_SYS from mtype
 - consider adding one buffer for all msgs (frag. issue)
 
-should implement:
-- send flush (seq)
-- sending ack with congestion control

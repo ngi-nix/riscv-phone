@@ -44,6 +44,12 @@ ssize_t ecp_rbuf_msg_store(ECPRBuffer *rbuf, ecp_seq_t seq, int idx, unsigned ch
     return msg_size;
 }
 
+int ecp_rbuf_info_init(ECPRBInfo *rbuf_info) {
+    memset(rbuf_info, 0, sizeof(ECPRBInfo));
+
+    return ECP_OK;
+}
+
 ssize_t ecp_rbuf_pld_send(ECPConnection *conn, unsigned char *payload, size_t payload_size, ecp_seq_t seq) {
     unsigned char packet[ECP_MAX_PKT];
     ECPSocket *sock = conn->sock;
@@ -64,79 +70,6 @@ ssize_t ecp_rbuf_pld_send(ECPConnection *conn, unsigned char *payload, size_t pa
     rv = ecp_pkt_send(sock, &addr, packet, rv);
     if (rv < 0) return rv;
 
-    return rv;
-}
-
-int ecp_rbuf_info_init(ECPRBInfo *rbuf_info) {
-    memset(rbuf_info, 0, sizeof(ECPRBInfo));
-
-    return ECP_OK;
-}
-
-int ecp_rbuf_pkt_prep(ECPRBSend *buf, ecp_seq_t seq, unsigned char mtype, ECPRBInfo *rbuf_info) {
-    if (buf == NULL) return ECP_ERR;
-    
-#ifdef ECP_WITH_PTHREAD
-    pthread_mutex_lock(&buf->mutex);
-#endif
-    int idx = ecp_rbuf_msg_idx(&buf->rbuf, seq);
-#ifdef ECP_WITH_PTHREAD
-    pthread_mutex_unlock(&buf->mutex);
-#endif
-
-    if (idx < 0) return idx;
-    
-    rbuf_info->seq = seq;
-    rbuf_info->idx = idx;
-    rbuf_info->mtype = mtype;
-    buf->rbuf.msg[idx].size = 0;
-    buf->rbuf.msg[idx].flags = 0;
-
-    return ECP_OK; 
-}
-
-ssize_t ecp_rbuf_pkt_send(ECPRBSend *buf, ECPSocket *sock, ECPNetAddr *addr, ECPTimerItem *ti, unsigned char *packet, size_t pkt_size, ECPRBInfo *rbuf_info) {
-    unsigned char flags = 0;
-    int do_send = 1;
-    ssize_t rv = 0;
-    ecp_seq_t seq = rbuf_info->seq;
-    unsigned int idx = rbuf_info->idx;
-    unsigned char mtype = rbuf_info->mtype & ECP_MTYPE_MASK;
-
-    if (mtype < ECP_MAX_MTYPE_SYS) flags |= ECP_RBUF_FLAG_SYS;
-
-    rv = ecp_rbuf_msg_store(&buf->rbuf, seq, idx, packet, pkt_size, 0, flags);
-    if (rv < 0) return rv;
-
-    if (buf->flags & ECP_RBUF_FLAG_CCONTROL) {
-#ifdef ECP_WITH_PTHREAD
-        pthread_mutex_lock(&buf->mutex);
-#endif
-
-        if (ECP_RBUF_SEQ_LT(buf->rbuf.seq_max, seq)) buf->rbuf.seq_max = seq;
-
-        if (buf->cnt_cc || (buf->in_transit >= buf->win_size)) {
-            if (!buf->cnt_cc) buf->seq_cc = seq;
-            buf->cnt_cc++;
-            buf->rbuf.msg[idx].flags |= ECP_RBUF_FLAG_IN_CCONTROL;
-            do_send = 0;
-        } else {
-            buf->in_transit++;
-        }
-        
-#ifdef ECP_WITH_PTHREAD
-        pthread_mutex_unlock(&buf->mutex);
-#endif
-    }
-
-    if (do_send) {
-        int _rv;
-        if (ti) {
-            _rv = ecp_timer_push(ti);
-            if (_rv) return _rv;
-        }
-        rv = ecp_pkt_send(sock, addr, packet, pkt_size);
-    }
     return rv;
 }
 

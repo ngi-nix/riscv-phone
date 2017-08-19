@@ -21,15 +21,16 @@ void ecp_timer_destroy(ECPTimer *timer) {
 }
 
 int ecp_timer_item_init(ECPTimerItem *ti, ECPConnection *conn, unsigned char mtype, unsigned short cnt, unsigned int timeout) {
-    unsigned int abstime = conn->sock->ctx->tm.abstime_ms(timeout);
-
     if ((mtype & ECP_MTYPE_MASK) >= ECP_MAX_MTYPE) return ECP_ERR_MAX_MTYPE;
+    
+    if (ti == NULL) return ECP_ERR;
+    if (conn == NULL) return ECP_ERR;
     
     ti->conn = conn;
     ti->mtype = mtype;
     ti->cnt = cnt-1;
     ti->timeout = timeout;
-    ti->abstime = abstime;
+    ti->abstime = 0;
     ti->retry = NULL;
     ti->pld = NULL;
     ti->pld_size = 0;
@@ -40,7 +41,10 @@ int ecp_timer_item_init(ECPTimerItem *ti, ECPConnection *conn, unsigned char mty
 int ecp_timer_push(ECPTimerItem *ti) {
     int i, is_reg, rv = ECP_OK;
     ECPConnection *conn = ti->conn;
+    ECPContext *ctx = conn->sock->ctx;
     ECPTimer *timer = &conn->sock->timer;
+    
+    ti->abstime = ctx->tm.abstime_ms(ti->timeout);
 
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&timer->mutex);
@@ -181,7 +185,6 @@ unsigned int ecp_timer_exe(ECPSocket *sock) {
     for (i=to_exec_size-1; i>=0; i--) {
         int rv = ECP_OK;
         ECPConnection *conn = to_exec[i].conn;
-        ECPSocket *sock = conn->sock;
         unsigned char mtype = to_exec[i].mtype;
         unsigned char *pld = to_exec[i].pld;
         unsigned char pld_size = to_exec[i].pld_size;
@@ -191,7 +194,6 @@ unsigned int ecp_timer_exe(ECPSocket *sock) {
         if (to_exec[i].cnt) {
             ssize_t _rv = 0;
             to_exec[i].cnt--;
-            to_exec[i].abstime = now + to_exec[i].timeout;
             if (retry) {
                 _rv = retry(conn, to_exec+i);
                 if (_rv < 0) rv = _rv;
@@ -203,6 +205,7 @@ unsigned int ecp_timer_exe(ECPSocket *sock) {
         } else if (handler) {
             handler(conn, 0, mtype, NULL, ECP_ERR_TIMEOUT);
         }
+
 #ifdef ECP_WITH_PTHREAD
         pthread_mutex_lock(&conn->mutex);
 #endif
@@ -210,6 +213,7 @@ unsigned int ecp_timer_exe(ECPSocket *sock) {
 #ifdef ECP_WITH_PTHREAD
         pthread_mutex_unlock(&conn->mutex);
 #endif
+
     }
 
     return ret;

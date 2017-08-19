@@ -26,6 +26,7 @@ static ECPConnection *h_search(void *h, unsigned char *k) {
     return hashtable_search(h, k);
 }
 
+#ifdef ECP_WITH_HTABLE
 int ecp_htable_init(ECPHTableIface *h) {
     h->init = 1;
     h->create = h_create;
@@ -35,3 +36,4 @@ int ecp_htable_init(ECPHTableIface *h) {
     h->search = h_search;
     return ECP_OK;
 }
+#endif
