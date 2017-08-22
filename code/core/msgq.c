@@ -89,7 +89,7 @@ int ecp_conn_msgq_push(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype) 
     msgq->seq_msg[mtype][MSG_IDX_MASK(msgq->idx_w[mtype])] = seq;
     msgq->idx_w[mtype]++;
 
-    if (ECP_RBUF_SEQ_LT(msgq->seq_max, seq)) msgq->seq_max = seq;
+    if (ECP_SEQ_LT(msgq->seq_max, seq)) msgq->seq_max = seq;
     
     return ECP_OK;
 }

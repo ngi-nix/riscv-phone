@@ -13,16 +13,7 @@
 #define ECP_ERR_RBUF_DUP            -100
 #define ECP_ERR_RBUF_FULL           -101
 
-typedef uint32_t ecp_ack_t;
 typedef uint32_t ecp_win_t;
-
-#define ECP_RBUF_SEQ_HALF               ((ecp_seq_t)1 << (sizeof(ecp_seq_t)*8-1))
-
-#define ECP_RBUF_ACK_FULL               (~(ecp_ack_t)0)
-#define ECP_RBUF_ACK_SIZE               (sizeof(ecp_ack_t)*8)
-
-#define ECP_RBUF_SEQ_LT(a,b)            ((ecp_seq_t)((ecp_seq_t)(a) - (ecp_seq_t)(b)) > ECP_RBUF_SEQ_HALF)
-#define ECP_RBUF_SEQ_LTE(a,b)           ((ecp_seq_t)((ecp_seq_t)(b) - (ecp_seq_t)(a)) < ECP_RBUF_SEQ_HALF)
 
 /* size must be power of 2 */
 #define ECP_RBUF_IDX_MASK(idx, size)    ((idx) & ((size) - 1))

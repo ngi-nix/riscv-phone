@@ -74,6 +74,8 @@
 #define ECP_CONN_FLAG_REG           0x01
 #define ECP_CONN_FLAG_OPEN          0x02
 
+#define ECP_MAX_SEQ_FORWARD         1024
+
 #define ecp_conn_is_reg(conn)       ((conn->flags) & ECP_CONN_FLAG_REG)
 #define ecp_conn_is_open(conn)      ((conn->flags) & ECP_CONN_FLAG_OPEN)
 
@@ -83,7 +85,15 @@
 #include <stdint.h>
 
 typedef long ssize_t;
+
+typedef uint32_t ecp_ack_t;
+#define ECP_SIZE_ACKB               (sizeof(ecp_ack_t)*8)
+#define ECP_ACK_FULL                (~(ecp_ack_t)0)
+
 typedef uint32_t ecp_seq_t;
+#define ECP_SEQ_HALF                ((ecp_seq_t)1 << (sizeof(ecp_seq_t) * 8 - 1))
+#define ECP_SEQ_LT(a,b)             ((ecp_seq_t)((ecp_seq_t)(a) - (ecp_seq_t)(b)) > ECP_SEQ_HALF)
+#define ECP_SEQ_LTE(a,b)            ((ecp_seq_t)((ecp_seq_t)(b) - (ecp_seq_t)(a)) < ECP_SEQ_HALF)
 
 #ifdef ECP_WITH_PTHREAD
 #include <pthread.h>
@@ -251,7 +261,7 @@ typedef struct ECPConnection {
     unsigned short refcount;
     ecp_seq_t seq_out;
     ecp_seq_t seq_in;
-    uint32_t seq_in_bitmap;
+    ecp_ack_t seq_in_map;
     ECPSocket *sock;
     ECPNode node;
     ECPDHRKeyBucket remote;

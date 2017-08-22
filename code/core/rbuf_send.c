@@ -109,23 +109,23 @@ ssize_t ecp_rbuf_handle_ack(ECPConnection *conn, ecp_seq_t seq, unsigned char mt
         seq_ack++;
         if (buf->flags & ECP_RBUF_FLAG_CCONTROL) buf->in_transit = buf->cnt_cc ? buf->seq_cc - seq_ack : rbuf->seq_max - seq_ack + 1;
 
-        if (ack_map != ECP_RBUF_ACK_FULL) {
+        if (ack_map != ECP_ACK_FULL) {
             int nack_first = 0;
             unsigned int msg_start;
             ecp_seq_t seq_start;
             ecp_win_t nack_cnt = 0;
             
-            seq_ack -= ECP_RBUF_ACK_SIZE;
+            seq_ack -= ECP_SIZE_ACKB;
 
 #ifdef ECP_WITH_PTHREAD
             pthread_mutex_unlock(&buf->mutex);
 #endif
             
-            for (i=0; i<ECP_RBUF_ACK_SIZE; i++) {
-                if ((ack_map & ((ecp_ack_t)1 << (ECP_RBUF_ACK_SIZE - i - 1))) == 0) {
+            for (i=0; i<ECP_SIZE_ACKB; i++) {
+                if ((ack_map & ((ecp_ack_t)1 << (ECP_SIZE_ACKB - i - 1))) == 0) {
                     nack_cnt++;
                     if (buf->flags & ECP_RBUF_FLAG_RELIABLE) {
-                        unsigned int _idx = ECP_RBUF_IDX_MASK(idx + 1 - ECP_RBUF_ACK_SIZE + i, rbuf->msg_size);
+                        unsigned int _idx = ECP_RBUF_IDX_MASK(idx + 1 - ECP_SIZE_ACKB + i, rbuf->msg_size);
                         if ((rbuf->msg[_idx].size == 0) || (rbuf->msg[_idx].flags & ECP_RBUF_FLAG_SYS)) {
                             unsigned char payload[ECP_SIZE_PLD(0)];
                             ecp_pld_set_type(payload, ECP_MTYPE_NOP);
@@ -147,12 +147,12 @@ ssize_t ecp_rbuf_handle_ack(ECPConnection *conn, ecp_seq_t seq, unsigned char mt
 #endif
 
             if (buf->flags & ECP_RBUF_FLAG_CCONTROL) buf->in_transit += nack_cnt;
-            buf->nack_rate = (buf->nack_rate * 7 + ((ECP_RBUF_ACK_SIZE - nack_cnt) * NACK_RATE_UNIT) / ECP_RBUF_ACK_SIZE) / 8;
+            buf->nack_rate = (buf->nack_rate * 7 + ((ECP_SIZE_ACKB - nack_cnt) * NACK_RATE_UNIT) / ECP_SIZE_ACKB) / 8;
             if (buf->flags & ECP_RBUF_FLAG_RELIABLE) {
                 rbuf->seq_start = seq_start;
                 rbuf->msg_start = msg_start;
             } else {
-                rbuf->seq_start = seq_ack + ECP_RBUF_ACK_SIZE;
+                rbuf->seq_start = seq_ack + ECP_SIZE_ACKB;
                 rbuf->msg_start = ECP_RBUF_IDX_MASK(idx + 1, rbuf->msg_size);
             }
         } else {
@@ -161,7 +161,7 @@ ssize_t ecp_rbuf_handle_ack(ECPConnection *conn, ecp_seq_t seq, unsigned char mt
             rbuf->msg_start = ECP_RBUF_IDX_MASK(idx + 1, rbuf->msg_size);
         }
         if (buf->flush) {
-            if (ECP_RBUF_SEQ_LT(buf->seq_flush, rbuf->seq_start)) buf->flush = 0;
+            if (ECP_SEQ_LT(buf->seq_flush, rbuf->seq_start)) buf->flush = 0;
             if (buf->flush) do_flush = 1;
         }
         if (buf->cnt_cc) cc_flush(conn);
@@ -253,7 +253,7 @@ int ecp_rbuf_flush(ECPConnection *conn) {
 #endif
 
     if (buf->flush) {
-        if (ECP_RBUF_SEQ_LT(buf->seq_flush, seq)) buf->seq_flush = seq;
+        if (ECP_SEQ_LT(buf->seq_flush, seq)) buf->seq_flush = seq;
     } else {
         buf->flush = 1;
         buf->seq_flush = seq;
@@ -309,7 +309,7 @@ ssize_t ecp_rbuf_pkt_send(ECPRBSend *buf, ECPSocket *sock, ECPNetAddr *addr, ECP
         pthread_mutex_lock(&buf->mutex);
 #endif
 
-        if (ECP_RBUF_SEQ_LT(buf->rbuf.seq_max, seq)) buf->rbuf.seq_max = seq;
+        if (ECP_SEQ_LT(buf->rbuf.seq_max, seq)) buf->rbuf.seq_max = seq;
 
         if (buf->cnt_cc || (buf->in_transit >= buf->win_size)) {
             if (!buf->cnt_cc) buf->seq_cc = seq;

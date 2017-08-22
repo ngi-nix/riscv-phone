@@ -9,7 +9,7 @@ int ecp_rbuf_init(ECPRBuffer *rbuf, ECPRBMessage *msg, unsigned int msg_size) {
         rbuf->msg_size = msg_size;
         memset(rbuf->msg, 0, sizeof(ECPRBMessage) * msg_size);
     } else {
-        rbuf->msg_size = ECP_RBUF_SEQ_HALF;
+        rbuf->msg_size = ECP_SEQ_HALF;
     }
 
     return ECP_OK;

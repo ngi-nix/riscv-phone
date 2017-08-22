@@ -1,6 +1,6 @@
 + check for nonce
++ check for seq
 
-- check for seq (without rbuf)
 - memzero keys after usage
 - implement socket message queue
 
