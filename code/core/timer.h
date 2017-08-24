@@ -8,8 +8,6 @@
 #include <pthread.h>
 #endif
 
-struct ECPConnection;
-struct ECPSocket;
 struct ECPTimerItem;
 
 typedef ssize_t ecp_timer_retry_t (struct ECPConnection *, struct ECPTimerItem *);

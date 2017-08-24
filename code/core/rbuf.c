@@ -44,27 +44,22 @@ ssize_t ecp_rbuf_msg_store(ECPRBuffer *rbuf, ecp_seq_t seq, int idx, unsigned ch
     return msg_size;
 }
 
-int ecp_rbuf_info_init(ECPRBInfo *rbuf_info) {
-    memset(rbuf_info, 0, sizeof(ECPRBInfo));
-
-    return ECP_OK;
-}
-
 ssize_t ecp_rbuf_pld_send(ECPConnection *conn, unsigned char *payload, size_t payload_size, ecp_seq_t seq) {
     unsigned char packet[ECP_MAX_PKT];
     ECPSocket *sock = conn->sock;
     ECPContext *ctx = sock->ctx;
     ECPNetAddr addr;
-    ECPRBInfo rbuf_info;
+    ECPSeqItem seq_item;
     ssize_t rv;
     
-    int _rv = ecp_rbuf_info_init(&rbuf_info);
+    int _rv = ecp_seq_item_init(&seq_item);
     if (_rv) return _rv;
     
-    rbuf_info.seq = seq;
-    rbuf_info.seq_force = 1;
+    seq_item.seq = seq;
+    seq_item.seq_w = 1;
+    seq_item.rb_pass = 1;
 
-    rv = ctx->pack(conn, packet, ECP_MAX_PKT, ECP_ECDH_IDX_INV, ECP_ECDH_IDX_INV, payload, payload_size, &addr, &rbuf_info);
+    rv = ctx->pack(conn, packet, ECP_MAX_PKT, ECP_ECDH_IDX_INV, ECP_ECDH_IDX_INV, payload, payload_size, &seq_item, &addr);
     if (rv < 0) return rv;
 
     rv = ecp_pkt_send(sock, &addr, packet, rv);

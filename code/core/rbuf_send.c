@@ -269,35 +269,31 @@ int ecp_rbuf_flush(ECPConnection *conn) {
     return ECP_OK;
 }
 
-int ecp_rbuf_pkt_prep(ECPRBSend *buf, ecp_seq_t seq, unsigned char mtype, ECPRBInfo *rbuf_info) {
-    if (buf == NULL) return ECP_ERR;
-    
+int ecp_rbuf_pkt_prep(ECPRBSend *buf, ECPSeqItem *si) {
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&buf->mutex);
 #endif
-    int idx = ecp_rbuf_msg_idx(&buf->rbuf, seq);
+    int idx = ecp_rbuf_msg_idx(&buf->rbuf, si->seq);
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_unlock(&buf->mutex);
 #endif
 
     if (idx < 0) return idx;
     
-    rbuf_info->seq = seq;
-    rbuf_info->idx = idx;
-    rbuf_info->mtype = mtype;
+    si->rb_idx = idx;
     buf->rbuf.msg[idx].size = 0;
     buf->rbuf.msg[idx].flags = 0;
 
     return ECP_OK; 
 }
 
-ssize_t ecp_rbuf_pkt_send(ECPRBSend *buf, ECPSocket *sock, ECPNetAddr *addr, ECPTimerItem *ti, unsigned char *packet, size_t pkt_size, ECPRBInfo *rbuf_info) {
+ssize_t ecp_rbuf_pkt_send(ECPRBSend *buf, ECPSocket *sock, ECPNetAddr *addr, ECPTimerItem *ti, ECPSeqItem *si, unsigned char *packet, size_t pkt_size) {
     unsigned char flags = 0;
     int do_send = 1;
     ssize_t rv = 0;
-    ecp_seq_t seq = rbuf_info->seq;
-    unsigned int idx = rbuf_info->idx;
-    unsigned char mtype = rbuf_info->mtype & ECP_MTYPE_MASK;
+    ecp_seq_t seq = si->seq;
+    unsigned int idx = si->rb_idx;
+    unsigned char mtype = si->rb_mtype & ECP_MTYPE_MASK;
 
     if (mtype < ECP_MAX_MTYPE_SYS) flags |= ECP_RBUF_FLAG_SYS;
 

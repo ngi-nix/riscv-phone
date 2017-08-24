@@ -395,7 +395,7 @@ static ssize_t vconn_set_msg(ECPConnection *conn, unsigned char *pld_out, size_t
 }
 
 
-static ssize_t vconn_pack(ECPConnection *conn, unsigned char *packet, size_t pkt_size, unsigned char s_idx, unsigned char c_idx, unsigned char *payload, size_t payload_size, ECPNetAddr *addr, void *_rbuf_info) {
+static ssize_t vconn_pack(ECPConnection *conn, unsigned char *packet, size_t pkt_size, unsigned char s_idx, unsigned char c_idx, unsigned char *payload, size_t payload_size, ECPSeqItem *si, ECPNetAddr *addr) {
     ECPContext *ctx = conn->sock->ctx;
 
     if (conn->parent) {
@@ -403,12 +403,12 @@ static ssize_t vconn_pack(ECPConnection *conn, unsigned char *packet, size_t pkt
         ssize_t rv, hdr_size = vconn_set_msg(conn->parent, payload_, sizeof(payload_), payload, payload_size);
         if (hdr_size < 0) return hdr_size;
 
-        rv = ecp_conn_pack(conn, payload_+hdr_size, ECP_MAX_PLD-hdr_size, s_idx, c_idx, payload, payload_size, NULL, _rbuf_info);
+        rv = ecp_conn_pack(conn, payload_+hdr_size, ECP_MAX_PLD-hdr_size, s_idx, c_idx, payload, payload_size, si, NULL);
         if (rv < 0) return rv;
 
-        return vconn_pack(conn->parent, packet, pkt_size, ECP_ECDH_IDX_INV, ECP_ECDH_IDX_INV, payload_, rv+hdr_size, addr, NULL);
+        return vconn_pack(conn->parent, packet, pkt_size, ECP_ECDH_IDX_INV, ECP_ECDH_IDX_INV, payload_, rv+hdr_size, NULL, addr);
     } else {
-        return ecp_conn_pack(conn, packet, pkt_size, s_idx, c_idx, payload, payload_size, addr, _rbuf_info);
+        return ecp_conn_pack(conn, packet, pkt_size, s_idx, c_idx, payload, payload_size, si, addr);
     }
 }
 
@@ -423,7 +423,7 @@ static ssize_t vconn_pack_raw(ECPSocket *sock, ECPConnection *parent, unsigned c
         rv = ecp_pack(ctx, payload_+hdr_size, ECP_MAX_PLD-hdr_size, s_idx, c_idx, public, shsec, nonce, seq, payload, payload_size);
         if (rv < 0) return rv;
 
-        return vconn_pack(parent, packet, pkt_size, ECP_ECDH_IDX_INV, ECP_ECDH_IDX_INV, payload_, rv+hdr_size, addr, NULL);
+        return vconn_pack(parent, packet, pkt_size, ECP_ECDH_IDX_INV, ECP_ECDH_IDX_INV, payload_, rv+hdr_size, NULL, addr);
     } else {
         return ecp_pack(ctx, packet, pkt_size, s_idx, c_idx, public, shsec, nonce, seq, payload, payload_size);
     }
