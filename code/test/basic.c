@@ -29,8 +29,8 @@ ssize_t handle_open_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsign
         return s;
     }
     
-    unsigned char payload[ECP_SIZE_PLD(1000)];
-    unsigned char *buf = ecp_pld_get_buf(payload);
+    unsigned char payload[ECP_SIZE_PLD(1000, 0)];
+    unsigned char *buf = ecp_pld_get_buf(payload, 0);
     char *msg = "PERA JE CAR!";
 
     ecp_pld_set_type(payload, MTYPE_MSG);
@@ -47,8 +47,8 @@ ssize_t handle_msg_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigne
 ssize_t handle_msg_s(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s) {
     printf("MSG S:%s size:%ld\n", p, s);
 
-    unsigned char payload[ECP_SIZE_PLD(1000)];
-    unsigned char *buf = ecp_pld_get_buf(payload);
+    unsigned char payload[ECP_SIZE_PLD(1000, 0)];
+    unsigned char *buf = ecp_pld_get_buf(payload, 0);
     char *msg = "VAISTINU JE CAR!";
 
     ecp_pld_set_type(payload, MTYPE_MSG);

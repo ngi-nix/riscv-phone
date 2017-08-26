@@ -20,7 +20,7 @@ void ecp_timer_destroy(ECPTimer *timer) {
 #endif
 }
 
-int ecp_timer_item_init(ECPTimerItem *ti, ECPConnection *conn, unsigned char mtype, unsigned short cnt, unsigned int timeout) {
+int ecp_timer_item_init(ECPTimerItem *ti, ECPConnection *conn, unsigned char mtype, short cnt, ecp_cts_t timeout) {
     if ((mtype & ECP_MTYPE_MASK) >= ECP_MAX_MTYPE) return ECP_ERR_MAX_MTYPE;
     
     if (ti == NULL) return ECP_ERR;
@@ -61,7 +61,7 @@ int ecp_timer_push(ECPTimerItem *ti) {
 
     if (!rv) {
         for (i=timer->head; i>=0; i--) {
-            if (timer->item[i].abstime >= ti->abstime) {
+            if (ECP_CTS_LTE(ti->abstime, timer->item[i].abstime)) {
                 if (i != timer->head) memmove(timer->item+i+2, timer->item+i+1, sizeof(ECPTimerItem) * (timer->head-i));
                 timer->item[i+1] = *ti;
                 timer->head++;
@@ -151,22 +151,22 @@ void ecp_timer_remove(ECPConnection *conn) {
     
 }
 
-unsigned int ecp_timer_exe(ECPSocket *sock) {
+ecp_cts_t ecp_timer_exe(ECPSocket *sock) {
     int i;
-    unsigned int ret = 0;
+    ecp_cts_t ret = 0;
     ECPTimer *timer = &sock->timer;
     ECPTimerItem to_exec[ECP_MAX_TIMER];
     int to_exec_size = 0;
-    unsigned int now = sock->ctx->tm.abstime_ms(0);
+    ecp_cts_t now = sock->ctx->tm.abstime_ms(0);
 
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&timer->mutex);
 #endif
 
     for (i=timer->head; i>=0; i--) {
-        unsigned int abstime = timer->item[i].abstime;
+        ecp_cts_t abstime = timer->item[i].abstime;
 
-        if (abstime > now) {
+        if (ECP_CTS_LT(now, abstime)) {
             ret = abstime - now;
             break;
         }
@@ -191,7 +191,7 @@ unsigned int ecp_timer_exe(ECPSocket *sock) {
         ecp_timer_retry_t *retry = to_exec[i].retry;
         ecp_conn_handler_msg_t *handler = conn->sock->ctx->handler[conn->type] ? conn->sock->ctx->handler[conn->type]->msg[mtype & ECP_MTYPE_MASK] : NULL;
         
-        if (to_exec[i].cnt) {
+        if (to_exec[i].cnt > 0) {
             ssize_t _rv = 0;
             to_exec[i].cnt--;
             if (retry) {
@@ -219,7 +219,7 @@ unsigned int ecp_timer_exe(ECPSocket *sock) {
     return ret;
 }
 
-ssize_t ecp_timer_send(ECPConnection *conn, ecp_timer_retry_t *send_f, unsigned char mtype, unsigned short cnt, unsigned int timeout) {
+ssize_t ecp_timer_send(ECPConnection *conn, ecp_timer_retry_t *send_f, unsigned char mtype, short cnt, ecp_cts_t timeout) {
     int rv = ECP_OK;
     ECPTimerItem ti;
 

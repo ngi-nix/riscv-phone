@@ -9,7 +9,7 @@
 
 #define MSG_IDX_MASK(idx)    ((idx) & ((ECP_MSGQ_MAX_MSG) - 1))
 
-static struct timespec *abstime_ts(struct timespec *ts, unsigned int msec) {
+static struct timespec *abstime_ts(struct timespec *ts, ecp_cts_t msec) {
     struct timeval tv;
     uint64_t us_start;
     
@@ -94,7 +94,7 @@ int ecp_conn_msgq_push(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype) 
     return ECP_OK;
 }
 
-ssize_t ecp_conn_msgq_pop(ECPConnection *conn, unsigned char mtype, unsigned char *msg, size_t msg_size, unsigned int timeout) {
+ssize_t ecp_conn_msgq_pop(ECPConnection *conn, unsigned char mtype, unsigned char *msg, size_t msg_size, ecp_cts_t timeout) {
     ECPRBRecv *buf = conn->rbuf.recv;
     ECPConnMsgQ *msgq = buf ? &buf->msgq : NULL;
     ssize_t rv = ECP_OK;

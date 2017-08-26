@@ -8,8 +8,10 @@
 #define ECP_ERR_MAX_MTYPE           -12
 #define ECP_ERR_MIN_PKT             -13
 #define ECP_ERR_MAX_PLD             -14
+// XXX ???
 #define ECP_ERR_MIN_MSG             -15
 #define ECP_ERR_MAX_MSG             -16
+//
 #define ECP_ERR_NET_ADDR            -17
 
 #define ECP_ERR_CONN_NOT_FOUND      -20
@@ -40,21 +42,21 @@
 
 #define ECP_SIZE_PKT_HDR            (ECP_SIZE_PROTO+1+ECP_ECDH_SIZE_KEY+ECP_AEAD_SIZE_NONCE)
 #define ECP_SIZE_PLD_HDR            (ECP_SIZE_SEQ)
-#define ECP_SIZE_MSG_HDR            (ECP_SIZE_PLD_HDR+1)
 
 #define ECP_MAX_PKT                 1412
 #define ECP_MAX_PLD                 (ECP_MAX_PKT-ECP_SIZE_PKT_HDR-ECP_AEAD_SIZE_TAG)
-#define ECP_MAX_MSG                 (ECP_MAX_PLD-ECP_SIZE_MSG_HDR)
+#define ECP_MAX_MSG                 (ECP_MAX_PLD-ECP_SIZE_PLD_HDR-1)
 
-#define ECP_MIN_PKT                 (ECP_SIZE_PKT_HDR+ECP_SIZE_MSG_HDR+ECP_AEAD_SIZE_TAG)
+#define ECP_MIN_PKT                 (ECP_SIZE_PKT_HDR+ECP_SIZE_PLD_HDR+1+ECP_AEAD_SIZE_TAG)
 
 #define ECP_POLL_TIMEOUT            500
 #define ECP_ECDH_IDX_INV            0xFF
 #define ECP_ECDH_IDX_PERMA          0x0F
 
-#define ECP_MTYPE_MASK              0x3f
-#define ECP_MTYPE_FLAG_TIMER        0x80
-#define ECP_MTYPE_FLAG_REP          0x40
+#define ECP_MTYPE_FLAG_FRAG         0x80
+#define ECP_MTYPE_FLAG_PTS          0x40
+#define ECP_MTYPE_FLAG_REP          0x20
+#define ECP_MTYPE_MASK              0x1f
 
 #define ECP_MTYPE_OPEN              0x00
 #define ECP_MTYPE_KGET              0x01
@@ -67,9 +69,6 @@
 #define ECP_MTYPE_KGET_REP          (ECP_MTYPE_KGET | ECP_MTYPE_FLAG_REP)
 #define ECP_MTYPE_KPUT_REQ          (ECP_MTYPE_KPUT)
 #define ECP_MTYPE_KPUT_REP          (ECP_MTYPE_KPUT | ECP_MTYPE_FLAG_REP)
-
-#define ECP_SIZE_PLD(X)             ((X) + ECP_SIZE_MSG_HDR)
-#define ECP_SIZE_PKT(X)             ((X) + ECP_SIZE_PKT_HDR+ECP_SIZE_MSG_HDR+ECP_AEAD_SIZE_TAG)
 
 #define ECP_CONN_FLAG_REG           0x01
 #define ECP_CONN_FLAG_OPEN          0x02
@@ -94,10 +93,26 @@ typedef uint32_t ecp_ack_t;
 #define ECP_SIZE_ACKB               (sizeof(ecp_ack_t)*8)
 #define ECP_ACK_FULL                (~(ecp_ack_t)0)
 
+typedef uint32_t ecp_cts_t;
+#define ECP_CTS_HALF                ((ecp_cts_t)1 << (sizeof(ecp_cts_t) * 8 - 1))
+#define ECP_CTS_LT(a, b)            ((ecp_cts_t)((ecp_cts_t)(a) - (ecp_cts_t)(b)) > ECP_CTS_HALF)
+#define ECP_CTS_LTE(a,b)            ((ecp_cts_t)((ecp_cts_t)(b) - (ecp_cts_t)(a)) < ECP_CTS_HALF)
+
+typedef uint32_t ecp_pts_t;
+#define ECP_PTS_HALF                ((ecp_pts_t)1 << (sizeof(ecp_pts_t) * 8 - 1))
+#define ECP_PTS_LT(a, b)            ((ecp_pts_t)((ecp_pts_t)(a) - (ecp_pts_t)(b)) > ECP_PTS_HALF)
+#define ECP_PTS_LTE(a,b)            ((ecp_pts_t)((ecp_pts_t)(b) - (ecp_pts_t)(a)) < ECP_PTS_HALF)
+
 typedef uint32_t ecp_seq_t;
 #define ECP_SEQ_HALF                ((ecp_seq_t)1 << (sizeof(ecp_seq_t) * 8 - 1))
 #define ECP_SEQ_LT(a,b)             ((ecp_seq_t)((ecp_seq_t)(a) - (ecp_seq_t)(b)) > ECP_SEQ_HALF)
 #define ECP_SEQ_LTE(a,b)            ((ecp_seq_t)((ecp_seq_t)(b) - (ecp_seq_t)(a)) < ECP_SEQ_HALF)
+
+
+#define ECP_SIZE_FRAG(F)            ((F) & ECP_MTYPE_FLAG_FRAG ? 2 : 0)
+#define ECP_SIZE_PTS(F)             ((F) & ECP_MTYPE_FLAG_PTS ? sizeof(ecp_pts_t) : 0)
+#define ECP_SIZE_PLD(X,F)           ((X) + ECP_SIZE_PLD_HDR+1+ECP_SIZE_FRAG(F)+ECP_SIZE_PTS(F))
+#define ECP_SIZE_PKT(X,F)           (ECP_SIZE_PKT_HDR+ECP_SIZE_PLD(X,F)+ECP_AEAD_SIZE_TAG)
 
 #ifdef ECP_WITH_PTHREAD
 #include <pthread.h>
@@ -165,8 +180,8 @@ typedef struct ECPTransportIface {
 
 typedef struct ECPTimeIface {
     int init;
-    unsigned int (*abstime_ms) (unsigned int);
-    void (*sleep_ms) (unsigned int);
+    ecp_cts_t (*abstime_ms) (ecp_cts_t);
+    void (*sleep_ms) (ecp_cts_t);
 } ECPTimeIface;
 
 #ifdef ECP_WITH_HTABLE
@@ -255,7 +270,7 @@ typedef struct ECPContext {
 typedef struct ECPSocket {
     ECPContext *ctx;
     unsigned char running;
-    unsigned int poll_timeout;
+    int poll_timeout;
     ECPNetSock sock;
     ECPDHKey key_perma;
     ECPDHKey key[ECP_MAX_SOCK_KEY];
@@ -325,7 +340,7 @@ void ecp_conn_unregister(ECPConnection *conn);
 
 int ecp_conn_init(ECPConnection *conn, ECPNode *node);
 int ecp_conn_open(ECPConnection *conn, ECPNode *node);
-int ecp_conn_close(ECPConnection *conn, unsigned int timeout);
+int ecp_conn_close(ECPConnection *conn, ecp_cts_t timeout);
 
 int ecp_conn_handler_init(ECPConnHandler *handler);
 ssize_t ecp_conn_send_open(ECPConnection *conn);
@@ -349,16 +364,21 @@ ssize_t ecp_pkt_recv(ECPSocket *sock, ECPNetAddr *addr, unsigned char *packet, s
 
 ssize_t ecp_msg_handle(ECPConnection *conn, ecp_seq_t seq, unsigned char *msg, size_t msg_size);
 int ecp_seq_item_init(ECPSeqItem *seq_item);
-unsigned char *ecp_pld_get_buf(unsigned char *payload);
 void ecp_pld_set_type(unsigned char *payload, unsigned char mtype);
+unsigned char *ecp_pld_get_buf(unsigned char *payload, unsigned char mtype);
 unsigned char ecp_pld_get_type(unsigned char *payload);
+unsigned char ecp_msg_get_type(unsigned char *msg);
+unsigned char *ecp_msg_get_content(unsigned char *msg, size_t msg_size);
+int ecp_msg_get_frag(unsigned char *msg, size_t msg_size, unsigned char *frag_cnt, unsigned char *frag_tot);
+int ecp_msg_get_pts(unsigned char *msg, size_t msg_size, ecp_pts_t *pts);
+
 ssize_t ecp_pld_send(ECPConnection *conn, unsigned char *payload, size_t payload_size);
 ssize_t ecp_pld_send_wtimer(ECPConnection *conn, ECPTimerItem *ti, unsigned char *payload, size_t payload_size);
 ssize_t ecp_pld_send_ll(ECPConnection *conn, ECPTimerItem *ti, unsigned char s_idx, unsigned char c_idx, unsigned char *payload, size_t payload_size);
 ssize_t ecp_pld_send_raw(ECPSocket *sock, ECPConnection *parent, ECPNetAddr *addr, unsigned char s_idx, unsigned char c_idx, ecp_dh_public_t *public, ecp_aead_key_t *shsec, unsigned char *nonce, ecp_seq_t seq, unsigned char *payload, size_t payload_size);
 
 ssize_t ecp_send(ECPConnection *conn, unsigned char *payload, size_t payload_size);
-ssize_t ecp_receive(ECPConnection *conn, unsigned char mtype, unsigned char *msg, size_t msg_size, unsigned int timeout);
+ssize_t ecp_receive(ECPConnection *conn, unsigned char mtype, unsigned char *msg, size_t msg_size, ecp_cts_t timeout);
 
 int ecp_receiver(ECPSocket *sock);
 int ecp_start_receiver(ECPSocket *sock);

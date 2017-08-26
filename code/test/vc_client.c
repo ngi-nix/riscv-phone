@@ -31,8 +31,8 @@ ssize_t handle_open(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned
     
     printf("OPEN!\n");
 
-    unsigned char payload[ECP_SIZE_PLD(1000)];
-    unsigned char *buf = ecp_pld_get_buf(payload);
+    unsigned char payload[ECP_SIZE_PLD(1000, 0)];
+    unsigned char *buf = ecp_pld_get_buf(payload, 0);
     char *msg = "PERA JE CAR!";
 
     ecp_pld_set_type(payload, MTYPE_MSG);

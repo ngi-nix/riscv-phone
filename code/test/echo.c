@@ -15,7 +15,7 @@ ECPConnHandler handler_s;
 #define MTYPE_MSG   8
 
 ssize_t handle_msg_s(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s) {
-    ssize_t rv = ecp_send(conn, p-ECP_SIZE_MSG_HDR, ECP_SIZE_MSG_HDR+s);
+    ssize_t rv = ecp_send(conn, p-ECP_SIZE_PLD_HDR-1, ECP_SIZE_PLD_HDR+1+s);
 
     return s;
 }

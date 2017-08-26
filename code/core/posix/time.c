@@ -3,16 +3,16 @@
 
 #include <core.h>
 
-static unsigned int t_abstime_ms(unsigned int msec) {
+static ecp_cts_t t_abstime_ms(ecp_cts_t msec) {
     struct timeval tv;
-    unsigned int ms_now;
+    ecp_cts_t ms_now;
     
     gettimeofday(&tv, NULL);
     ms_now = tv.tv_sec * 1000 + tv.tv_usec / 1000;
     return ms_now + msec;
 }
 
-static void t_sleep_ms(unsigned int msec) {
+static void t_sleep_ms(ecp_cts_t msec) {
     usleep(msec*1000);
 }
 

@@ -77,7 +77,7 @@ static void catchINFO(int sig) {
 
 void *sender(ECPConnection *c) {
     int idx = (int)(c->conn_data);
-    unsigned char payload[ECP_SIZE_PLD(1000)];
+    unsigned char payload[ECP_SIZE_PLD(1000, 0)];
     
     printf("OPEN:%d\n", idx);
     while(1) {
@@ -112,7 +112,7 @@ ssize_t handle_open_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsign
 
 ssize_t handle_msg_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s) {
     int idx = (int)(conn->conn_data);
-    unsigned char payload[ECP_SIZE_PLD(1000)];
+    unsigned char payload[ECP_SIZE_PLD(1000, 0)];
 
     if (c_start) {
         pthread_mutex_lock(&t_mtx[idx]);
@@ -126,7 +126,7 @@ ssize_t handle_msg_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigne
 }
 
 ssize_t handle_msg_s(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s) {
-    unsigned char payload[ECP_SIZE_PLD(1000)];
+    unsigned char payload[ECP_SIZE_PLD(1000, 0)];
     ecp_pld_set_type(payload, MTYPE_MSG);
     ssize_t _rv = ecp_send(conn, payload, sizeof(payload));
     return s;

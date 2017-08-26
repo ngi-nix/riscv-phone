@@ -70,7 +70,7 @@ static void vconn_destroy(ECPConnection *conn) {
 }
 
 static ssize_t _vconn_send_open(ECPConnection *conn, ECPTimerItem *ti) {
-    unsigned char payload[ECP_SIZE_PLD(0)];
+    unsigned char payload[ECP_SIZE_PLD(0, 0)];
 
     ecp_pld_set_type(payload, ECP_MTYPE_KGET_REQ);
     return ecp_pld_send_ll(conn, ti, ECP_ECDH_IDX_PERMA, ECP_ECDH_IDX_INV, payload, sizeof(payload));
@@ -185,9 +185,9 @@ static ssize_t vconn_handle_relay(ECPConnection *conn, ecp_seq_t seq, unsigned c
 
     if (conn_out == NULL) return ECP_ERR;
     
-    payload = msg - ECP_SIZE_MSG_HDR;
+    payload = msg - ECP_SIZE_PLD_HDR - 1;
     ecp_pld_set_type(payload, ECP_MTYPE_EXEC);
-    rv = ecp_pld_send(conn_out, payload, ECP_SIZE_MSG_HDR+size);
+    rv = ecp_pld_send(conn_out, payload, size + msg - payload);
 
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&conn_out->mutex);
@@ -257,8 +257,8 @@ static void vlink_destroy(ECPConnection *conn) {
 static ssize_t _vlink_send_open(ECPConnection *conn, ECPTimerItem *ti) {
     ECPSocket *sock = conn->sock;
     ECPContext *ctx = sock->ctx;
-    unsigned char payload[ECP_SIZE_PLD(ECP_ECDH_SIZE_KEY+1)];
-    unsigned char *buf = ecp_pld_get_buf(payload);
+    unsigned char payload[ECP_SIZE_PLD(ECP_ECDH_SIZE_KEY+1, 0)];
+    unsigned char *buf = ecp_pld_get_buf(payload, 0);
     int rv = ECP_OK;
     
     // XXX server should verify perma_key
@@ -347,9 +347,9 @@ static ssize_t vlink_handle_relay(ECPConnection *conn, ecp_seq_t seq, unsigned c
 
     if (conn == NULL) return ECP_ERR;
 
-    payload = msg - ECP_SIZE_MSG_HDR;
+    payload = msg - ECP_SIZE_PLD_HDR - 1;
     ecp_pld_set_type(payload, ECP_MTYPE_EXEC);
-    rv = ecp_pld_send(conn, payload, ECP_SIZE_MSG_HDR+size);
+    rv = ecp_pld_send(conn, payload, size + msg - payload);
 
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&conn->mutex);
@@ -373,11 +373,11 @@ static ssize_t vconn_set_msg(ECPConnection *conn, unsigned char *pld_out, size_t
             unsigned char *buf = NULL;
             int rv;
 
-            if (pld_out_size < ECP_SIZE_MSG_HDR+2+2*ECP_ECDH_SIZE_KEY) return ECP_ERR;
+            if (pld_out_size < ECP_SIZE_PLD_HDR + 3 + 2 * ECP_ECDH_SIZE_KEY) return ECP_ERR;
             if (conn_next == NULL) return ECP_ERR;
 
             ecp_pld_set_type(pld_out, ECP_MTYPE_OPEN_REQ);
-            buf = ecp_pld_get_buf(pld_out);
+            buf = ecp_pld_get_buf(pld_out, 0);
 
             buf[0] = ECP_CTYPE_VCONN;
             rv = ecp_conn_dhkey_get_curr(conn_next, NULL, buf+1);
@@ -386,12 +386,12 @@ static ssize_t vconn_set_msg(ECPConnection *conn, unsigned char *pld_out, size_t
             memcpy(buf+1+ECP_ECDH_SIZE_KEY, ctx->cr.dh_pub_get_buf(&conn_next->node.public), ECP_ECDH_SIZE_KEY);
             buf[1+2*ECP_ECDH_SIZE_KEY] = ECP_MTYPE_RELAY;
 
-            return ECP_SIZE_MSG_HDR+2+2*ECP_ECDH_SIZE_KEY;
+            return ECP_SIZE_PLD_HDR + 3 + 2 * ECP_ECDH_SIZE_KEY;
         }
     }
 
     ecp_pld_set_type(pld_out, ECP_MTYPE_RELAY);
-    return ECP_SIZE_MSG_HDR;
+    return ECP_SIZE_PLD_HDR + 1;
 }
 
 
@@ -506,7 +506,7 @@ int ecp_vconn_init(ECPConnection *conn, ECPNode *conn_node, ECPVConnection vconn
 }
 
 static ssize_t _vconn_send_kget(ECPConnection *conn, ECPTimerItem *ti) {
-    unsigned char payload[ECP_SIZE_PLD(0)];
+    unsigned char payload[ECP_SIZE_PLD(0, 0)];
 
     ecp_pld_set_type(payload, ECP_MTYPE_KGET_REQ);
     return ecp_pld_send_ll(conn, ti, ECP_ECDH_IDX_PERMA, ECP_ECDH_IDX_INV, payload, sizeof(payload));
