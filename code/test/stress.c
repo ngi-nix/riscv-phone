@@ -86,7 +86,7 @@ void *sender(ECPConnection *c) {
         usleep(rnd % (2000000/msg_rate));
 
         ecp_pld_set_type(payload, MTYPE_MSG);
-        ssize_t _rv = ecp_send(c, payload, sizeof(payload));
+        ssize_t _rv = ecp_pld_send(c, payload, sizeof(payload));
         if (c_start && (_rv > 0)) {
             pthread_mutex_lock(&t_mtx[idx]);
             t_sent[idx]++;
@@ -121,14 +121,14 @@ ssize_t handle_msg_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigne
     }
     
     // ecp_pld_set_type(payload, MTYPE_MSG);
-    // ssize_t _rv = ecp_send(c, payload, sizeof(payload));
+    // ssize_t _rv = ecp_pld_send(c, payload, sizeof(payload));
     return s;
 }
 
 ssize_t handle_msg_s(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s) {
     unsigned char payload[ECP_SIZE_PLD(1000, 0)];
     ecp_pld_set_type(payload, MTYPE_MSG);
-    ssize_t _rv = ecp_send(conn, payload, sizeof(payload));
+    ssize_t _rv = ecp_pld_send(conn, payload, sizeof(payload));
     return s;
 }
 

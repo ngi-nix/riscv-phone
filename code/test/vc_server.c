@@ -32,7 +32,7 @@ ssize_t handle_msg(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned 
 
     ecp_pld_set_type(payload, MTYPE_MSG);
     strcpy((char *)buf, msg);
-    ssize_t _rv = ecp_send(conn, payload, sizeof(payload));
+    ssize_t _rv = ecp_pld_send(conn, payload, sizeof(payload));
 
     return s;
 }

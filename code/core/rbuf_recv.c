@@ -59,7 +59,6 @@ static void msg_flush(ECPConnection *conn) {
                 int rv = ECP_OK;
                 ecp_pts_t msg_pts;
                 ecp_seq_t seq = buf->rbuf.seq_start + i;
-                unsigned char mtype = ecp_msg_get_type(buf->rbuf.msg[idx].msg);
                 unsigned char frag_tot;
                 unsigned char frag_cnt;
 
@@ -278,9 +277,6 @@ ssize_t ecp_rbuf_recv_store(ECPConnection *conn, ecp_seq_t seq, unsigned char *m
     ssize_t rv;
     int do_ack = 0; 
     unsigned char mtype;
-    
-    if (buf == NULL) return ECP_ERR;
-    if (msg_size < 1) return ECP_ERR_MIN_MSG;
     
     mtype = ecp_msg_get_type(msg) & ECP_MTYPE_MASK;
     if ((mtype == ECP_MTYPE_RBACK) || (mtype == ECP_MTYPE_RBFLUSH)) return ecp_msg_handle(conn, seq, msg, msg_size);

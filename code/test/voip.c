@@ -191,6 +191,6 @@ int main(int argc, char *argv[]) {
 		opus_buf = ecp_pld_get_buf(payload, 0);
 		opus_int32 len = a_read(handle_cpt, alsa_in_buf, alsa_frames, opus_enc, opus_buf, ECP_MAX_MSG);
 		if (len < 0) continue;
-	    ssize_t _rv = ecp_send(&conn, payload, len);
+	    ssize_t _rv = ecp_pld_send(&conn, payload, len);
 	}
 }

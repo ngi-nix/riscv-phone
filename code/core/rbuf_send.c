@@ -307,9 +307,10 @@ ssize_t ecp_rbuf_pkt_send(ECPRBSend *buf, ECPSocket *sock, ECPNetAddr *addr, ECP
 
         if (buf->flags & ECP_RBUF_FLAG_CCONTROL) {
             int _rv = ECP_OK;
-    #ifdef ECP_WITH_PTHREAD
+
+#ifdef ECP_WITH_PTHREAD
             pthread_mutex_lock(&buf->mutex);
-    #endif
+#endif
 
             if (ECP_SEQ_LT(buf->rbuf.seq_max, seq)) buf->rbuf.seq_max = seq;
 
@@ -337,9 +338,9 @@ ssize_t ecp_rbuf_pkt_send(ECPRBSend *buf, ECPSocket *sock, ECPNetAddr *addr, ECP
                 buf->in_transit++;
             }
         
-    #ifdef ECP_WITH_PTHREAD
+#ifdef ECP_WITH_PTHREAD
             pthread_mutex_unlock(&buf->mutex);
-    #endif
+#endif
         
             if (_rv) return _rv;
         }

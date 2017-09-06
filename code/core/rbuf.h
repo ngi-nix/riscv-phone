@@ -65,6 +65,7 @@ typedef struct ECPRBRecv {
 #ifdef ECP_WITH_MSGQ
     ECPConnMsgQ msgq;
 #endif
+    struct ECPFragIter *frag_iter;
 } ECPRBRecv;
 
 typedef struct ECPRBSend {

@@ -483,6 +483,7 @@ int ecp_vconn_init(ECPConnection *conn, ECPNode *conn_node, ECPVConnection vconn
     if (rv) return rv;
 
     conn->parent = (ECPConnection *)&vconn[size-1];
+    conn->pcount = size;
     for (i=0; i<size; i++) {
         rv = ecp_conn_create((ECPConnection *)&vconn[i], sock, ECP_CTYPE_VCONN);
         if (rv) return rv;
@@ -495,7 +496,9 @@ int ecp_vconn_init(ECPConnection *conn, ECPNode *conn_node, ECPVConnection vconn
         } else {
             vconn[i].b.parent = (ECPConnection *)&vconn[i-1];
         }
-        if (i == size-1) {
+        vconn[i].b.pcount = i;
+
+        if (i == size - 1) {
             vconn[i].next = conn;
         } else {
             vconn[i].next = (ECPConnection *)&vconn[i+1];
