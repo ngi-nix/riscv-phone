@@ -257,6 +257,7 @@ int ecp_rbuf_recv_start(ECPConnection *conn, ecp_seq_t seq) {
 
     if (buf == NULL) return ECP_ERR;
     
+    seq--;
     buf->seq_ack = seq;
     rv = ecp_rbuf_start(&buf->rbuf, seq);
     if (rv) return rv;
