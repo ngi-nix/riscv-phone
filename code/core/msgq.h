@@ -16,8 +16,8 @@ typedef struct ECPConnMsgQ {
     pthread_mutex_t mutex;
 } ECPConnMsgQ;
 
-int ecp_conn_msgq_create(struct ECPConnection *conn);
-void ecp_conn_msgq_destroy(struct ECPConnection *conn);
+int ecp_conn_msgq_create(ECPConnMsgQ *msgq);
+void ecp_conn_msgq_destroy(ECPConnMsgQ *msgq);
 int ecp_conn_msgq_start(struct ECPConnection *conn, ecp_seq_t seq);
 
 int ecp_conn_msgq_push(struct ECPConnection *conn, ecp_seq_t seq, unsigned char mtype);

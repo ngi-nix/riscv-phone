@@ -6,7 +6,7 @@ dep=../core/libecpcore.a ../core/crypto/libecpcr.a ../core/htable/libecpht.a ../
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<
 
-all: basic client server echo stress vcs vc_server vc_client
+all: basic client server echo frag stress vcs vc_server vc_client
 
 basic: basic.o init.o $(dep)
 	$(CC) -o $@ $< init.o $(dep) $(LDFLAGS)
@@ -18,6 +18,9 @@ server: server.o init.o $(dep)
 	$(CC) -o $@ $< init.o $(dep) $(LDFLAGS)
 
 echo: echo.o init.o $(dep)
+	$(CC) -o $@ $< init.o $(dep) $(LDFLAGS)
+
+frag: frag.o init.o $(dep)
 	$(CC) -o $@ $< init.o $(dep) $(LDFLAGS)
 
 stress: stress.o init.o $(dep)
@@ -42,4 +45,4 @@ voip: voip.o init.o $(dep)
 
 clean:
 	rm -f *.o
-	rm -f basic client server echo stress vcs vc_server vc_client voip
+	rm -f basic client server echo frag stress vcs vc_server vc_client voip

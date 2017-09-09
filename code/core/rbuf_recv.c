@@ -219,7 +219,7 @@ int ecp_rbuf_recv_create(ECPConnection *conn, ECPRBRecv *buf, ECPRBMessage *msg,
     buf->ack_rate = ACK_RATE;
 
 #ifdef ECP_WITH_MSGQ
-    rv = ecp_conn_msgq_create(conn);
+    rv = ecp_conn_msgq_create(&buf->msgq);
     if (rv) return rv;
 #endif
 
@@ -228,9 +228,14 @@ int ecp_rbuf_recv_create(ECPConnection *conn, ECPRBRecv *buf, ECPRBMessage *msg,
 }
 
 void ecp_rbuf_recv_destroy(ECPConnection *conn) {
+    ECPRBRecv *buf = conn->rbuf.recv;
+    
+    if (buf == NULL) return;
 #ifdef ECP_WITH_MSGQ
-    ecp_conn_msgq_destroy(conn);
-#endif    
+    ecp_conn_msgq_destroy(&buf->msgq);
+#endif
+
+    conn->rbuf.recv = NULL;
 }
 
 int ecp_rbuf_recv_set_hole(ECPConnection *conn, unsigned short hole_max) {

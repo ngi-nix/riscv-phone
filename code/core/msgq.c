@@ -21,9 +21,7 @@ static struct timespec *abstime_ts(struct timespec *ts, ecp_cts_t msec) {
     return ts;
 }
 
-int ecp_conn_msgq_create(ECPConnection *conn) {
-    ECPRBRecv *buf = conn->rbuf.recv;
-    ECPConnMsgQ *msgq = buf ? &buf->msgq : NULL;
+int ecp_conn_msgq_create(ECPConnMsgQ *msgq) {
     int i;
     int rv;
 
@@ -50,9 +48,7 @@ int ecp_conn_msgq_create(ECPConnection *conn) {
     return ECP_OK;
 }
 
-void ecp_conn_msgq_destroy(ECPConnection *conn) {
-    ECPRBRecv *buf = conn->rbuf.recv;
-    ECPConnMsgQ *msgq = buf ? &buf->msgq : NULL;
+void ecp_conn_msgq_destroy(ECPConnMsgQ *msgq) {
     int i;
     
     if (msgq == NULL) return;

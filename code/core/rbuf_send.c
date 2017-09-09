@@ -204,6 +204,8 @@ void ecp_rbuf_send_destroy(ECPConnection *conn) {
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_destroy(&buf->mutex);
 #endif
+    
+    conn->rbuf.send = NULL;
 }
 
 int ecp_rbuf_send_set_wsize(ECPConnection *conn, ecp_win_t size) {
