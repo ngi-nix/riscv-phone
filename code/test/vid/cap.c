@@ -64,7 +64,7 @@
 #define CAP_OK 0
 #define CAP_ERROR -1
 #define CAP_ERROR_RET(s) { \
-							printf("v4l2: %s\n", s); \
+							fprintf(stderr, "v4l2: %s\n", s); \
 							return CAP_ERROR; \
 						 }
 #define CAP_CLIP(val, min, max) (((val) > (max)) ? (max) : (((val) < (min)) ? (min) : (val)))
