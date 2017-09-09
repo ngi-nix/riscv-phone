@@ -159,5 +159,7 @@ int vpx_img_write_f(const vpx_image_t *img, FILE *file) {
       buf += stride;
     }
   }
+  
+  return 1;
 }
 

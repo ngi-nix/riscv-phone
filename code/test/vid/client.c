@@ -93,6 +93,7 @@ int main(int argc, char *argv[]) {
     
     const char *codec_arg = "vp9";
     const VpxInterface *decoder = get_vpx_decoder_by_name(codec_arg);
+    outfile = stdout;
     if (!decoder) die_codec(NULL, "Unknown input codec.");
 
     printf("Using %s\n", vpx_codec_iface_name(decoder->codec_interface()));
