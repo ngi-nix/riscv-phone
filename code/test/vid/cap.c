@@ -398,7 +398,7 @@ int v4l2_set_mmap(int fd, int *buffers_count)
     return CAP_OK;
 }
 
-int v4l2_retrieve_frame(int fd, int buffers_count, vpx_image_t *raw, vpx_codec_ctx_t *codec, int frame_count, int kframe_interval)
+int v4l2_retrieve_frame(int fd, int buffers_count, vpx_image_t *raw, vpx_codec_ctx_t *codec, int frame_index, int kframe_interval)
 {
     int sz;
     fd_set fds;
@@ -445,10 +445,11 @@ int v4l2_retrieve_frame(int fd, int buffers_count, vpx_image_t *raw, vpx_codec_c
     // printf("Length: %d \tBytesused: %d \tAddress: %p\n", buf.length, buf.bytesused, &buffers[buf.index]);
 
     sz = ALIGN_16B(width) * height * 3 / 2;
-    vpx_img_read(raw, buffers[buf.index].start, sz);
-    if (frame_count % kframe_interval == 0)
-      flags |= VPX_EFLAG_FORCE_KF;
-    vpx_encode_frame(codec, raw, frame_count, flags);
+    if (!vpx_img_read(raw, buffers[buf.index].start, sz)) {
+        die_codec(NULL, "Failed to read image.");
+    }
+    if (frame_index % kframe_interval == 0) flags |= VPX_EFLAG_FORCE_KF;
+    vpx_encode_frame(codec, raw, frame_index, flags);
 
     if (xioctl(fd, VIDIOC_QBUF, &buf) == -1) {
         CAP_ERROR_RET("failed to queue buffer.");
@@ -475,7 +476,6 @@ int v4l2_close_camera(int fd, int buffers_count)
 
 int main(int argc, char *argv[])
 {
-    int i, n;
     int fd;
     int target_bitrate = 200;
     double after;
@@ -484,13 +484,12 @@ int main(int argc, char *argv[])
     int buffers_count;
     int kframe_interval;
     vpx_codec_er_flags_t err_resilient;
-    int frame_count;
-    char *out_fname;
+    char *address;
+    char *key_file;
 
     if (argc != 13) {
-        CAP_ERROR_RET("./cap <width> <height> <buffers [4,8]> <video mode [0,1]> <exposure [-4,4]> <hflip [0,1]> <vflip [0,1]> <kframe interval> <bitrate> <err resilient> <num frames> <file name>")
+        CAP_ERROR_RET("./cap <width> <height> <buffers [4,8]> <video mode [0,1]> <exposure [-4,4]> <hflip [0,1]> <vflip [0,1]> <kframe interval> <bitrate> <err resilient> <address> <key file>")
     }
-    n = 0;
     width = (int) atoi(argv[1]);
     height = (int) atoi(argv[2]);
     n_buffers = (int) atoi(argv[3]);
@@ -508,8 +507,8 @@ int main(int argc, char *argv[])
     kframe_interval = (int) atoi(argv[8]);
     target_bitrate = (int) atoi(argv[9]);
     err_resilient = strtoul(argv[10], NULL, 0);
-    frame_count = (int) atoi(argv[11]);
-    out_fname = argv[12];
+    address = argv[11];
+    key_file = argv[12];
 
     printf("---- cap parameters -----\nwidth: %d\nheight: %d\nv4l2 buffers: %d\nexposure: %d\nhflip: %d\nvflip: %d\nMode: %s\n", width, height, n_buffers, sensor_exposure, sensor_hflip, sensor_vflip, sensor_video_mode ? "V4L2_MODE_VIDEO" : "V4L2_MODE_IMAGE");
 
@@ -538,16 +537,21 @@ int main(int argc, char *argv[])
         CAP_ERROR_RET("failed to mmap.");
     }
 
+    int n = 0;
     int _fps = 30;
     const char *codec_arg = "vp9";
     vpx_codec_ctx_t codec;
     vpx_image_t raw;
-    vpx_init(codec_arg, out_fname, width, height, _fps);
-    vpx_open(&codec, get_vpx_encoder_by_name(codec_arg)->codec_interface(), width, height, _fps, target_bitrate, err_resilient, &raw);
 
-    for (i = 0; i < frame_count; i++) {
+    vpx_open(codec_arg, width, height, _fps, target_bitrate, err_resilient, &codec, &raw);
+
+    while (1) {
+        if (!conn_is_open()) {
+            sleep(1);
+            continue;
+        }
         before = get_wall_time();
-        if (v4l2_retrieve_frame(fd, buffers_count, &raw, &codec, i, kframe_interval)) {
+        if (v4l2_retrieve_frame(fd, buffers_count, &raw, &codec, n, kframe_interval)) {
             CAP_ERROR_RET("failed to retrieve frame.");
         }
         after = get_wall_time();
