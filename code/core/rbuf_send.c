@@ -82,7 +82,7 @@ ssize_t ecp_rbuf_handle_ack(ECPConnection *conn, ecp_seq_t seq, unsigned char mt
     int rv = ECP_OK;
     
     buf = conn->rbuf.send;
-    if (buf == NULL) return ECP_ERR;
+    if (buf == NULL) return ECP_OK;
     if (size < 0) return size;
     if (size < rsize) return ECP_ERR;
 
