@@ -118,7 +118,7 @@ int vpx_encode_frame(vpx_codec_ctx_t *codec, vpx_image_t *img, int frame_index, 
       if (send_frame(pkt->data.frame.buf, pkt->data.frame.sz, pkt->data.frame.pts) < 0) {
         die_codec(codec, "Failed to write compressed frame");
       }
-      printf(keyframe ? "K" : ".");
+      fprintf(stderr, keyframe ? "K" : ".");
       fflush(stdout);
     }
   }
@@ -134,7 +134,7 @@ void vpx_open(const char *codec_arg, int width, int height, int fps, int bitrate
   const VpxInterface *encoder = get_vpx_encoder_by_name(codec_arg);
   if (!encoder) die_codec(NULL, "Unsupported codec.");
 
-  printf("Using %s\n", vpx_codec_iface_name(encoder->codec_interface()));
+  fprintf(stderr, "Using %s\n", vpx_codec_iface_name(encoder->codec_interface()));
 
   if (!vpx_img_alloc(raw, VPX_IMG_FMT_I420, width, height, 1))
     die_codec(NULL, "Failed to allocate image.");

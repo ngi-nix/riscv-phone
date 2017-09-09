@@ -73,6 +73,7 @@
 #define ALIGN_4K(x) (((x) + (4095)) & ~(4095))
 #define ALIGN_16B(x) (((x) + (15)) & ~(15))
 
+#include "server.h"
 #include "enc.h"
 
 typedef struct {
@@ -156,7 +157,7 @@ int v4l2_display_sizes_pix_format(int fd)
     int fsizeind = 0; /*index for supported sizes*/
     struct v4l2_frmsizeenum fsize;
 
-    printf("V4L2 pixel sizes:\n");
+    fprintf(stderr, "V4L2 pixel sizes:\n");
 
     CLEAR(fsize);
     fsize.index = 0;
@@ -165,7 +166,7 @@ int v4l2_display_sizes_pix_format(int fd)
     while ((ret = xioctl(fd, VIDIOC_ENUM_FRAMESIZES, &fsize)) == 0) {
         fsize.index++;
         if (fsize.type == V4L2_FRMSIZE_TYPE_DISCRETE) {
-            printf("( %u x %u ) Pixels\n", fsize.discrete.width, fsize.discrete.height);
+            fprintf(stderr, "( %u x %u ) Pixels\n", fsize.discrete.width, fsize.discrete.height);
 	    fsizeind++;
         }
     }
@@ -177,7 +178,7 @@ int v4l2_display_pix_format(int fd)
     struct v4l2_fmtdesc fmt;
     int index;
 
-    printf("V4L2 pixel formats:\n");
+    fprintf(stderr, "V4L2 pixel formats:\n");
 
     index = 0;
     CLEAR(fmt);
@@ -185,13 +186,13 @@ int v4l2_display_pix_format(int fd)
     fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
     while (ioctl(fd, VIDIOC_ENUM_FMT, &fmt) != -1) {
-        printf("%i: [0x%08X] '%c%c%c%c' (%s)\n", index, fmt.pixelformat, fmt.pixelformat >> 0, fmt.pixelformat >> 8, fmt.pixelformat >> 16, fmt.pixelformat >> 24, fmt.description);
+        fprintf(stderr, "%i: [0x%08X] '%c%c%c%c' (%s)\n", index, fmt.pixelformat, fmt.pixelformat >> 0, fmt.pixelformat >> 8, fmt.pixelformat >> 16, fmt.pixelformat >> 24, fmt.description);
 
         memset(&fmt, 0, sizeof(fmt));
         fmt.index = ++index;
         fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     }
-    // printf("\n");
+    // fprintf(stderr, "\n");
 }
 
 #ifdef _V4L2_KERNEL_
@@ -201,15 +202,15 @@ int v4l2_set_exposure(int fd, int exposure)
     struct v4l2_control control;
     int rc;
 
-    printf("set Exposure: %d\n", exposure);
+    fprintf(stderr, "set Exposure: %d\n", exposure);
     rc = 0;
     memset(&control, 0, sizeof(control));
     control.id = V4L2_CID_EXPOSURE;
     rc = xioctl(fd, VIDIOC_G_CTRL, &control);
-    printf("rc: %d - get exposure: %d\n", rc, control.value);
+    fprintf(stderr, "rc: %d - get exposure: %d\n", rc, control.value);
     control.value = exposure;
     rc = xioctl(fd, VIDIOC_S_CTRL, &control);
-    printf("rc: %d - new exposure: %d\n", rc, exposure);
+    fprintf(stderr, "rc: %d - new exposure: %d\n", rc, exposure);
     return rc;
 }
 
@@ -219,15 +220,15 @@ int v4l2_set_hflip(int fd, int hflip)
     struct v4l2_control control;
     int rc;
 
-    printf("set Hflip: %d\n", hflip);
+    fprintf(stderr, "set Hflip: %d\n", hflip);
     rc = 0;
     memset(&control, 0, sizeof(control));
     control.id = V4L2_CID_HFLIP;
     rc = xioctl(fd, VIDIOC_G_CTRL, &control);
-    printf("rc: %d - get value: %d\n", rc, control.value);
+    fprintf(stderr, "rc: %d - get value: %d\n", rc, control.value);
     control.value = hflip;
     rc = xioctl(fd, VIDIOC_S_CTRL, &control);
-    printf("rc: %d - new value: %d\n", rc, control.value);
+    fprintf(stderr, "rc: %d - new value: %d\n", rc, control.value);
     return rc;
 }
 
@@ -237,15 +238,15 @@ int v4l2_set_vflip(int fd, int vflip)
     struct v4l2_control control;
     int rc;
 
-    printf("set Vflip: %d\n", vflip);
+    fprintf(stderr, "set Vflip: %d\n", vflip);
     rc = 0;
     memset(&control, 0, sizeof(control));
     control.id = V4L2_CID_VFLIP;
     rc = xioctl(fd, VIDIOC_G_CTRL, &control);
-    printf("rc: %d - get value: %d\n", rc, control.value);
+    fprintf(stderr, "rc: %d - get value: %d\n", rc, control.value);
     control.value = vflip;
     rc = xioctl(fd, VIDIOC_S_CTRL, &control);
-    printf("rc: %d - new value: %d\n", rc, control.value);
+    fprintf(stderr, "rc: %d - new value: %d\n", rc, control.value);
     return rc;
 }
 #endif
@@ -272,18 +273,18 @@ int v4l2_init_camera(int fd)
         CAP_ERROR_RET("doesn't support video capturing.");
     }
 
-    printf("Driver: \"%s\"\n", caps.driver);
-    printf("Card: \"%s\"\n", caps.card);
-    printf("Bus: \"%s\"\n", caps.bus_info);
-    printf("Version: %d.%d\n", (caps.version >> 16) && 0xff, (caps.version >> 24) && 0xff);
-    printf("Capabilities: %08x\n", caps.capabilities);
+    fprintf(stderr, "Driver: \"%s\"\n", caps.driver);
+    fprintf(stderr, "Card: \"%s\"\n", caps.card);
+    fprintf(stderr, "Bus: \"%s\"\n", caps.bus_info);
+    fprintf(stderr, "Version: %d.%d\n", (caps.version >> 16) && 0xff, (caps.version >> 24) && 0xff);
+    fprintf(stderr, "Capabilities: %08x\n", caps.capabilities);
 
     input.index = 0;
     if (xioctl(fd, VIDIOC_ENUMINPUT, &input) == -1) {
         CAP_ERROR_RET("unable to enumerate input.");
     }
 
-    printf("Input: %d\n", input.index);
+    fprintf(stderr, "Input: %d\n", input.index);
     if (xioctl(fd, VIDIOC_S_INPUT, &input.index) == -1) {
         CAP_ERROR_RET("unable to set input.");
     }
@@ -298,7 +299,7 @@ int v4l2_init_camera(int fd)
 
     v4l2_display_pix_format(fd);
     v4l2_display_sizes_pix_format(fd);
-    printf("\n");
+    fprintf(stderr, "\n");
 
     fmt.fmt.pix.width = width;
     fmt.fmt.pix.height = height;
@@ -314,9 +315,9 @@ int v4l2_init_camera(int fd)
     if (fmt.fmt.pix.width != width || fmt.fmt.pix.height != height) {
         width = fmt.fmt.pix.width;
         height = fmt.fmt.pix.height;
-        printf("Sensor size adjusted to: %dx%d pixels\n", width, height);
+        fprintf(stderr, "Sensor size adjusted to: %dx%d pixels\n", width, height);
     } else {
-        printf("Sensor size: %dx%d pixels\n", width, height);
+        fprintf(stderr, "Sensor size: %dx%d pixels\n", width, height);
     }
 
     if (xioctl(fd, VIDIOC_S_FMT, &fmt) == -1) {
@@ -325,11 +326,11 @@ int v4l2_init_camera(int fd)
 
     switch (fmt.fmt.pix.pixelformat) {
     case V4L2_PIX_FMT_RGB24:
-            printf("Pixel Format: V4L2_PIX_FMT_RGB24 [0x%08X]\n",fmt.fmt.pix.pixelformat);
+            fprintf(stderr, "Pixel Format: V4L2_PIX_FMT_RGB24 [0x%08X]\n",fmt.fmt.pix.pixelformat);
             break;
         
     case V4L2_PIX_FMT_YUV420:
-            printf("Pixel Format: V4L2_PIX_FMT_YUV420 [0x%08X]\n",fmt.fmt.pix.pixelformat);
+            fprintf(stderr, "Pixel Format: V4L2_PIX_FMT_YUV420 [0x%08X]\n",fmt.fmt.pix.pixelformat);
             break;
         
     }
@@ -442,7 +443,7 @@ int v4l2_retrieve_frame(int fd, int buffers_count, vpx_image_t *raw, vpx_codec_c
         CAP_ERROR_RET("failed to retrieve frame.");
     }
 
-    // printf("Length: %d \tBytesused: %d \tAddress: %p\n", buf.length, buf.bytesused, &buffers[buf.index]);
+    // fprintf(stderr, "Length: %d \tBytesused: %d \tAddress: %p\n", buf.length, buf.bytesused, &buffers[buf.index]);
 
     sz = ALIGN_16B(width) * height * 3 / 2;
     if (!vpx_img_read(raw, buffers[buf.index].start, sz)) {
@@ -510,7 +511,7 @@ int main(int argc, char *argv[])
     address = argv[11];
     key_file = argv[12];
 
-    printf("---- cap parameters -----\nwidth: %d\nheight: %d\nv4l2 buffers: %d\nexposure: %d\nhflip: %d\nvflip: %d\nMode: %s\n", width, height, n_buffers, sensor_exposure, sensor_hflip, sensor_vflip, sensor_video_mode ? "V4L2_MODE_VIDEO" : "V4L2_MODE_IMAGE");
+    fprintf(stderr, "---- cap parameters -----\nwidth: %d\nheight: %d\nv4l2 buffers: %d\nexposure: %d\nhflip: %d\nvflip: %d\nMode: %s\n", width, height, n_buffers, sensor_exposure, sensor_hflip, sensor_vflip, sensor_video_mode ? "V4L2_MODE_VIDEO" : "V4L2_MODE_IMAGE");
 
     fd = open("/dev/video0", O_RDWR | O_NONBLOCK);
     if (fd == -1) {
@@ -544,6 +545,7 @@ int main(int argc, char *argv[])
     vpx_image_t raw;
 
     vpx_open(codec_arg, width, height, _fps, target_bitrate, err_resilient, &codec, &raw);
+    init_server(address, key_file);
 
     while (1) {
         if (!conn_is_open()) {
@@ -558,14 +560,14 @@ int main(int argc, char *argv[])
         fps = 1.0 / (after - before);
         avg += fps;
         n++;
-        // printf("FPS[%d]: %.2f\n", i, fps);
+        // fprintf(stderr, "FPS[%d]: %.2f\n", i, fps);
     }
 
     vpx_close(&codec, &raw);
     v4l2_close_camera(fd, buffers_count);
     
     if (n) {
-        printf("\n------- Avg FPS: %.2f --------\n\n", (double) (avg / (double) n));
+        fprintf(stderr, "\n------- Avg FPS: %.2f --------\n\n", (double) (avg / (double) n));
     }
 
     return CAP_OK;

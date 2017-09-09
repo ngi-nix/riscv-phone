@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
     if (argc != 2) usage(argv[0]);
     
     rv = ecp_init(&ctx_c);
-    printf("ecp_init RV:%d\n", rv);
+    fprintf(stderr, "ecp_init RV:%d\n", rv);
 
     if (!rv) rv = ecp_conn_handler_init(&handler_c);
     if (!rv) {
@@ -66,22 +66,22 @@ int main(int argc, char *argv[]) {
     }
     
     if (!rv) rv = ecp_sock_create(&sock_c, &ctx_c, NULL);
-    printf("ecp_sock_create RV:%d\n", rv);
+    fprintf(stderr, "ecp_sock_create RV:%d\n", rv);
 
     if (!rv) rv = ecp_sock_open(&sock_c, NULL);
-    printf("ecp_sock_open RV:%d\n", rv);
+    fprintf(stderr, "ecp_sock_open RV:%d\n", rv);
     
     if (!rv) rv = ecp_start_receiver(&sock_c);
-    printf("ecp_start_receiver RV:%d\n", rv);
+    fprintf(stderr, "ecp_start_receiver RV:%d\n", rv);
 
     if (!rv) rv = ecp_util_node_load(&ctx_c, &node, argv[1]);
-    printf("ecp_util_node_load RV:%d\n", rv);
+    fprintf(stderr, "ecp_util_node_load RV:%d\n", rv);
 
     if (!rv) rv = ecp_conn_create(&conn, &sock_c, CTYPE_TEST);
-    printf("ecp_conn_create RV:%d\n", rv);
+    fprintf(stderr, "ecp_conn_create RV:%d\n", rv);
 
     if (!rv) rv = ecp_rbuf_create(&conn, NULL, NULL, 0, &rbuf_recv, rbuf_r_msg, RBUF_MSG_SIZE);
-    printf("ecp_rbuf_create RV:%d\n", rv);
+    fprintf(stderr, "ecp_rbuf_create RV:%d\n", rv);
     
     if (!rv) {
         ecp_frag_iter_init(&frag_iter, frag_buffer, FRAG_BUF_SIZE);
@@ -89,13 +89,13 @@ int main(int argc, char *argv[]) {
     }
 
     if (!rv) rv = ecp_conn_open(&conn, &node);
-    printf("ecp_conn_open RV:%d\n", rv);
+    fprintf(stderr, "ecp_conn_open RV:%d\n", rv);
     
     const char *codec_arg = "vp9";
     const VpxInterface *decoder = get_vpx_decoder_by_name(codec_arg);
     if (!decoder) die_codec(NULL, "Unknown input codec.");
 
-    printf("Using %s\n", vpx_codec_iface_name(decoder->codec_interface()));
+    fprintf(stderr, "Using %s\n", vpx_codec_iface_name(decoder->codec_interface()));
 
     if (vpx_codec_dec_init(&codec, decoder->codec_interface(), NULL, 0))
       die_codec(&codec, "Failed to initialize decoder.");
