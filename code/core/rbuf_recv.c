@@ -269,7 +269,7 @@ int ecp_rbuf_recv_start(ECPConnection *conn, ecp_seq_t seq) {
 
 #ifdef ECP_WITH_MSGQ
     if (buf->flags & ECP_RBUF_FLAG_MSGQ) {
-        rv = ecp_conn_msgq_start(conn, seq);
+        rv = ecp_conn_msgq_start(&buf->msgq, seq);
         if (rv) return rv;
     }
 #endif

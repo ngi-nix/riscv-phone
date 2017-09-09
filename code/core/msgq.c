@@ -59,10 +59,7 @@ void ecp_conn_msgq_destroy(ECPConnMsgQ *msgq) {
     pthread_mutex_destroy(&msgq->mutex);
 }
 
-int ecp_conn_msgq_start(ECPConnection *conn, ecp_seq_t seq) {
-    ECPRBRecv *buf = conn->rbuf.recv;
-    ECPConnMsgQ *msgq = buf ? &buf->msgq : NULL;
-
+int ecp_conn_msgq_start(ECPConnMsgQ *msgq, ecp_seq_t seq) {
     if (msgq == NULL) return ECP_ERR;
 
     msgq->seq_max = seq;
