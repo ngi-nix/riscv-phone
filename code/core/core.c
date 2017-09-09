@@ -1226,7 +1226,7 @@ ssize_t ecp_pkt_handle(ECPSocket *sock, ECPNetAddr *addr, ECPConnection *parent,
 #endif
     if (proc_size == 0) proc_size = ecp_msg_handle(conn, seq_p, payload+pld_size-cnt_size, cnt_size);
 
-    if (proc_size < 0) rv = ECP_ERR_HANDLE;
+    if (proc_size < 0) rv = proc_size;
     if (!rv) cnt_size -= proc_size;
 
 #ifdef ECP_WITH_PTHREAD
