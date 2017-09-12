@@ -1349,6 +1349,7 @@ int ecp_msg_defrag(ECPFragIter *iter, ecp_seq_t seq, unsigned char *msg_in, size
         } else {
             if (iter->seq + frag_cnt != seq) {
                 iter->seq = seq - frag_cnt;
+                iter->frag_cnt = 0;
                 return ECP_ERR_ITER;
             }
             if (iter->frag_cnt != frag_cnt) return ECP_ERR_ITER;

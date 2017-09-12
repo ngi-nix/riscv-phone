@@ -148,6 +148,7 @@ void vpx_open(const char *codec_arg, int width, int height, int fps, int bitrate
   cfg.g_timebase.den = fps;
   cfg.rc_target_bitrate = bitrate;
   cfg.g_error_resilient = err_resilient;
+  cfg.g_lag_in_frames = 0;
   cfg.rc_end_usage = VPX_CBR;
 
   if (vpx_codec_enc_init(codec, encoder->codec_interface(), &cfg, 0))

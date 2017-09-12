@@ -149,22 +149,20 @@ static int ack_send(ECPConnection *conn) {
 
 static int ack_shift(ECPRBRecv *buf) {
     int do_ack = 0;
+    int in_rbuf = 0;
     int idx;
     int i;
     
     if ((buf->flags & ECP_RBUF_FLAG_RELIABLE) && ((buf->ack_map & ACK_MASK_FIRST) == 0)) return 0;
 
-    idx = ecp_rbuf_msg_idx(&buf->rbuf, buf->seq_ack);
-    if (idx < 0) return idx;
-
     while (ECP_SEQ_LT(buf->seq_ack, buf->rbuf.seq_max)) {
-        idx = ECP_RBUF_IDX_MASK(idx + 1, buf->rbuf.msg_size);
         buf->seq_ack++;
+        in_rbuf = ECP_SEQ_LT(buf->seq_ack, buf->rbuf.seq_start) ? 1 : buf->rbuf.msg[ECP_RBUF_IDX_MASK(buf->rbuf.msg_start + buf->seq_ack - buf->rbuf.seq_start, buf->rbuf.msg_size)].flags & ECP_RBUF_FLAG_IN_RBUF;
 
-        if ((buf->rbuf.msg[idx].flags & ECP_RBUF_FLAG_IN_RBUF) && (buf->ack_map == ECP_ACK_FULL)) continue;
+        if (in_rbuf && (buf->ack_map == ECP_ACK_FULL)) continue;
         
         buf->ack_map = buf->ack_map << 1;
-        if (buf->rbuf.msg[idx].flags & ECP_RBUF_FLAG_IN_RBUF) {
+        if (in_rbuf & ECP_RBUF_FLAG_IN_RBUF) {
             buf->ack_map |= 1;
         } else if (!do_ack && ECP_SEQ_LTE(buf->seq_ack, buf->rbuf.seq_max - 2 * buf->hole_max)) {
             do_ack = 1;

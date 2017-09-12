@@ -9,6 +9,7 @@
 #include "vpx/vpx_decoder.h"
 #include "vpx/vp8cx.h"
 #include "tools.h"
+#include "display.h"
 
 #define CTYPE_TEST      0
 #define MTYPE_MSG       8
@@ -23,7 +24,6 @@ ECPConnHandler handler_c;
 ECPNode node;
 ECPConnection conn;
 
-FILE *outfile;
 vpx_codec_ctx_t codec;
 
 ECPRBRecv rbuf_recv;
@@ -31,17 +31,18 @@ ECPRBMessage rbuf_r_msg[RBUF_MSG_SIZE];
 ECPFragIter frag_iter;
 unsigned char frag_buffer[FRAG_BUF_SIZE];
 
+SDLCanvas sdl_canvas;
+
 ssize_t handle_msg(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *f, ssize_t sz) {
     vpx_codec_iter_t iter = NULL;
     vpx_image_t *img = NULL;
-    if (vpx_codec_decode(&codec, f, (unsigned int)sz, NULL, 0))
-      die_codec(&codec, "Failed to decode frame.");
+
+    if (vpx_codec_decode(&codec, f, (unsigned int)sz, NULL, 0)) die_codec(&codec, "Failed to decode frame.");
 
     while ((img = vpx_codec_get_frame(&codec, &iter)) != NULL) {
-      if (!vpx_img_write_f(img, outfile)) {
-          die_codec(NULL, "Failed to write image.");
-      }
+        if (!vpx_img_write(img, sdl_canvas.yuvBuffer, sdl_canvas.yPlaneSz + 2 * sdl_canvas.uvPlaneSz)) die_codec(NULL, "Failed to write image.");
     }
+    sdl_display_frame(&sdl_canvas);
     
     return sz;
 }
@@ -88,12 +89,8 @@ int main(int argc, char *argv[]) {
         rbuf_recv.frag_iter = &frag_iter;
     }
 
-    if (!rv) rv = ecp_conn_open(&conn, &node);
-    fprintf(stderr, "ecp_conn_open RV:%d\n", rv);
-    
     const char *codec_arg = "vp9";
     const VpxInterface *decoder = get_vpx_decoder_by_name(codec_arg);
-    outfile = stdout;
     if (!decoder) die_codec(NULL, "Unknown input codec.");
 
     fprintf(stderr, "Using %s\n", vpx_codec_iface_name(decoder->codec_interface()));
@@ -101,7 +98,12 @@ int main(int argc, char *argv[]) {
     if (vpx_codec_dec_init(&codec, decoder->codec_interface(), NULL, 0))
       die_codec(&codec, "Failed to initialize decoder.");
     
-    while (1) sleep(1);
-
+    sdl_open(&sdl_canvas, 640, 480);
+    
+    if (!rv) rv = ecp_conn_open(&conn, &node);
+    fprintf(stderr, "ecp_conn_open RV:%d\n", rv);
+    
+    sdl_loop();
+    sdl_close(&sdl_canvas);
     if (vpx_codec_destroy(&codec)) die_codec(&codec, "Failed to destroy codec");
 }
