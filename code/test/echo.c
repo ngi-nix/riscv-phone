@@ -14,8 +14,11 @@ ECPConnHandler handler_s;
 #define CTYPE_TEST  0
 #define MTYPE_MSG   8
 
-ssize_t handle_msg_s(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s) {
-    ssize_t rv = ecp_pld_send(conn, p-ECP_SIZE_PLD_HDR-1, ECP_SIZE_PLD_HDR+1+s);
+ssize_t handle_msg_s(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s, ECP2Buffer *b) {
+    unsigned char buf[ECP_MAX_PLD];
+
+    memcpy(buf, p, s);
+    ssize_t _rv = ecp_send(conn, t, buf, s);
 
     return s;
 }

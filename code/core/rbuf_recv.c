@@ -29,7 +29,7 @@ static ssize_t msg_store(ECPConnection *conn, ecp_seq_t seq, unsigned char *msg,
     if (rv < 0) return rv;
 
     if (ECP_SEQ_LT(buf->rbuf.seq_max, seq)) buf->rbuf.seq_max = seq;
-    if (flags & ECP_RBUF_FLAG_SYS) ecp_msg_handle(conn, seq, msg, msg_size);
+    if (flags & ECP_RBUF_FLAG_SYS) ecp_msg_handle(conn, seq, msg, msg_size, NULL);
 
     return rv;
 }
@@ -101,7 +101,7 @@ static void msg_flush(ECPConnection *conn) {
                     buf->rbuf.msg[idx].flags |= ECP_RBUF_FLAG_IN_MSGQ;
 #endif
                 } else {
-                    ecp_msg_handle(conn, seq, buf->rbuf.msg[idx].msg, buf->rbuf.msg[idx].size);
+                    ecp_msg_handle(conn, seq, buf->rbuf.msg[idx].msg, buf->rbuf.msg[idx].size, NULL);
                 }
             }
             buf->rbuf.msg[idx].flags &= ~ECP_RBUF_FLAG_IN_RBUF;
@@ -126,11 +126,19 @@ static void msg_flush(ECPConnection *conn) {
 
 static int ack_send(ECPConnection *conn) {
     ECPRBRecv *buf = conn->rbuf.recv;
-    unsigned char payload[ECP_SIZE_PLD(sizeof(ecp_seq_t) + sizeof(ecp_ack_t), 0)];
-    unsigned char *buf_ = ecp_pld_get_buf(payload, 0);
+    ECPBuffer packet;
+    ECPBuffer payload;
+    unsigned char pkt_buf[ECP_SIZE_PKT_BUF(sizeof(ecp_seq_t) + sizeof(ecp_ack_t), ECP_MTYPE_RBACK, conn)];
+    unsigned char pld_buf[ECP_SIZE_PLD_BUF(sizeof(ecp_seq_t) + sizeof(ecp_ack_t), ECP_MTYPE_RBACK, conn)];
+    unsigned char *buf_ = ecp_pld_get_buf(pld_buf, ECP_MTYPE_RBACK);
     ssize_t rv;
+    
+    packet.buffer = pkt_buf;
+    packet.size = ECP_SIZE_PKT_BUF(sizeof(ecp_seq_t) + sizeof(ecp_ack_t), ECP_MTYPE_RBACK, conn);
+    payload.buffer = pld_buf;
+    payload.size = ECP_SIZE_PLD_BUF(sizeof(ecp_seq_t) + sizeof(ecp_ack_t), ECP_MTYPE_RBACK, conn);
 
-    ecp_pld_set_type(payload, ECP_MTYPE_RBACK);
+    ecp_pld_set_type(pld_buf, ECP_MTYPE_RBACK);
     buf_[0] = (buf->seq_ack & 0xFF000000) >> 24;
     buf_[1] = (buf->seq_ack & 0x00FF0000) >> 16;
     buf_[2] = (buf->seq_ack & 0x0000FF00) >> 8;
@@ -140,7 +148,7 @@ static int ack_send(ECPConnection *conn) {
     buf_[6] = (buf->ack_map & 0x0000FF00) >> 8;
     buf_[7] = (buf->ack_map & 0x000000FF);
 
-    rv = ecp_rbuf_pld_send(conn, payload, sizeof(payload), 0);
+    rv = ecp_rbuf_pld_send(conn, &packet, &payload, ECP_SIZE_PLD(sizeof(ecp_seq_t) + sizeof(ecp_ack_t), ECP_MTYPE_RBACK), 0);
     if (rv < 0) return rv;
 
     buf->ack_pkt = 0;
@@ -186,7 +194,7 @@ static int ack_shift(ECPRBRecv *buf) {
     return do_ack;
 }
 
-ssize_t ecp_rbuf_handle_flush(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size) {
+ssize_t ecp_rbuf_handle_flush(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size, ECP2Buffer *b) {
     if (size < 0) return size;
     
     ECPRBRecv *buf = conn->rbuf.recv;
@@ -196,9 +204,8 @@ ssize_t ecp_rbuf_handle_flush(ECPConnection *conn, ecp_seq_t seq, unsigned char 
     return 0;
 }
 
-ssize_t ecp_rbuf_handle_flush_pts(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size) {
+ssize_t ecp_rbuf_handle_flush_pts(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size, ECP2Buffer *b) {
     ECPRBRecv *buf = conn->rbuf.recv;
-
     if (buf == NULL) return ECP_ERR;
     
     buf->timer_pts = 0;
@@ -283,7 +290,7 @@ ssize_t ecp_rbuf_recv_store(ECPConnection *conn, ecp_seq_t seq, unsigned char *m
     unsigned char mtype;
     
     mtype = ecp_msg_get_type(msg) & ECP_MTYPE_MASK;
-    if ((mtype == ECP_MTYPE_RBACK) || (mtype == ECP_MTYPE_RBFLUSH)) return ecp_msg_handle(conn, seq, msg, msg_size);
+    if ((mtype == ECP_MTYPE_RBACK) || (mtype == ECP_MTYPE_RBFLUSH)) return ecp_msg_handle(conn, seq, msg, msg_size, NULL);
 
     if (ECP_SEQ_LT(buf->rbuf.seq_max, seq)) ack_pkt = seq - buf->rbuf.seq_max;
     if (ECP_SEQ_LTE(seq, buf->seq_ack)) {
@@ -307,7 +314,7 @@ ssize_t ecp_rbuf_recv_store(ECPConnection *conn, ecp_seq_t seq, unsigned char *m
                 rv = msg_store(conn, seq, msg, msg_size);
                 if (rv < 0) return rv;
             } else {
-                ecp_msg_handle(conn, seq, msg, msg_size);
+                ecp_msg_handle(conn, seq, msg, msg_size, NULL);
                 rv = msg_size;
                 buf->rbuf.seq_max++;
                 buf->rbuf.seq_start++;

@@ -77,7 +77,15 @@ static void catchINFO(int sig) {
 
 void *sender(ECPConnection *c) {
     int idx = (int)(c->conn_data);
-    unsigned char payload[ECP_SIZE_PLD(1000, 0)];
+    ECPBuffer packet;
+    ECPBuffer payload;
+    unsigned char pkt_buf[ECP_MAX_PKT];
+    unsigned char pld_buf[ECP_MAX_PLD];
+    
+    packet.buffer = pkt_buf;
+    packet.size = ECP_MAX_PKT;
+    payload.buffer = pld_buf;
+    payload.size = ECP_MAX_PLD;
     
     printf("OPEN:%d\n", idx);
     while(1) {
@@ -85,8 +93,8 @@ void *sender(ECPConnection *c) {
         c->sock->ctx->rng(&rnd, sizeof(uint32_t));
         usleep(rnd % (2000000/msg_rate));
 
-        ecp_pld_set_type(payload, MTYPE_MSG);
-        ssize_t _rv = ecp_pld_send(c, payload, sizeof(payload));
+        ecp_pld_set_type(pld_buf, MTYPE_MSG);
+        ssize_t _rv = ecp_pld_send(c, &packet, &payload, ECP_SIZE_PLD(1000, 0));
         if (c_start && (_rv > 0)) {
             pthread_mutex_lock(&t_mtx[idx]);
             t_sent[idx]++;
@@ -95,11 +103,11 @@ void *sender(ECPConnection *c) {
     }
 }
 
-ssize_t handle_open_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s) {
+ssize_t handle_open_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s, ECP2Buffer *b) {
     int idx = (int)(conn->conn_data);
     int rv = 0;
     
-    ecp_conn_handle_open(conn, sq, t, p, s);
+    ecp_conn_handle_open(conn, sq, t, p, s, b);
     rv = pthread_create(&s_thd[idx], NULL, (void *(*)(void *))sender, (void *)conn);
     if (rv) {
         char msg[256];
@@ -110,9 +118,17 @@ ssize_t handle_open_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsign
     return s;
 }
 
-ssize_t handle_msg_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s) {
+ssize_t handle_msg_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s, ECP2Buffer *b) {
     int idx = (int)(conn->conn_data);
-    unsigned char payload[ECP_SIZE_PLD(1000, 0)];
+    ECPBuffer packet;
+    ECPBuffer payload;
+    unsigned char pkt_buf[ECP_MAX_PKT];
+    unsigned char pld_buf[ECP_MAX_PLD];
+    
+    packet.buffer = pkt_buf;
+    packet.size = ECP_MAX_PKT;
+    payload.buffer = pld_buf;
+    payload.size = ECP_MAX_PLD;
 
     if (c_start) {
         pthread_mutex_lock(&t_mtx[idx]);
@@ -121,14 +137,23 @@ ssize_t handle_msg_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigne
     }
     
     // ecp_pld_set_type(payload, MTYPE_MSG);
-    // ssize_t _rv = ecp_pld_send(c, payload, sizeof(payload));
+    // ssize_t _rv = ecp_pld_send(c, &packet, &payload, ECP_SIZE_PLD(1000, 0));
     return s;
 }
 
-ssize_t handle_msg_s(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s) {
-    unsigned char payload[ECP_SIZE_PLD(1000, 0)];
-    ecp_pld_set_type(payload, MTYPE_MSG);
-    ssize_t _rv = ecp_pld_send(conn, payload, sizeof(payload));
+ssize_t handle_msg_s(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s, ECP2Buffer *b) {
+    ECPBuffer packet;
+    ECPBuffer payload;
+    unsigned char pkt_buf[ECP_MAX_PKT];
+    unsigned char pld_buf[ECP_MAX_PLD];
+    
+    packet.buffer = pkt_buf;
+    packet.size = ECP_MAX_PKT;
+    payload.buffer = pld_buf;
+    payload.size = ECP_MAX_PLD;
+
+    ecp_pld_set_type(pld_buf, MTYPE_MSG);
+    ssize_t _rv = ecp_pld_send(conn, &packet, &payload, ECP_SIZE_PLD(1000, 0));
     return s;
 }
 

@@ -19,8 +19,6 @@ typedef struct ECPTimerItem {
     ecp_cts_t abstime;
     ecp_cts_t timeout;
     ecp_timer_retry_t *retry;
-    unsigned char *pld;
-    size_t pld_size;
 } ECPTimerItem;
 
 typedef struct ECPTimer {

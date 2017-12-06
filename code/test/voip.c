@@ -125,10 +125,10 @@ int a_init(void) {
     return ECP_OK;
 }
 
-ssize_t handle_open_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s) {
+ssize_t handle_open_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s, ECP2Buffer *b) {
     uint32_t seq = 0;
     
-    ecp_conn_handle_open(conn, t, p, s);
+    ecp_conn_handle_open(conn, sq, t, p, s, b);
     if (s < 0) {
         printf("OPEN ERR:%ld\n", s);
         return s;
@@ -139,7 +139,7 @@ ssize_t handle_open_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsign
     return s;
 }
 
-ssize_t handle_msg_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s) {
+ssize_t handle_msg_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s, ECP2Buffer *b) {
 	a_write(opus_dec, p, s, handle_plb, alsa_out_buf, alsa_frames);
     return s;
 }

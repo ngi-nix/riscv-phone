@@ -20,40 +20,37 @@ ECPConnection conn;
 #define CTYPE_TEST  0
 #define MTYPE_MSG   8
 
-ssize_t handle_open_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s) {
+ssize_t handle_open_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s, ECP2Buffer *b) {
     uint32_t seq = 0;
     
-    ecp_conn_handle_open(conn, sq, t, p, s);
+    ecp_conn_handle_open(conn, sq, t, p, s, b);
     if (s < 0) {
         printf("OPEN ERR:%ld\n", s);
         return s;
     }
     
-    unsigned char payload[ECP_SIZE_PLD(1000, 0)];
-    unsigned char *buf = ecp_pld_get_buf(payload, 0);
     char *msg = "PERA JE CAR!";
+    unsigned char buf[1000];
 
-    ecp_pld_set_type(payload, MTYPE_MSG);
     strcpy((char *)buf, msg);
-    ssize_t _rv = ecp_pld_send(conn, payload, sizeof(payload));
+    ssize_t _rv = ecp_send(conn, MTYPE_MSG, buf, 1000);
+
     return s;
 }
 
-ssize_t handle_msg_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s) {
+ssize_t handle_msg_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s, ECP2Buffer *b) {
     printf("MSG C:%s size:%ld\n", p, s);
     return s;
 }
 
-ssize_t handle_msg_s(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s) {
+ssize_t handle_msg_s(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s, ECP2Buffer *b) {
     printf("MSG S:%s size:%ld\n", p, s);
 
-    unsigned char payload[ECP_SIZE_PLD(1000, 0)];
-    unsigned char *buf = ecp_pld_get_buf(payload, 0);
     char *msg = "VAISTINU JE CAR!";
+    unsigned char buf[1000];
 
-    ecp_pld_set_type(payload, MTYPE_MSG);
     strcpy((char *)buf, msg);
-    ssize_t _rv = ecp_pld_send(conn, payload, sizeof(payload));
+    ssize_t _rv = ecp_send(conn, MTYPE_MSG, buf, 1000);
 
     return s;
 }

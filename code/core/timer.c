@@ -32,8 +32,6 @@ int ecp_timer_item_init(ECPTimerItem *ti, ECPConnection *conn, unsigned char mty
     ti->timeout = timeout;
     ti->abstime = 0;
     ti->retry = NULL;
-    ti->pld = NULL;
-    ti->pld_size = 0;
     
     return ECP_OK;
 }
@@ -186,8 +184,6 @@ ecp_cts_t ecp_timer_exe(ECPSocket *sock) {
         int rv = ECP_OK;
         ECPConnection *conn = to_exec[i].conn;
         unsigned char mtype = to_exec[i].mtype;
-        unsigned char *pld = to_exec[i].pld;
-        unsigned char pld_size = to_exec[i].pld_size;
         ecp_timer_retry_t *retry = to_exec[i].retry;
         ecp_conn_handler_msg_t *handler = conn->sock->ctx->handler[conn->type] ? conn->sock->ctx->handler[conn->type]->msg[mtype & ECP_MTYPE_MASK] : NULL;
         
@@ -197,13 +193,10 @@ ecp_cts_t ecp_timer_exe(ECPSocket *sock) {
             if (retry) {
                 _rv = retry(conn, to_exec+i);
                 if (_rv < 0) rv = _rv;
-            } else {
-                _rv = ecp_pld_send_wtimer(conn, to_exec+i, pld, pld_size);
-                if (_rv < 0) rv = _rv;
             }
-            if (rv && (rv != ECP_ERR_CLOSED) && handler) handler(conn, 0, mtype, NULL, rv);
+            if (rv && (rv != ECP_ERR_CLOSED) && handler) handler(conn, 0, mtype, NULL, rv, NULL);
         } else if (handler) {
-            handler(conn, 0, mtype, NULL, ECP_ERR_TIMEOUT);
+            handler(conn, 0, mtype, NULL, ECP_ERR_TIMEOUT, NULL);
         }
 
 #ifdef ECP_WITH_PTHREAD

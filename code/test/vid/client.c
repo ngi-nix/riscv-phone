@@ -37,7 +37,11 @@ ssize_t handle_msg(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned 
     vpx_codec_iter_t iter = NULL;
     vpx_image_t *img = NULL;
 
-    if (vpx_codec_decode(&codec, f, (unsigned int)sz, NULL, 0)) die_codec(&codec, "Failed to decode frame.");
+    if (vpx_codec_decode(&codec, f, (unsigned int)sz, NULL, 0)) {
+        fprintf(stderr, "\n%lu\n", sz);
+        fprintf(stderr, "ERROR!\n");
+        // die_codec(&codec, "Failed to decode frame.");
+    }
 
     while ((img = vpx_codec_get_frame(&codec, &iter)) != NULL) {
         if (!vpx_img_write(img, sdl_canvas.yuvBuffer, sdl_canvas.yPlaneSz + 2 * sdl_canvas.uvPlaneSz)) die_codec(NULL, "Failed to write image.");

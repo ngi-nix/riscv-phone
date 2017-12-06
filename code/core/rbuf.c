@@ -44,8 +44,7 @@ ssize_t ecp_rbuf_msg_store(ECPRBuffer *rbuf, ecp_seq_t seq, int idx, unsigned ch
     return msg_size;
 }
 
-ssize_t ecp_rbuf_pld_send(ECPConnection *conn, unsigned char *payload, size_t payload_size, ecp_seq_t seq) {
-    unsigned char packet[ECP_MAX_PKT];
+ssize_t ecp_rbuf_pld_send(ECPConnection *conn, ECPBuffer *packet, ECPBuffer *payload, size_t pld_size, ecp_seq_t seq) {
     ECPSocket *sock = conn->sock;
     ECPContext *ctx = sock->ctx;
     ECPNetAddr addr;
@@ -59,10 +58,10 @@ ssize_t ecp_rbuf_pld_send(ECPConnection *conn, unsigned char *payload, size_t pa
     seq_item.seq_w = 1;
     seq_item.rb_pass = 1;
 
-    rv = ctx->pack(conn, packet, ECP_MAX_PKT, ECP_ECDH_IDX_INV, ECP_ECDH_IDX_INV, payload, payload_size, &seq_item, &addr);
+    rv = ctx->pack(conn, packet, ECP_ECDH_IDX_INV, ECP_ECDH_IDX_INV, payload, pld_size, &seq_item, &addr);
     if (rv < 0) return rv;
 
-    rv = ecp_pkt_send(sock, &addr, packet, rv);
+    rv = ecp_pkt_send(sock, &addr, packet->buffer, rv);
     if (rv < 0) return rv;
 
     return rv;
