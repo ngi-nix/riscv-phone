@@ -1,8 +1,8 @@
 include ../Makefile.platform
-CFLAGS=$(CFLAGS_PL) -I../core -I../util -Wno-int-to-void-pointer-cast
+CFLAGS=$(CFLAGS_PL) -I../ecp -I../util -Wno-int-to-void-pointer-cast
 LDFLAGS=$(LDFLAGS_PL)
 
-dep=../core/libecpcore.a ../core/crypto/libecpcr.a ../core/htable/libecpht.a ../core/posix/libecptr.a ../core/posix/libecptm.a ../core/vconn/libecpvconn.a ../util/libecputil.a
+dep=../ecp/libecpcore.a ../ecp/crypto/libecpcr.a ../ecp/htable/libecpht.a ../ecp/posix/libecptr.a ../ecp/posix/libecptm.a ../ecp/vconn/libecpvconn.a ../util/libecputil.a
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<

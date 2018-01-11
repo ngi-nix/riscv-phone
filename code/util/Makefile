@@ -1,9 +1,9 @@
 include ../Makefile.platform
-CFLAGS=$(CFLAGS_PL) -I../core
+CFLAGS=$(CFLAGS_PL) -I../ecp
 LDFLAGS=$(LDFLAGS_PL)
 
 obj=util.o
-dep=../core/libecpcore.a ../core/crypto/libecpcr.a ../core/htable/libecpht.a ../core/posix/libecptr.a ../core/posix/libecptm.a ./libecputil.a 
+dep=../ecp/libecpcore.a ../ecp/crypto/libecpcr.a ../ecp/htable/libecpht.a ../ecp/posix/libecptr.a ../ecp/posix/libecptm.a ./libecputil.a 
 
 
 %.o: %.c %.h
