@@ -81,8 +81,9 @@
 #define ecp_conn_is_reg(conn)       ((conn->flags) & ECP_CONN_FLAG_REG)
 #define ecp_conn_is_open(conn)      ((conn->flags) & ECP_CONN_FLAG_OPEN)
 
-#include "config.h"
+#include "../config.h"
 
+#include <sys/types.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -129,8 +130,6 @@ typedef uint32_t ecp_seq_t;
 
 #define ECP_SIZE_PLD_RAW_BUF(X,T,P) (ECP_SIZE_PLD(X,T)+((P) ? ((P)->pcount+1)*(ECP_SIZE_PKT_HDR+ECP_SIZE_MSG_BUF(T,P)+ECP_AEAD_SIZE_TAG) : 0))
 #define ECP_SIZE_PKT_RAW_BUF(X,T,P) (ECP_SIZE_PLD_RAW_BUF(X,T,P)+ECP_SIZE_PKT_HDR+ECP_AEAD_SIZE_TAG)
-
-#include <sys/types.h>
 
 #ifdef ECP_WITH_PTHREAD
 #include <pthread.h>

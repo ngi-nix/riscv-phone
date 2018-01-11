@@ -1,0 +1,14 @@
+#!/bin/sh
+#
+
+BASEDIR=$(dirname $0)
+
+if [ -z $1 ]; then
+  echo usage $0 "<platform>"
+  exit 1
+fi
+
+PLATFORM=$1
+
+ln -sf $BASEDIR/Makefile.$PLATFORM $BASEDIR/Makefile.platform
+ln -sf $BASEDIR/config_$PLATFORM.h $BASEDIR/config.h
