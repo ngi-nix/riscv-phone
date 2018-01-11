@@ -20,7 +20,7 @@ int ecp_node_init(ECPContext *ctx, ECPNode *node, ecp_dh_public_t *public, void 
     memset(node, 0, sizeof(ECPNode));
     memcpy(&node->public, public, sizeof(node->public));
 
-    if (addr) rv = ctx->tr.addr_set(&node->addr, addr);
+    if (addr && ctx->tr.addr_set) rv = ctx->tr.addr_set(&node->addr, addr);
     if (rv) return ECP_ERR_NET_ADDR;
 
     return ECP_OK;
@@ -123,9 +123,11 @@ static int ctable_insert(ECPConnection *conn) {
         }
 #endif
     } else {
+#ifndef ECP_WITH_HTABLE
         if (sock->conn.size == ECP_MAX_SOCK_CONN) return ECP_ERR_MAX_SOCK_CONN;
         sock->conn.array[sock->conn.size] = conn;
         sock->conn.size++;
+#endif
     }
 
     return ECP_OK;
@@ -150,6 +152,7 @@ static void ctable_remove(ECPConnection *conn) {
         }
 #endif
     } else {
+#ifndef ECP_WITH_HTABLE
         for (i=0; i<sock->conn.size; i++) {
             if (conn == sock->conn.array[i]) {
                 sock->conn.array[i] = sock->conn.array[sock->conn.size-1];
@@ -158,6 +161,7 @@ static void ctable_remove(ECPConnection *conn) {
                 return;
             }
         }
+#endif
     }
 }
 
@@ -174,6 +178,7 @@ static ECPConnection *ctable_search(ECPSocket *sock, unsigned char c_idx, unsign
         return sock->ctx->ht.search(sock->conn.htable, c_public);
 #endif
     } else {
+#ifndef ECP_WITH_HTABLE
         if (c_public) {
             for (i=0; i<sock->conn.size; i++) {
                 conn = sock->conn.array[i];
@@ -192,6 +197,7 @@ static ECPConnection *ctable_search(ECPSocket *sock, unsigned char c_idx, unsign
                 if (conn->out && conn->sock->ctx->tr.addr_eq(&conn->node.addr, addr)) return conn;
             }
         }
+#endif
     }
 
     return NULL;
@@ -1354,14 +1360,6 @@ ssize_t ecp_pkt_send(ECPSocket *sock, ECPNetAddr *addr, unsigned char *packet, s
     return rv;
 }
 
-ssize_t ecp_pkt_recv(ECPSocket *sock, ECPNetAddr *addr, unsigned char *packet, size_t pkt_size) {
-    ssize_t rv = sock->ctx->tr.recv(&sock->sock, packet, pkt_size, addr);
-    if (rv < 0) return rv;
-    if (rv < ECP_MIN_PKT) return ECP_ERR_RECV;
-
-    return rv;
-}
-
 int ecp_seq_item_init(ECPSeqItem *seq_item) {
     memset(seq_item, 0, sizeof(ECPSeqItem));
 
@@ -1671,12 +1669,10 @@ ssize_t ecp_receive(ECPConnection *conn, unsigned char mtype, unsigned char *msg
 #endif
 }
 
-static int recv_p(ECPSocket *sock) {
-    ECPNetAddr addr;
+static int recv_p(ECPSocket *sock, ECPNetAddr *addr, unsigned char *pkt_buf, size_t size) {
     ECP2Buffer bufs;
     ECPBuffer packet;
     ECPBuffer payload;
-    unsigned char pkt_buf[ECP_MAX_PKT];
     unsigned char pld_buf[ECP_MAX_PLD];
     
     bufs.packet = &packet;
@@ -1687,23 +1683,24 @@ static int recv_p(ECPSocket *sock) {
     payload.buffer = pld_buf;
     payload.size = ECP_MAX_PLD;
 
-    ssize_t rv = ecp_pkt_recv(sock, &addr, pkt_buf, ECP_MAX_PKT);
-    if (rv < 0) return rv;
-    
-    rv = ecp_pkt_handle(sock, &addr, NULL, &bufs, rv);
+    ssize_t rv = ecp_pkt_handle(sock, addr, NULL, &bufs, size);
     if (rv < 0) return rv;
     
     return ECP_OK;
 }
 
 int ecp_receiver(ECPSocket *sock) {
+    ECPNetAddr addr;
+    unsigned char pkt_buf[ECP_MAX_PKT];
     ecp_cts_t next = 0;
+
+    if (sock->ctx->tr.recv == NULL) return ECP_ERR;
     sock->running = 1;
     while(sock->running) {
-        int rv = sock->ctx->tr.poll(&sock->sock, next ? next : sock->poll_timeout);
-        if (rv == 1) {
-            rv = recv_p(sock);
-            DPRINT(rv, "ERR:recv_p - RV:%d\n", rv);
+        ssize_t rv = sock->ctx->tr.recv(&sock->sock, pkt_buf, ECP_MAX_PKT, &addr, next ? next : sock->poll_timeout);
+        if (rv > 0) {
+            int _rv = recv_p(sock, &addr, pkt_buf, rv);
+            DPRINT(_rv, "ERR:recv_p - RV:%d\n", _rv);
         }
         next = ecp_timer_exe(sock);
     }

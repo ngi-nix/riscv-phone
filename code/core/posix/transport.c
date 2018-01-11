@@ -71,13 +71,6 @@ static void t_close(int *sock) {
     close(*sock);
 }
 
-static int t_poll(int *sock, int timeout) {
-    struct pollfd fds[] = {
-        {*sock, POLLIN, 0}
-    };
-    return poll(fds, 1, timeout);
-}
-
 static ssize_t t_send(int *sock, void *msg, size_t msg_size, ECPNetAddr *addr) {
     struct sockaddr_in servaddr;
 
@@ -88,26 +81,33 @@ static ssize_t t_send(int *sock, void *msg, size_t msg_size, ECPNetAddr *addr) {
     return sendto(*sock, msg, msg_size, 0, (struct sockaddr *)&servaddr, sizeof(servaddr));
 }
 
-static ssize_t t_recv(int *sock, void *msg, size_t msg_size, ECPNetAddr *addr) {
+static ssize_t t_recv(int *sock, void *msg, size_t msg_size, ECPNetAddr *addr, int timeout) {
     struct sockaddr_in servaddr;
     socklen_t addrlen = sizeof(servaddr);
+    struct pollfd fds[] = {
+        {*sock, POLLIN, 0}
+    };
+
+    int rv = poll(fds, 1, timeout);
     memset((void *)&servaddr, 0, sizeof(servaddr));
+    if (rv == 1) {
+        ssize_t recvlen = recvfrom(*sock, msg, msg_size, 0, (struct sockaddr *)&servaddr, &addrlen);
+        if (recvlen < 0) return recvlen;
+        if (recvlen < ECP_MIN_PKT) return ECP_ERR_RECV;
 
-    ssize_t recvlen = recvfrom(*sock, msg, msg_size, 0, (struct sockaddr *)&servaddr, &addrlen);
-    if (recvlen < 0) return recvlen;
-
-    if (addr) {
-        addr->port = servaddr.sin_port;
-        memcpy(addr->host, (void *)&servaddr.sin_addr, sizeof(addr->host));
+        if (addr) {
+            addr->port = servaddr.sin_port;
+            memcpy(addr->host, (void *)&servaddr.sin_addr, sizeof(addr->host));
+        }
+        return recvlen;
     }
-    return recvlen;
+    return ECP_ERR_TIMEOUT;
 }
 
 int ecp_transport_init(ECPTransportIface *t) {
     t->init = 1;
     t->open = t_open;
     t->close = t_close;
-    t->poll = t_poll;
     t->send = t_send;
     t->recv = t_recv;
     t->addr_eq = t_addr_eq;

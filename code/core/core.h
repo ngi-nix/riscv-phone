@@ -183,9 +183,8 @@ typedef struct ECPTransportIface {
     int init;
     int (*open) (ECPNetSock *, void *addr);
     void (*close) (ECPNetSock *);
-    int (*poll) (ECPNetSock *, int);
     ssize_t (*send) (ECPNetSock *, void *, size_t, ECPNetAddr *);
-    ssize_t (*recv) (ECPNetSock *, void *, size_t, ECPNetAddr *);
+    ssize_t (*recv) (ECPNetSock *, void *, size_t, ECPNetAddr *, int);
     int (*addr_eq) (ECPNetAddr *, ECPNetAddr *);
     int (*addr_set) (ECPNetAddr *, void *addr);
 } ECPTransportIface;
@@ -271,10 +270,11 @@ typedef struct ECPConnHandler {
 } ECPConnHandler;
 
 typedef struct ECPSockCTable {
-    struct ECPConnection *array[ECP_MAX_SOCK_CONN];
-    unsigned short size;
 #ifdef ECP_WITH_HTABLE
     void *htable;
+#else
+    struct ECPConnection *array[ECP_MAX_SOCK_CONN];
+    unsigned short size;
 #endif
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_t mutex;
@@ -395,7 +395,6 @@ ssize_t ecp_unpack(ECPSocket *sock, ECPNetAddr *addr, ECPConnection *parent, uns
 ssize_t ecp_pkt_handle(ECPSocket *sock, ECPNetAddr *addr, ECPConnection *parent, ECP2Buffer *bufs, size_t pkt_size);
 
 ssize_t ecp_pkt_send(ECPSocket *sock, ECPNetAddr *addr, unsigned char *packet, size_t pkt_size);
-ssize_t ecp_pkt_recv(ECPSocket *sock, ECPNetAddr *addr, unsigned char *packet, size_t pkt_size);
 
 int ecp_seq_item_init(ECPSeqItem *seq_item);
 int ecp_frag_iter_init(ECPFragIter *iter, unsigned char *buffer, size_t buf_size);
