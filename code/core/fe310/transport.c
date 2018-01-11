@@ -27,6 +27,8 @@ static ssize_t t_send(int *sock, void *msg, size_t msg_size, ECPNetAddr *addr) {
     int rv;
 
     buf -= addr_len;
+    memcpy(buf, addr->host, sizeof(addr->host));
+    memcpy(buf+sizeof(addr->host), &addr->port, sizeof(addr->port));
     rv = eos_net_send(EOS_NET_CMD_PKT, buf, buf_size);
     if (rv) return ECP_ERR_SEND;
     return msg_size;
