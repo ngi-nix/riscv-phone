@@ -1,5 +1,6 @@
-CFLAGS = -I../core -pthread -O3 $(PIC)
-LDFLAGS=-lm -pthread
+include ../Makefile.platform
+CFLAGS=$(CFLAGS_PL) -I../core
+LDFLAGS=$(LDFLAGS_PL)
 
 obj=util.o
 dep=../core/libecpcore.a ../core/crypto/libecpcr.a ../core/htable/libecpht.a ../core/posix/libecptr.a ../core/posix/libecptm.a ./libecputil.a 

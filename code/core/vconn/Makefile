@@ -1,4 +1,5 @@
-CFLAGS = -I../core -pthread -O3 $(PIC)
+include ../../Makefile.platform
+CFLAGS=$(CFLAGS_PL) $(PIC) -I..
 
 obj = vconn.o
 

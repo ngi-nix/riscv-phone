@@ -32,7 +32,7 @@ typedef struct {
 } ChaCha_ctx;
 
 void ChaCha_set_key(ChaCha_ctx *ctx, const unsigned char *key,
-    unsigned int keybits);
+    uint32_t keybits);
 void ChaCha_set_iv(ChaCha_ctx *ctx, const unsigned char *iv,
     const unsigned char *counter);
 void ChaCha(ChaCha_ctx *ctx, unsigned char *out, const unsigned char *in,

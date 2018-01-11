@@ -590,7 +590,7 @@ int ecp_conn_close(ECPConnection *conn, ecp_cts_t timeout) {
     refcount = conn->refcount;
     pthread_mutex_unlock(&conn->mutex);
     
-    if (timeout && refcount) {
+    if (timeout && refcount && sock->ctx->tm.sleep_ms) {
         sock->ctx->tm.sleep_ms(timeout);
         pthread_mutex_lock(&conn->mutex);
         refcount = conn->refcount;
@@ -1695,6 +1695,7 @@ int ecp_receiver(ECPSocket *sock) {
     ecp_cts_t next = 0;
 
     if (sock->ctx->tr.recv == NULL) return ECP_ERR;
+
     sock->running = 1;
     while(sock->running) {
         ssize_t rv = sock->ctx->tr.recv(&sock->sock, pkt_buf, ECP_MAX_PKT, &addr, next ? next : sock->poll_timeout);

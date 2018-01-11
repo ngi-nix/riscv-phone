@@ -1,5 +1,5 @@
-MAKE=make
-CFLAGS=-Iinclude -I.. -D__BEGIN_HIDDEN_DECLS= -D__END_HIDDEN_DECLS= -O3 $(PIC)
+include ../../Makefile.platform
+CFLAGS=$(CFLAGS_PL) $(PIC) -Iinclude -I.. -D__BEGIN_HIDDEN_DECLS= -D__END_HIDDEN_DECLS=
 
 obj = e_chacha20poly1305.o crypto.o
 obj_dep = compat/explicit_bzero.o compat/timingsafe_memcmp.o compat/timingsafe_bcmp.o \

@@ -3,7 +3,7 @@
 #include <unistd.h>
 
 #include "core.h"
-#include "vconn.h"
+#include "vconn/vconn.h"
 
 static int v_rng(void *buf, size_t bufsize) {
     int fd;

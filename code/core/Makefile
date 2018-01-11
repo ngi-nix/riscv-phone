@@ -1,9 +1,8 @@
-MAKE=make
-CFLAGS = -I. -pthread -O3 $(PIC)
+include ../Makefile.platform
+CFLAGS=$(CFLAGS_PL) $(PIC) -I.
 
-obj = core.o timer.o rbuf.o rbuf_send.o rbuf_recv.o msgq.o
-subdirs = crypto posix htable
-
+obj = core.o timer.o $(obj_rbuf)
+subdirs = crypto $(vconn) $(htable) $(platform) 
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<

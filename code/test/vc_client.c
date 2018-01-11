@@ -4,7 +4,7 @@
 #include <stdlib.h>
 
 #include "core.h"
-#include "vconn.h"
+#include "vconn/vconn.h"
 #include "util.h"
 
 ECPContext ctx;

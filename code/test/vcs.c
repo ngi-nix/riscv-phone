@@ -5,7 +5,7 @@
 
 #include "core.h"
 #include "util.h"
-#include "vconn.h"
+#include "vconn/vconn.h"
 
 ECPContext ctx;
 ECPSocket sock;
