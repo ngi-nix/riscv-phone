@@ -1,4 +1,4 @@
-include ../Makefile.platform
+include ../ecp/Makefile.platform
 CFLAGS=$(CFLAGS_PL) -I../ecp -I../util -Wno-int-to-void-pointer-cast
 LDFLAGS=$(LDFLAGS_PL)
 

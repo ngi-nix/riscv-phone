@@ -1,5 +1,5 @@
-include ../../Makefile.platform
-CFLAGS=$(CFLAGS_PL) $(PIC) -I..
+include ../Makefile.platform
+CFLAGS=$(CFLAGS_PL) $(PIC) -I.. -I../../fe310
 
 obj_tr = transport.o
 obj_tm = time.o

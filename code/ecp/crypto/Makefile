@@ -1,4 +1,4 @@
-include ../../Makefile.platform
+include ../Makefile.platform
 CFLAGS=$(CFLAGS_PL) $(PIC) -Iinclude -I.. -D__BEGIN_HIDDEN_DECLS= -D__END_HIDDEN_DECLS=
 
 obj = e_chacha20poly1305.o crypto.o

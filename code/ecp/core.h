@@ -78,10 +78,13 @@
 #define ECP_CONN_FLAG_REG           0x01
 #define ECP_CONN_FLAG_OPEN          0x02
 
+#define ECP_SEND_FLAG_REPLY         0x01
+#define ECP_SEND_FLAG_MORE          0x02
+
 #define ecp_conn_is_reg(conn)       ((conn->flags) & ECP_CONN_FLAG_REG)
 #define ecp_conn_is_open(conn)      ((conn->flags) & ECP_CONN_FLAG_OPEN)
 
-#include "../config.h"
+#include "config.h"
 
 #include <sys/types.h>
 #include <stddef.h>
@@ -184,16 +187,20 @@ typedef struct ECPTransportIface {
     int init;
     int (*open) (ECPNetSock *, void *addr);
     void (*close) (ECPNetSock *);
-    ssize_t (*send) (ECPNetSock *, void *, size_t, ECPNetAddr *);
-    ssize_t (*recv) (ECPNetSock *, void *, size_t, ECPNetAddr *, int);
+    ssize_t (*send) (ECPNetSock *, struct ECPBuffer *packet, size_t, ECPNetAddr *, unsigned char);
+    ssize_t (*recv) (ECPNetSock *, struct ECPBuffer *packet, ECPNetAddr *, int);
     int (*addr_eq) (ECPNetAddr *, ECPNetAddr *);
     int (*addr_set) (ECPNetAddr *, void *addr);
+    void (*buf_free) (struct ECP2Buffer *, unsigned char);
+    void (*buf_flag_set) (struct ECP2Buffer *, unsigned char);
+    void (*buf_flag_clear) (struct ECP2Buffer *, unsigned char);
 } ECPTransportIface;
 
 typedef struct ECPTimeIface {
     int init;
     ecp_cts_t (*abstime_ms) (ecp_cts_t);
     void (*sleep_ms) (ecp_cts_t);
+    void (*timer_set) (ecp_cts_t);
 } ECPTimeIface;
 
 #ifdef ECP_WITH_HTABLE
@@ -392,10 +399,10 @@ ssize_t ecp_conn_pack(ECPConnection *conn, unsigned char *packet, size_t pkt_siz
 ssize_t _ecp_pack(ECPConnection *conn, ECPBuffer *packet, unsigned char s_idx, unsigned char c_idx, ECPBuffer *payload, size_t pld_size, ECPSeqItem *si, ECPNetAddr *addr);
 ssize_t _ecp_pack_raw(ECPSocket *sock, ECPConnection *parent, ECPBuffer *packet, unsigned char s_idx, unsigned char c_idx, ecp_dh_public_t *public, ecp_aead_key_t *shsec, unsigned char *nonce, ecp_seq_t seq, ECPBuffer *payload, size_t pld_size, ECPNetAddr *addr);
 
-ssize_t ecp_unpack(ECPSocket *sock, ECPNetAddr *addr, ECPConnection *parent, unsigned char *payload, size_t pld_size, unsigned char *packet, size_t pkt_size, ECPConnection **_conn, ecp_seq_t *_seq);
+ssize_t ecp_unpack(ECPSocket *sock, ECPNetAddr *addr, ECPConnection *parent, ECP2Buffer *bufs, size_t pkt_size, ECPConnection **_conn, ecp_seq_t *_seq);
 ssize_t ecp_pkt_handle(ECPSocket *sock, ECPNetAddr *addr, ECPConnection *parent, ECP2Buffer *bufs, size_t pkt_size);
 
-ssize_t ecp_pkt_send(ECPSocket *sock, ECPNetAddr *addr, unsigned char *packet, size_t pkt_size);
+ssize_t ecp_pkt_send(ECPSocket *sock, ECPNetAddr *addr, ECPBuffer *packet, size_t pkt_size, unsigned char flags);
 
 int ecp_seq_item_init(ECPSeqItem *seq_item);
 int ecp_frag_iter_init(ECPFragIter *iter, unsigned char *buffer, size_t buf_size);
@@ -413,10 +420,10 @@ int ecp_pld_set_pts(unsigned char *payload, unsigned char mtype, ecp_pts_t pts);
 unsigned char *ecp_pld_get_buf(unsigned char *payload, unsigned char mtype);
 unsigned char ecp_pld_get_type(unsigned char *payload);
 
-ssize_t ecp_pld_send(ECPConnection *conn, ECPBuffer *packet, ECPBuffer *payload, size_t pld_size);
-ssize_t ecp_pld_send_wtimer(ECPConnection *conn, ECPBuffer *packet, ECPBuffer *payload, size_t pld_size, ECPTimerItem *ti);
-ssize_t ecp_pld_send_ll(ECPConnection *conn, ECPBuffer *packet, unsigned char s_idx, unsigned char c_idx, ECPBuffer *payload, size_t pld_size, ECPTimerItem *ti);
-ssize_t ecp_pld_send_raw(ECPSocket *sock, ECPConnection *parent, ECPNetAddr *addr, ECPBuffer *packet, unsigned char s_idx, unsigned char c_idx, ecp_dh_public_t *public, ecp_aead_key_t *shsec, unsigned char *nonce, ecp_seq_t seq, ECPBuffer *payload, size_t pld_size);
+ssize_t ecp_pld_send(ECPConnection *conn, ECPBuffer *packet, ECPBuffer *payload, size_t pld_size, unsigned char flags);
+ssize_t ecp_pld_send_wtimer(ECPConnection *conn, ECPBuffer *packet, ECPBuffer *payload, size_t pld_size, unsigned char flags, ECPTimerItem *ti);
+ssize_t ecp_pld_send_ll(ECPConnection *conn, ECPBuffer *packet, unsigned char s_idx, unsigned char c_idx, ECPBuffer *payload, size_t pld_size, unsigned char flags, ECPTimerItem *ti);
+ssize_t ecp_pld_send_raw(ECPSocket *sock, ECPConnection *parent, ECPNetAddr *addr, ECPBuffer *packet, unsigned char s_idx, unsigned char c_idx, ecp_dh_public_t *public, ecp_aead_key_t *shsec, unsigned char *nonce, ecp_seq_t seq, ECPBuffer *payload, size_t pld_size, unsigned char flags);
 
 ssize_t ecp_send(ECPConnection *conn, unsigned char mtype, unsigned char *content, size_t content_size);
 ssize_t ecp_receive(ECPConnection *conn, unsigned char mtype, unsigned char *msg, size_t msg_size, ecp_cts_t timeout);

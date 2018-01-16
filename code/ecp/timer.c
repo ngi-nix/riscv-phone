@@ -58,6 +58,7 @@ int ecp_timer_push(ECPTimerItem *ti) {
     if (!rv && !is_reg) rv = ECP_ERR_CLOSED;
 
     if (!rv) {
+        if (ctx->tm.timer_set) ctx->tm.timer_set(ti->timeout);
         for (i=timer->head; i>=0; i--) {
             if (ECP_CTS_LTE(ti->abstime, timer->item[i].abstime)) {
                 if (i != timer->head) memmove(timer->item+i+2, timer->item+i+1, sizeof(ECPTimerItem) * (timer->head-i));

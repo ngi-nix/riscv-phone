@@ -1,4 +1,4 @@
-include ../../../Makefile.platform
+include ../../Makefile.platform
 CFLAGS=$(CFLAGS_PL) -I.. -I../include
 LDFLAGS=$(LDFLAGS_PL)
 

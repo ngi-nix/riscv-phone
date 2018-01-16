@@ -81,7 +81,7 @@ static ssize_t _vconn_send_open(ECPConnection *conn, ECPTimerItem *ti) {
     payload.size = ECP_SIZE_PLD_BUF(0, ECP_MTYPE_KGET_REQ, conn);
 
     ecp_pld_set_type(pld_buf, ECP_MTYPE_KGET_REQ);
-    return ecp_pld_send_ll(conn, &packet, ECP_ECDH_IDX_PERMA, ECP_ECDH_IDX_INV, &payload, ECP_SIZE_PLD(0, ECP_MTYPE_KGET_REQ), ti);
+    return ecp_pld_send_ll(conn, &packet, ECP_ECDH_IDX_PERMA, ECP_ECDH_IDX_INV, &payload, ECP_SIZE_PLD(0, ECP_MTYPE_KGET_REQ), 0, ti);
 }
 
 static ssize_t vconn_open(ECPConnection *conn) {
@@ -198,7 +198,7 @@ static ssize_t vconn_handle_relay(ECPConnection *conn, ecp_seq_t seq, unsigned c
     payload.size = b->payload->size - (payload.buffer - b->payload->buffer);
 
     ecp_pld_set_type(payload.buffer, ECP_MTYPE_EXEC);
-    rv = ecp_pld_send(conn_out, b->packet, &payload, ECP_SIZE_PLD_HDR+1+size);
+    rv = ecp_pld_send(conn_out, b->packet, &payload, ECP_SIZE_PLD_HDR+1+size, ECP_SEND_FLAG_REPLY);
 
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&conn_out->mutex);
@@ -286,7 +286,7 @@ static ssize_t _vlink_send_open(ECPConnection *conn, ECPTimerItem *ti) {
     buf[0] = conn->type;
     memcpy(buf+1, ctx->cr.dh_pub_get_buf(&sock->key_perma.public), ECP_ECDH_SIZE_KEY);
 
-    return ecp_pld_send_wtimer(conn, &packet, &payload, ECP_SIZE_PLD(ECP_ECDH_SIZE_KEY+1, ECP_MTYPE_OPEN_REQ), ti);
+    return ecp_pld_send_wtimer(conn, &packet, &payload, ECP_SIZE_PLD(ECP_ECDH_SIZE_KEY+1, ECP_MTYPE_OPEN_REQ), 0, ti);
 }
 
 static ssize_t vlink_open(ECPConnection *conn) {
@@ -372,7 +372,7 @@ static ssize_t vlink_handle_relay(ECPConnection *conn, ecp_seq_t seq, unsigned c
     payload.size = b->payload->size - (payload.buffer - b->payload->buffer);
 
     ecp_pld_set_type(payload.buffer, ECP_MTYPE_EXEC);
-    rv = ecp_pld_send(conn, b->packet, &payload, ECP_SIZE_PLD_HDR+1+size);
+    rv = ecp_pld_send(conn, b->packet, &payload, ECP_SIZE_PLD_HDR+1+size, ECP_SEND_FLAG_REPLY);
 
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&conn->mutex);
@@ -422,6 +422,9 @@ static ssize_t vconn_set_msg(ECPConnection *conn, ECPBuffer *payload, unsigned c
 static ssize_t vconn_pack(ECPConnection *conn, ECPBuffer *packet, unsigned char s_idx, unsigned char c_idx, ECPBuffer *payload, size_t pld_size, ECPSeqItem *si, ECPNetAddr *addr) {
     ECPContext *ctx = conn->sock->ctx;
 
+    if ((packet == NULL) || (packet->buffer == NULL)) return ECP_ERR;
+    if ((payload == NULL) || (payload->buffer == NULL)) return ECP_ERR;
+
     if (conn->parent) {
         unsigned char mtype = ecp_pld_get_type(payload->buffer);
         ssize_t rv, hdr_size = vconn_set_msg(conn->parent, packet, mtype);
@@ -441,6 +444,9 @@ static ssize_t vconn_pack(ECPConnection *conn, ECPBuffer *packet, unsigned char 
 
 static ssize_t vconn_pack_raw(ECPSocket *sock, ECPConnection *parent, ECPBuffer *packet, unsigned char s_idx, unsigned char c_idx, ecp_dh_public_t *public, ecp_aead_key_t *shsec, unsigned char *nonce, ecp_seq_t seq, ECPBuffer *payload, size_t pld_size, ECPNetAddr *addr) {
     ECPContext *ctx = sock->ctx;
+
+    if ((packet == NULL) || (packet->buffer == NULL)) return ECP_ERR;
+    if ((payload == NULL) || (payload->buffer == NULL)) return ECP_ERR;
 
     if (parent) {
         unsigned char mtype = ecp_pld_get_type(payload->buffer);
@@ -599,7 +605,7 @@ static ssize_t _vconn_send_kget(ECPConnection *conn, ECPTimerItem *ti) {
     payload.size = ECP_SIZE_PLD_BUF(0, ECP_MTYPE_KGET_REQ, conn);
 
     ecp_pld_set_type(pld_buf, ECP_MTYPE_KGET_REQ);
-    return ecp_pld_send_ll(conn, &packet, ECP_ECDH_IDX_PERMA, ECP_ECDH_IDX_INV, &payload, ECP_SIZE_PLD(0, ECP_MTYPE_KGET_REQ), ti);
+    return ecp_pld_send_ll(conn, &packet, ECP_ECDH_IDX_PERMA, ECP_ECDH_IDX_INV, &payload, ECP_SIZE_PLD(0, ECP_MTYPE_KGET_REQ), 0, ti);
 }
 
 int ecp_vconn_open(ECPConnection *conn, ECPNode *conn_node, ECPVConnection vconn[], ECPNode vconn_node[], int size) {

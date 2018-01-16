@@ -1,4 +1,4 @@
-include ../../Makefile.platform
+include ../Makefile.platform
 CFLAGS=$(CFLAGS_PL) $(PIC) -I.. -std=gnu89 
 
 obj = htable.o hashtable.o hashtable_itr.o

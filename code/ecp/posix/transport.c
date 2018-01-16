@@ -71,17 +71,17 @@ static void t_close(int *sock) {
     close(*sock);
 }
 
-static ssize_t t_send(int *sock, void *msg, size_t msg_size, ECPNetAddr *addr) {
+static ssize_t t_send(int *sock, ECPBuffer *packet, size_t msg_size, ECPNetAddr *addr, unsigned char flags) {
     struct sockaddr_in servaddr;
 
     memset((void *)&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
     servaddr.sin_port = addr->port;
     memcpy((void *)&servaddr.sin_addr, addr->host, sizeof(addr->host));
-    return sendto(*sock, msg, msg_size, 0, (struct sockaddr *)&servaddr, sizeof(servaddr));
+    return sendto(*sock, packet->buffer, msg_size, 0, (struct sockaddr *)&servaddr, sizeof(servaddr));
 }
 
-static ssize_t t_recv(int *sock, void *msg, size_t msg_size, ECPNetAddr *addr, int timeout) {
+static ssize_t t_recv(int *sock, ECPBuffer *packet, ECPNetAddr *addr, int timeout) {
     struct sockaddr_in servaddr;
     socklen_t addrlen = sizeof(servaddr);
     struct pollfd fds[] = {
@@ -91,7 +91,7 @@ static ssize_t t_recv(int *sock, void *msg, size_t msg_size, ECPNetAddr *addr, i
     int rv = poll(fds, 1, timeout);
     memset((void *)&servaddr, 0, sizeof(servaddr));
     if (rv == 1) {
-        ssize_t recvlen = recvfrom(*sock, msg, msg_size, 0, (struct sockaddr *)&servaddr, &addrlen);
+        ssize_t recvlen = recvfrom(*sock, packet->buffer, packet->size, 0, (struct sockaddr *)&servaddr, &addrlen);
         if (recvlen < 0) return recvlen;
         if (recvlen < ECP_MIN_PKT) return ECP_ERR_RECV;
 

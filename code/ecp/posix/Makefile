@@ -1,4 +1,4 @@
-include ../../Makefile.platform
+include ../Makefile.platform
 CFLAGS=$(CFLAGS_PL) $(PIC) -I..
 
 obj_tr = transport.o
