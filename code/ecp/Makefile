@@ -2,7 +2,7 @@ include Makefile.platform
 CFLAGS=$(CFLAGS_PL) $(PIC) -I.
 
 obj = core.o timer.o $(obj_rbuf)
-subdirs = crypto $(vconn) $(htable) $(platform) 
+subdirs = crypto platform $(htable) $(vconn)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<
@@ -15,6 +15,19 @@ all: $(obj)
 	for i in $(subdirs); do \
 		(cd $$i && $(MAKE) && cd ..) || exit; \
 	done
+
+install: all
+	mkdir -p build-$(platform)/
+	install libecpcore.a build-$(platform)/
+	install crypto/libecpcr.a build-$(platform)/
+	install platform/libecptm.a build-$(platform)/
+	install platform/libecptr.a build-$(platform)/
+	if [ -f htable/libecpht.a ]; then \
+		install htable/libecpht.a build-$(platform)/; \
+	fi
+	if [ -f vconn/libecpvconn.a ]; then \
+		install vconn/libecpvconn.a build-$(platform)/; \
+	fi
 
 clean:
 	for i in $(subdirs); do \

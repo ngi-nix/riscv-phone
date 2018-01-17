@@ -1,8 +1,5 @@
 #ifdef ECP_WITH_MSGQ
 
-#include <pthread.h>
-#include <string.h>
-
 #define ECP_MSGQ_MAX_MSG        32
 #define ECP_MSGQ_ERR_MAX_MSG    -110
 

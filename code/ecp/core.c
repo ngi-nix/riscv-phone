@@ -1,7 +1,5 @@
 #include "core.h"
 
-#include <string.h>
-
 int ecp_dhkey_generate(ECPContext *ctx, ECPDHKey *key) {
     int rv;
     

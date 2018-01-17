@@ -1,3 +1,14 @@
+#include <sys/types.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <string.h>
+
+#include "config.h"
+
+#ifdef ECP_WITH_PTHREAD
+#include <pthread.h>
+#endif
+
 #define ECP_OK                      0
 #define ECP_ITER_NEXT               1
 
@@ -84,20 +95,6 @@
 #define ecp_conn_is_reg(conn)       ((conn->flags) & ECP_CONN_FLAG_REG)
 #define ecp_conn_is_open(conn)      ((conn->flags) & ECP_CONN_FLAG_OPEN)
 
-#include "config.h"
-
-#include <sys/types.h>
-#include <stddef.h>
-#include <stdint.h>
-
-struct ECPBuffer;
-struct ECP2Buffer;
-struct ECPContext;
-struct ECPSocket;
-struct ECPConnection;
-struct ECPSeqItem;
-struct ECPFragIter;
-
 // typedef long ssize_t;
 
 typedef uint32_t ecp_ack_t;
@@ -134,23 +131,27 @@ typedef uint32_t ecp_seq_t;
 #define ECP_SIZE_PLD_RAW_BUF(X,T,P) (ECP_SIZE_PLD(X,T)+((P) ? ((P)->pcount+1)*(ECP_SIZE_PKT_HDR+ECP_SIZE_MSG_BUF(T,P)+ECP_AEAD_SIZE_TAG) : 0))
 #define ECP_SIZE_PKT_RAW_BUF(X,T,P) (ECP_SIZE_PLD_RAW_BUF(X,T,P)+ECP_SIZE_PKT_HDR+ECP_AEAD_SIZE_TAG)
 
-#ifdef ECP_WITH_PTHREAD
-#include <pthread.h>
-#endif
-
-#include "posix/transport.h"
-#include "crypto/crypto.h"
-#include "timer.h"
-
-#ifdef ECP_WITH_RBUF
-#include "rbuf.h"
-#endif
-
 #ifdef ECP_DEBUG
 #include <stdio.h>
 #define DPRINT(cnd, format, ...)    { if (cnd) { fprintf (stderr, format, __VA_ARGS__); } }
 #else
 #define DPRINT(cnd, format, ...)    {}
+#endif
+
+struct ECPBuffer;
+struct ECP2Buffer;
+struct ECPContext;
+struct ECPSocket;
+struct ECPConnection;
+struct ECPSeqItem;
+struct ECPFragIter;
+
+#include "platform/transport.h"
+#include "crypto/crypto.h"
+#include "timer.h"
+
+#ifdef ECP_WITH_RBUF
+#include "rbuf.h"
 #endif
 
 typedef int ecp_rng_t (void *, size_t);

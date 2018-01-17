@@ -3,7 +3,7 @@ CFLAGS=$(CFLAGS_PL) -I../ecp
 LDFLAGS=$(LDFLAGS_PL)
 
 obj=util.o
-dep=../ecp/libecpcore.a ../ecp/crypto/libecpcr.a ../ecp/htable/libecpht.a ../ecp/posix/libecptr.a ../ecp/posix/libecptm.a ./libecputil.a 
+dep=../ecp/build-posix/*.a ./libecputil.a 
 
 
 %.o: %.c %.h

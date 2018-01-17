@@ -1,7 +1,5 @@
 #include "core.h"
 
-#include <string.h>
-
 int ecp_rbuf_init(ECPRBuffer *rbuf, ECPRBMessage *msg, unsigned int msg_size) {
     rbuf->msg = msg;
     if (msg_size) {

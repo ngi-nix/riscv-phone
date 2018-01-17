@@ -1,7 +1,5 @@
 #include "core.h"
 
-#include <string.h>
-
 int ecp_timer_create(ECPTimer *timer) {
     int rv = ECP_OK;
     timer->head = -1;

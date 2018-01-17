@@ -1,5 +1,3 @@
-#include <stdint.h>
-
 #define ECP_IPv4_ADDR_SIZE          4
 
 typedef int ECPNetSock;

@@ -1,7 +1,5 @@
 #include "core.h"
 
-#include <string.h>
-
 #define ACK_RATE            8
 #define ACK_MASK_FIRST      ((ecp_ack_t)1 << (ECP_SIZE_ACKB - 1))
 

@@ -1,6 +1,7 @@
+platform=posix
+
 htable=htable
 vconn=vconn
-platform=posix
 obj_rbuf=rbuf.o rbuf_send.o rbuf_recv.o msgq.o
 
 CFLAGS_PL=-O3

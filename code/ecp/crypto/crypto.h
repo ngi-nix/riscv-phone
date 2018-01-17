@@ -1,5 +1,3 @@
-#include <stddef.h>
-
 #define CURVE25519_SIZE_KEY     32
 #define CHACHA20_SIZE_KEY       32
 #define POLY1305_SIZE_TAG       16

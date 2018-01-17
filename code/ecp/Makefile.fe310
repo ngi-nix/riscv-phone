@@ -1,6 +1,7 @@
+platform=fe310
+
 htable=
 vconn=vconn
-platform=fe310
 rbuf_obj=
 
 FE310_HOME=/opt/my/freedom-e-sdk

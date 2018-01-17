@@ -2,7 +2,7 @@ include ../ecp/Makefile.platform
 CFLAGS=$(CFLAGS_PL) -I../ecp -I../util -Wno-int-to-void-pointer-cast
 LDFLAGS=$(LDFLAGS_PL)
 
-dep=../ecp/libecpcore.a ../ecp/crypto/libecpcr.a ../ecp/htable/libecpht.a ../ecp/posix/libecptr.a ../ecp/posix/libecptm.a ../ecp/vconn/libecpvconn.a ../util/libecputil.a
+dep=../ecp/build-posix/*.a ../util/libecputil.a
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<

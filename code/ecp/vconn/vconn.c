@@ -1,7 +1,6 @@
-#include "core.h"
-#include "vconn.h"
+#include <core.h>
 
-#include <string.h>
+#include "vconn.h"
 
 #ifdef ECP_WITH_PTHREAD
 static pthread_mutex_t key_perma_mutex;

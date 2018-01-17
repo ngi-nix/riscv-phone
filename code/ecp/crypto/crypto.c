@@ -1,6 +1,5 @@
 #include <core.h>
 
-#include <string.h>
 #include <curve25519.h>
 
 static int dh_mkpair(ecp_dh_public_t *pub, ecp_dh_private_t *priv, ecp_rng_t *rand_buf) {

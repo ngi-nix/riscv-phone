@@ -1,3 +1,4 @@
+#include <ecp/config_fe310.h>
 #include <ecp/core.h>
 
 int ecp_init(ECPContext *ctx);

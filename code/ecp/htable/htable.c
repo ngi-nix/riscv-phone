@@ -1,7 +1,5 @@
 #include <core.h>
 
-#include <string.h>
-
 #include "hashtable.h"
 
 static void *h_create(ECPContext *ctx) {

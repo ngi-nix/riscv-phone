@@ -1,10 +1,7 @@
-#include <stddef.h>
-#include <string.h>
+#include <core.h>
 
 #include <eos/eos.h>
 #include <eos/net.h>
-
-#include <core.h>
 
 static int t_addr_eq(ECPNetAddr *addr1, ECPNetAddr *addr2) {
     if (addr1->port != addr2->port) return 0;

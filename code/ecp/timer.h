@@ -2,12 +2,6 @@
 
 #define ECP_ERR_MAX_TIMER   -110
 
-#include <stddef.h>
-
-#ifdef ECP_WITH_PTHREAD
-#include <pthread.h>
-#endif
-
 struct ECPTimerItem;
 
 typedef ssize_t ecp_timer_retry_t (struct ECPConnection *, struct ECPTimerItem *);

@@ -2,7 +2,7 @@
 LIBVPX_HOME=/Users/majstor/src/libvpx
 CFLAGS=-D_V4L2_KERNEL_ -I/usr/src/linux-headers-$(uname -r) -I$(LIBVPX_HOME) -I/opt/local/include/SDL2 -I../../core -I../../vconn -I../../util
 LDFLAGS=-L$(LIBVPX_HOME) -L/opt/local/lib
-dep=../../ecp/libecpcore.a ../../ecp/crypto/libecpcr.a ../../ecp/htable/libecpht.a ../../ecp/posix/libecptr.a ../../ecp/posix/libecptm.a ../../vconn/libecpvconn.a ../../util/libecputil.a ../init.o
+dep=../../ecp/build-posix/*.a ../../util/libecputil.a ../init.o
 
 all: client cap
 

@@ -1,7 +1,5 @@
 #include "core.h"
 
-#include <string.h>
-
 #define NACK_RATE_UNIT   10000
 
 static ssize_t flush_send(ECPConnection *conn, ECPTimerItem *ti) {

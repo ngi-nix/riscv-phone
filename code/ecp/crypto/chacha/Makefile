@@ -4,14 +4,11 @@ CFLAGS=$(CFLAGS_PL) $(PIC) -I../include -D__BEGIN_HIDDEN_DECLS= -D__END_HIDDEN_D
 obj = chacha.o
 
 
-all: libchacha.a
+all: $(obj)
 dep: all
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<
-
-libchacha.a: $(obj)
-	$(AR) rcs $@ $(obj)
 
 clean:
 	rm -f *.o *.a
