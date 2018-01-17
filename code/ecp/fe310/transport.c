@@ -34,6 +34,7 @@ static ssize_t t_send(int *sock, ECPBuffer *packet, size_t msg_size, ECPNetAddr 
         if (packet && packet->buffer) buf = packet->buffer-addr_len;
     } else {
         buf = eos_net_alloc();
+        memcpy(buf+addr_len, packet->buffer, msg_size);
     }
     if (buf == NULL) return ECP_ERR;
     memcpy(buf, addr->host, sizeof(addr->host));

@@ -64,3 +64,7 @@ int ecp_init(ECPContext *ctx) {
 
     return ECP_OK;
 }
+
+void ecp_sock_set(ECPSocket *s) {
+    _sock = s;
+}

@@ -23,8 +23,8 @@
 static EOSMsgQ send_q;
 static EOSMsgItem send_q_array[EOS_FE310_SIZE_Q];
 
-#define SPI_GPIO_RTS        4
-#define SPI_GPIO_CTS        2
+#define SPI_GPIO_RTS        16
+#define SPI_GPIO_CTS        17
 #define SPI_GPIO_MOSI       23
 #define SPI_GPIO_MISO       19
 #define SPI_GPIO_SCLK       18
@@ -92,7 +92,7 @@ static void worker(void *pvParameters) {
 
             xSemaphoreTake(mutex, portMAX_DELAY);
         } else {
-            ESP_LOGI(TAG, "FE310 RECV NULL");
+            // ESP_LOGI(TAG, "FE310 RECV NULL");
         }
         // vTaskDelay(5000 / portTICK_PERIOD_MS);
     }

@@ -11,8 +11,8 @@
 #define SPI_SIZE_BUF            1500
 #define SPI_SIZE_CHUNK          4
 #define SPI_SIZE_BUFQ           4
-#define SPI_GPIO_CTS_OFFSET     PIN_2_OFFSET
-#define SPI_GPIO_RTS_OFFSET     PIN_3_OFFSET
+#define SPI_GPIO_RTS_OFFSET     PIN_8_OFFSET
+#define SPI_GPIO_CTS_OFFSET     PIN_7_OFFSET
 #define SPI_IOF_MASK            (((uint32_t)1 << IOF_SPI1_SCK) | ((uint32_t)1 << IOF_SPI1_MOSI) | ((uint32_t)1 << IOF_SPI1_MISO))
 
 typedef struct SPIBuffer {

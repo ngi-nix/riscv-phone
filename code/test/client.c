@@ -36,6 +36,12 @@ ssize_t handle_open_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsign
 
 ssize_t handle_msg_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s, ECP2Buffer *b) {
     printf("MSG C:%s size:%ld\n", p, s);
+    char *msg = "PERA JE CAR!";
+    unsigned char buf[1000];
+
+    strcpy((char *)buf, msg);
+    ssize_t _rv = ecp_send(conn, MTYPE_MSG, buf, 1000);
+
     return s;
 }
 

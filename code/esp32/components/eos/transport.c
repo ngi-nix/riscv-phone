@@ -60,7 +60,7 @@ static int t_open(void) {
     memset((char *)&_myaddr, 0, sizeof(_myaddr));
     _myaddr.sin_family = AF_INET;
     _myaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    _myaddr.sin_port = htons(0);
+    _myaddr.sin_port = htons(3000);
 
     int rv = bind(udp_sock, (struct sockaddr *)&_myaddr, sizeof(_myaddr));
     if (rv < 0) {
