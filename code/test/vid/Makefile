@@ -11,7 +11,7 @@ all: cap
 	$(CC) $(CFLAGS) -c $<
 
 cap: cap.o enc.o tools.o server.o 
-	$(CC) -o $@ $< enc.o tools.o server.o $(dep) $(LDFLAGS) -lvpx
+	$(CC) -o $@ $< -lm enc.o tools.o server.o $(dep) $(LDFLAGS) -lvpx
 	
 client: client.o display.o tools.o
 	$(CC) -o $@ $< display.o tools.o $(dep) $(LDFLAGS) -lvpx -lSDL2
