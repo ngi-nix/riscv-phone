@@ -5,7 +5,7 @@ CFLAGS=$(CFLAGS_PL) -D_V4L2_KERNEL_ -I/usr/src/linux-headers-$(uname -r) -I$(LIB
 LDFLAGS=$(LDFLAGS_PL) -L$(LIBVPX_HOME) -L/opt/local/lib
 dep=../../ecp/build-posix/*.a ../../util/libecputil.a ../init.o
 
-all: client cap
+all: cap
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<
