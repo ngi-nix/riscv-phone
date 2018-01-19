@@ -2,7 +2,7 @@ include ../../ecp/Makefile.platform
 
 LIBVPX_HOME=/opt/my/libvpx
 CFLAGS=$(CFLAGS_PL) -D_V4L2_KERNEL_ -I/usr/src/linux-headers-$(uname -r) -I$(LIBVPX_HOME) -I/opt/local/include/SDL2 -I../../ecp -I../../util -Wno-int-to-void-pointer-cast
-LDFLAGS=$(LDFLAGS_PL) -L$(LIBVPX_HOME) -L/opt/local/lib
+LDFLAGS=$(LDFLAGS_PL) -L$(LIBVPX_HOME) -L/opt/local/lib 
 dep=../init_vconn.o ../../ecp/build-posix/*.a ../../util/libecputil.a
 
 all: cap
@@ -11,7 +11,7 @@ all: cap
 	$(CC) $(CFLAGS) -c $<
 
 cap: cap.o enc.o tools.o server.o 
-	$(CC) -o $@ $< -lm enc.o tools.o server.o $(dep) $(LDFLAGS) -lvpx
+	$(CC) -o $@ $< enc.o tools.o server.o $(dep) $(LDFLAGS) -lvpx -lm
 	
 client: client.o display.o tools.o
 	$(CC) -o $@ $< display.o tools.o $(dep) $(LDFLAGS) -lvpx -lSDL2
