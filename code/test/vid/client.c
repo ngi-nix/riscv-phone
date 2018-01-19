@@ -3,13 +3,13 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-#include "core.h"
-#include "util.h"
-
 #include "vpx/vpx_decoder.h"
 #include "vpx/vp8cx.h"
 #include "tools.h"
 #include "display.h"
+
+#include "core.h"
+#include "util.h"
 
 #define CTYPE_TEST      0
 #define MTYPE_MSG       8
