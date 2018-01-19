@@ -16,7 +16,8 @@ int ecp_node_init(ECPContext *ctx, ECPNode *node, ecp_dh_public_t *public, void 
     int rv = ECP_OK;
     
     memset(node, 0, sizeof(ECPNode));
-    memcpy(&node->public, public, sizeof(node->public));
+
+    if (public) memcpy(&node->public, public, sizeof(node->public));
 
     if (addr && ctx->tr.addr_set) rv = ctx->tr.addr_set(&node->addr, addr);
     if (rv) return ECP_ERR_NET_ADDR;
