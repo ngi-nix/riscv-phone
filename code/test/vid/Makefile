@@ -1,5 +1,4 @@
-# LIBVPX_HOME=/home/majstor/libvpx
-LIBVPX_HOME=/Users/majstor/src/libvpx
+LIBVPX_HOME=/opt/my/libvpx
 CFLAGS=-D_V4L2_KERNEL_ -I/usr/src/linux-headers-$(uname -r) -I$(LIBVPX_HOME) -I/opt/local/include/SDL2 -I../../core -I../../vconn -I../../util
 LDFLAGS=-L$(LIBVPX_HOME) -L/opt/local/lib
 dep=../../ecp/build-posix/*.a ../../util/libecputil.a ../init.o

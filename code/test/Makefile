@@ -37,7 +37,7 @@ vc_client: vc_client.o init_vconn.o $(dep)
 	$(CC) -o $@ $< init_vconn.o $(dep) $(LDFLAGS)
 
 
-opus_root=../../../opus-1.1.5
+opus_root=/opt/my/opus-1.1.5
 voip.o: voip.c
 	$(CC) $(CFLAGS) -I $(opus_root)/include -c $<
 
