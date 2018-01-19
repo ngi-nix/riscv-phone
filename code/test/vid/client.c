@@ -24,6 +24,9 @@ ECPConnHandler handler_c;
 ECPNode node;
 ECPConnection conn;
 
+ECPVConnection vconn;
+ECPNode vconn_node;
+
 vpx_codec_ctx_t codec;
 
 ECPRBRecv rbuf_recv;
@@ -33,7 +36,7 @@ unsigned char frag_buffer[FRAG_BUF_SIZE];
 
 SDLCanvas sdl_canvas;
 
-ssize_t handle_msg(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *f, ssize_t sz) {
+ssize_t handle_msg(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *f, ssize_t sz, ECP2Buffer *b) {
     vpx_codec_iter_t iter = NULL;
     vpx_image_t *img = NULL;
 
@@ -52,14 +55,14 @@ ssize_t handle_msg(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned 
 }
 
 static void usage(char *arg) {
-    fprintf(stderr, "Usage: %s <node.pub>\n", arg);
+    fprintf(stderr, "Usage: %s <node.pub> <vcs.pub>\n", arg);
     exit(1);
 }
 
 int main(int argc, char *argv[]) {
     int rv;
     
-    if (argc != 2) usage(argv[0]);
+    if (argc != 3) usage(argv[0]);
     
     rv = ecp_init(&ctx_c);
     fprintf(stderr, "ecp_init RV:%d\n", rv);
@@ -81,6 +84,9 @@ int main(int argc, char *argv[]) {
 
     if (!rv) rv = ecp_util_node_load(&ctx_c, &node, argv[1]);
     fprintf(stderr, "ecp_util_node_load RV:%d\n", rv);
+
+    if (!rv) rv = ecp_util_node_load(&ctx, &vconn_node, argv[2]);
+    printf("ecp_util_node_load RV:%d\n", rv);
 
     if (!rv) rv = ecp_conn_create(&conn, &sock_c, CTYPE_TEST);
     fprintf(stderr, "ecp_conn_create RV:%d\n", rv);
@@ -104,8 +110,11 @@ int main(int argc, char *argv[]) {
     
     sdl_open(&sdl_canvas, 640, 480);
     
-    if (!rv) rv = ecp_conn_open(&conn, &node);
-    fprintf(stderr, "ecp_conn_open RV:%d\n", rv);
+    // if (!rv) rv = ecp_conn_open(&conn, &node);
+    // fprintf(stderr, "ecp_conn_open RV:%d\n", rv);
+
+    if (!rv) rv = ecp_vconn_open(&conn, &node, &vconn, &vconn_node, 1);
+    printf("ecp_vconn_open RV:%d\n", rv);
     
     sdl_loop();
     sdl_close(&sdl_canvas);

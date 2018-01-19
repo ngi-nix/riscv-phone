@@ -486,10 +486,11 @@ int main(int argc, char *argv[])
     int kframe_interval;
     vpx_codec_er_flags_t err_resilient;
     char *address;
-    char *key_file;
+    char *my_key;
+    char *vcs_key;
 
-    if (argc != 13) {
-        CAP_ERROR_RET("./cap <width> <height> <buffers [4,8]> <video mode [0,1]> <exposure [-4,4]> <hflip [0,1]> <vflip [0,1]> <kframe interval> <bitrate> <err resilient> <address> <key file>")
+    if (argc != 14) {
+        CAP_ERROR_RET("./cap <width> <height> <buffers [4,8]> <video mode [0,1]> <exposure [-4,4]> <hflip [0,1]> <vflip [0,1]> <kframe interval> <bitrate> <err resilient> <address> <my key> <vcs pub key>")
     }
     width = (int) atoi(argv[1]);
     height = (int) atoi(argv[2]);
@@ -509,7 +510,8 @@ int main(int argc, char *argv[])
     target_bitrate = (int) atoi(argv[9]);
     err_resilient = strtoul(argv[10], NULL, 0);
     address = argv[11];
-    key_file = argv[12];
+    my_key = argv[12];
+    vcs_key = argv[13];
 
     fprintf(stderr, "---- cap parameters -----\nwidth: %d\nheight: %d\nv4l2 buffers: %d\nexposure: %d\nhflip: %d\nvflip: %d\nMode: %s\n", width, height, n_buffers, sensor_exposure, sensor_hflip, sensor_vflip, sensor_video_mode ? "V4L2_MODE_VIDEO" : "V4L2_MODE_IMAGE");
 
@@ -545,7 +547,7 @@ int main(int argc, char *argv[])
     vpx_image_t raw;
 
     vpx_open(codec_arg, width, height, _fps, target_bitrate, err_resilient, &codec, &raw);
-    init_server(address, key_file);
+    init_server(address, my_key, vcs_key);
 
     while (1) {
         if (!conn_is_open()) {

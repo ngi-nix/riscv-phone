@@ -11,11 +11,14 @@ static ECPSocket sock_s;
 static ECPDHKey key_perma_s;
 static ECPConnHandler handler_s;
 
-static ECPConnection *conn;
+static ECPConnection *conn_in;
 static int is_open = 0;
 
 #define CTYPE_TEST  0
 #define MTYPE_MSG   8
+
+ECPNode node;
+ECPConnection conn;
 
 static ssize_t handle_open(ECPConnection *c, ecp_seq_t sq, unsigned char t, unsigned char *m, ssize_t sz, ECP2Buffer *b) {
     ssize_t rv = ecp_conn_handle_open(c, sq, t, m, sz, b);
@@ -29,14 +32,14 @@ static ssize_t handle_open(ECPConnection *c, ecp_seq_t sq, unsigned char t, unsi
 }
 
 ssize_t send_frame(unsigned char *buffer, size_t size, ecp_pts_t pts) {
-    return ecp_send(conn, MTYPE_MSG, buffer, size);
+    return ecp_send(conn_in, MTYPE_MSG, buffer, size);
 }
 
 int conn_is_open(void) {
     return is_open;
 }
 
-int init_server(char *address, char *key) {
+int init_server(char *address, char *my_key, char *vcs_key) {
     int rv;
     
     rv = ecp_init(&ctx_s);
@@ -59,6 +62,16 @@ int init_server(char *address, char *key) {
     
     if (!rv) rv = ecp_start_receiver(&sock_s);
     fprintf(stderr, "ecp_start_receiver RV:%d\n", rv);
+
+    if (!rv) rv = ecp_util_node_load(&ctx, &node, vcs_key);
+    printf("ecp_util_node_load RV:%d\n", rv);
+
+    if (!rv) rv = ecp_conn_create(&conn, &sock, ECP_CTYPE_VLINK);
+    printf("ecp_conn_create RV:%d\n", rv);
+
+    if (!rv) rv = ecp_conn_open(&conn, &node);
+    printf("ecp_conn_open RV:%d\n", rv);
+
     
     return rv;
 }
