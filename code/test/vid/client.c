@@ -9,6 +9,7 @@
 #include "display.h"
 
 #include "core.h"
+#include "vconn/vconn.h"
 #include "util.h"
 
 #define CTYPE_TEST      0
@@ -17,9 +18,9 @@
 #define FRAG_BUF_SIZE   8192
 #define RBUF_MSG_SIZE   128
 
-ECPContext ctx_c;
-ECPSocket sock_c;
-ECPConnHandler handler_c;
+ECPContext ctx;
+ECPSocket sock;
+ECPConnHandler handler;
 
 ECPNode node;
 ECPConnection conn;
@@ -64,31 +65,31 @@ int main(int argc, char *argv[]) {
     
     if (argc != 3) usage(argv[0]);
     
-    rv = ecp_init(&ctx_c);
+    rv = ecp_init(&ctx);
     fprintf(stderr, "ecp_init RV:%d\n", rv);
 
-    if (!rv) rv = ecp_conn_handler_init(&handler_c);
+    if (!rv) rv = ecp_conn_handler_init(&handler);
     if (!rv) {
-        handler_c.msg[MTYPE_MSG] = handle_msg;
-        ctx_c.handler[CTYPE_TEST] = &handler_c;
+        handler.msg[MTYPE_MSG] = handle_msg;
+        ctx.handler[CTYPE_TEST] = &handler;
     }
     
-    if (!rv) rv = ecp_sock_create(&sock_c, &ctx_c, NULL);
+    if (!rv) rv = ecp_sock_create(&sock, &ctx, NULL);
     fprintf(stderr, "ecp_sock_create RV:%d\n", rv);
 
-    if (!rv) rv = ecp_sock_open(&sock_c, NULL);
+    if (!rv) rv = ecp_sock_open(&sock, NULL);
     fprintf(stderr, "ecp_sock_open RV:%d\n", rv);
     
-    if (!rv) rv = ecp_start_receiver(&sock_c);
+    if (!rv) rv = ecp_start_receiver(&sock);
     fprintf(stderr, "ecp_start_receiver RV:%d\n", rv);
 
-    if (!rv) rv = ecp_util_node_load(&ctx_c, &node, argv[1]);
+    if (!rv) rv = ecp_util_node_load(&ctx, &node, argv[1]);
     fprintf(stderr, "ecp_util_node_load RV:%d\n", rv);
 
     if (!rv) rv = ecp_util_node_load(&ctx, &vconn_node, argv[2]);
     printf("ecp_util_node_load RV:%d\n", rv);
 
-    if (!rv) rv = ecp_conn_create(&conn, &sock_c, CTYPE_TEST);
+    if (!rv) rv = ecp_conn_create(&conn, &sock, CTYPE_TEST);
     fprintf(stderr, "ecp_conn_create RV:%d\n", rv);
 
     if (!rv) rv = ecp_rbuf_create(&conn, NULL, NULL, 0, &rbuf_recv, rbuf_r_msg, RBUF_MSG_SIZE);

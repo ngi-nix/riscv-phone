@@ -20,12 +20,13 @@ ECPNode node;
 ECPConnection conn;
 
 static ssize_t handle_open(ECPConnection *c, ecp_seq_t sq, unsigned char t, unsigned char *m, ssize_t sz, ECP2Buffer *b) {
+    fprintf(stderr, "IS OPEN!\n");
+
     ssize_t rv = ecp_conn_handle_open(c, sq, t, m, sz, b);
     if (rv < 0) return rv;
 
     conn_in = c;
     is_open = 1;
-    fprintf(stderr, "IS OPEN!\n");
     
     return rv;
 }
