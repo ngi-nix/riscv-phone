@@ -17,8 +17,8 @@ static int is_open = 0;
 #define CTYPE_TEST  0
 #define MTYPE_MSG   8
 
-static ssize_t handle_open(ECPConnection *c, ecp_seq_t sq, unsigned char t, unsigned char *m, ssize_t sz) {
-    ssize_t rv = ecp_conn_handle_open(c, sq, t, m, sz);
+static ssize_t handle_open(ECPConnection *c, ecp_seq_t sq, unsigned char t, unsigned char *m, ssize_t sz, ECP2Buffer *b) {
+    ssize_t rv = ecp_conn_handle_open(c, sq, t, m, sz, b);
     if (rv < 0) return rv;
 
     conn = c;
