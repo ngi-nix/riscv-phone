@@ -11,10 +11,10 @@ all: cap
 	$(CC) $(CFLAGS) -c $<
 
 cap: cap.o enc.o tools.o server.o 
-	$(CC) -o $@ $< enc.o tools.o server.o -lvpx -lm -pthread $(dep) $(LDFLAGS)
+	$(CC) -o $@ $< enc.o tools.o server.o $(dep) $(LDFLAGS) -lvpx -lm -pthread 
 	
 client: client.o display.o tools.o
-	$(CC) -o $@ $< display.o tools.o -lvpx -lSDL2 -lm -pthread $(dep) $(LDFLAGS)
+	$(CC) -o $@ $< display.o tools.o $(dep) $(LDFLAGS) -lvpx -lSDL2 -lm -pthread 
 
 clean:
 	rm -f *.o
