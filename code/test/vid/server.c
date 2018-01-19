@@ -5,10 +5,10 @@
 
 #include "server.h"
 
-static ECPContext ctx_s;
-static ECPSocket sock_s;
-static ECPDHKey key_perma_s;
-static ECPConnHandler handler_s;
+static ECPContext ctx;
+static ECPSocket sock;
+static ECPDHKey key_perma;
+static ECPConnHandler handler;
 
 static ECPConnection *conn_in;
 static int is_open = 0;
@@ -41,25 +41,25 @@ int conn_is_open(void) {
 int init_server(char *address, char *my_key, char *vcs_key) {
     int rv;
     
-    rv = ecp_init(&ctx_s);
+    rv = ecp_init(&ctx);
     fprintf(stderr, "ecp_init RV:%d\n", rv);
     
-    if (!rv) rv = ecp_conn_handler_init(&handler_s);
+    if (!rv) rv = ecp_conn_handler_init(&handler);
     if (!rv) {
-        handler_s.msg[ECP_MTYPE_OPEN] = handle_open;
-        ctx_s.handler[CTYPE_TEST] = &handler_s;
+        handler.msg[ECP_MTYPE_OPEN] = handle_open;
+        ctx.handler[CTYPE_TEST] = &handler;
     }
     
-    if (!rv) rv = ecp_util_key_load(&ctx_s, &key_perma_s, my_key);
+    if (!rv) rv = ecp_util_key_load(&ctx, &key_perma, my_key);
     fprintf(stderr, "ecp_util_key_load RV:%d\n", rv);
     
-    if (!rv) rv = ecp_sock_create(&sock_s, &ctx_s, &key_perma_s);
+    if (!rv) rv = ecp_sock_create(&sock, &ctx, &key_perma);
     fprintf(stderr, "ecp_sock_create RV:%d\n", rv);
 
-    if (!rv) rv = ecp_sock_open(&sock_s, address);
+    if (!rv) rv = ecp_sock_open(&sock, address);
     fprintf(stderr, "ecp_sock_open RV:%d\n", rv);
     
-    if (!rv) rv = ecp_start_receiver(&sock_s);
+    if (!rv) rv = ecp_start_receiver(&sock);
     fprintf(stderr, "ecp_start_receiver RV:%d\n", rv);
 
     if (!rv) rv = ecp_util_node_load(&ctx, &node, vcs_key);
