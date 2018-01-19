@@ -4,7 +4,6 @@
 #include <stdlib.h>
 
 #include "server.h"
-#include "util.h"
 
 static ECPContext ctx_s;
 static ECPSocket sock_s;
@@ -24,7 +23,7 @@ static ssize_t handle_open(ECPConnection *c, ecp_seq_t sq, unsigned char t, unsi
     ssize_t rv = ecp_conn_handle_open(c, sq, t, m, sz, b);
     if (rv < 0) return rv;
 
-    conn = c;
+    conn_in = c;
     is_open = 1;
     fprintf(stderr, "IS OPEN!\n");
     
@@ -51,7 +50,7 @@ int init_server(char *address, char *my_key, char *vcs_key) {
         ctx_s.handler[CTYPE_TEST] = &handler_s;
     }
     
-    if (!rv) rv = ecp_util_key_load(&ctx_s, &key_perma_s, key);
+    if (!rv) rv = ecp_util_key_load(&ctx_s, &key_perma_s, my_key);
     fprintf(stderr, "ecp_util_key_load RV:%d\n", rv);
     
     if (!rv) rv = ecp_sock_create(&sock_s, &ctx_s, &key_perma_s);
