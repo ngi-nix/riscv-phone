@@ -116,7 +116,7 @@ int main(int argc, char *argv[]) {
 
     if (!rv) rv = ecp_vconn_open(&conn, &node, &vconn, &vconn_node, 1);
     printf("ecp_vconn_open RV:%d\n", rv);
-    
+
     sdl_loop();
     sdl_close(&sdl_canvas);
     if (vpx_codec_destroy(&codec)) die_codec(&codec, "Failed to destroy codec");

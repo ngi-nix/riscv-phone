@@ -14,7 +14,7 @@ cap: cap.o enc.o tools.o server.o
 	$(CC) -o $@ $< enc.o tools.o server.o $(dep) -lvpx $(LDFLAGS)
 	
 client: client.o display.o tools.o
-	$(CC) -o $@ $< display.o tools.o $(dep) $(LDFLAGS) -lvpx -lSDL2
+	$(CC) -o $@ $< display.o tools.o $(dep) -lvpx -lSDL2 $(LDFLAGS)
 
 clean:
 	rm -f *.o

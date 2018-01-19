@@ -72,6 +72,5 @@ int init_server(char *address, char *my_key, char *vcs_key) {
     if (!rv) rv = ecp_conn_open(&conn, &node);
     printf("ecp_conn_open RV:%d\n", rv);
 
-    
     return rv;
 }
