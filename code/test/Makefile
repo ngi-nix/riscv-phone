@@ -7,7 +7,7 @@ dep=../ecp/build-posix/*.a ../util/libecputil.a
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<
 
-all: basic client server echo frag stress vcs vc_server vc_client
+all: basic client server echo frag stress vcs vc_server vc_client vc_client_t
 
 basic: basic.o init.o $(dep)
 	$(CC) -o $@ $< init.o $(dep) $(LDFLAGS)
@@ -36,6 +36,9 @@ vc_server: vc_server.o init_vconn.o $(dep)
 vc_client: vc_client.o init_vconn.o $(dep)
 	$(CC) -o $@ $< init_vconn.o $(dep) $(LDFLAGS)
 
+vc_client_t: vc_client_t.o init_vconn.o $(dep)
+	$(CC) -o $@ $< init_vconn.o $(dep) $(LDFLAGS)
+
 
 opus_root=/opt/my/opus-1.1.5
 voip.o: voip.c
@@ -46,4 +49,4 @@ voip: voip.o init.o $(dep)
 
 clean:
 	rm -f *.o
-	rm -f basic client server echo frag stress vcs vc_server vc_client voip
+	rm -f basic client server echo frag stress vcs vc_server vc_client vc_client_t voip

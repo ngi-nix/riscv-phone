@@ -2,8 +2,10 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <sys/time.h>
 
 #include "core.h"
+#include "vconn/vconn.h"
 #include "util.h"
 
 ECPContext ctx;
@@ -13,9 +15,16 @@ ECPConnHandler handler;
 ECPNode node;
 ECPConnection conn;
 
+ECPVConnection vconn[20];
+ECPNode vconn_node[20];
+
 #define CTYPE_TEST  0
 #define MTYPE_MSG   8
 
+
+int counter = 0;
+uint64_t t_start = 0;
+uint64_t t_end = 0;
 ssize_t handle_open(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s, ECP2Buffer *b) {
     uint32_t seq = 0;
     
@@ -31,28 +40,48 @@ ssize_t handle_open(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned
     strcpy((char *)buf, msg);
     ssize_t _rv = ecp_send(conn, MTYPE_MSG, buf, 1000);
 
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    t_start = tv.tv_sec*(uint64_t)1000000+tv.tv_usec;
+
     return s;
 }
 
 ssize_t handle_msg(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s, ECP2Buffer *b) {
-    printf("MSG C:%s size:%ld\n", p, s);
+    counter++;
+    // printf("MSG C:%s size:%ld\n", p, s);
+    char *msg = "PERA JE CAR!";
+    unsigned char buf[1000];
+
+    strcpy((char *)buf, msg);
+    ssize_t _rv = ecp_send(conn, MTYPE_MSG, buf, strlen(msg)+1);
+
+    if (counter % 100 == 0) {
+        struct timeval tv;
+        uint64_t t_time;
+
+        gettimeofday(&tv, NULL);
+        t_end = tv.tv_sec*(uint64_t)1000000+tv.tv_usec;
+        t_time = t_end - t_start;
+        printf("T:%f\n", (float)t_time/1000000);
+        t_start = t_end;
+    }
     return s;
 }
 
-
 static void usage(char *arg) {
-    fprintf(stderr, "Usage: %s <node.pub>\n", arg);
+    fprintf(stderr, "Usage: %s <server.pub> <vcs1.pub> ... <vcsn.pub>\n", arg);
     exit(1);
 }
 
 int main(int argc, char *argv[]) {
-    int rv;
+    int rv, i;
     
-    if (argc != 2) usage(argv[0]);
+    if ((argc < 3) || (argc > 22)) usage(argv[0]);
     
     rv = ecp_init(&ctx);
     printf("ecp_init RV:%d\n", rv);
-
+    
     rv = ecp_conn_handler_init(&handler);
     handler.msg[ECP_MTYPE_OPEN] = handle_open;
     handler.msg[MTYPE_MSG] = handle_msg;
@@ -70,11 +99,16 @@ int main(int argc, char *argv[]) {
     rv = ecp_util_node_load(&ctx, &node, argv[1]);
     printf("ecp_util_node_load RV:%d\n", rv);
 
+    for (i=0; i<argc-2; i++) {
+        rv = ecp_util_node_load(&ctx, &vconn_node[i], argv[i+2]);
+        printf("ecp_util_node_load RV:%d\n", rv);
+    }
+
     rv = ecp_conn_create(&conn, &sock, CTYPE_TEST);
     printf("ecp_conn_create RV:%d\n", rv);
 
-    rv = ecp_conn_open(&conn, &node);
-    printf("ecp_conn_open RV:%d\n", rv);
-    
+    rv = ecp_vconn_open(&conn, &node, vconn, vconn_node, argc-2);
+    printf("ecp_vconn_open RV:%d\n", rv);
+
     while (1) sleep(1);
 }

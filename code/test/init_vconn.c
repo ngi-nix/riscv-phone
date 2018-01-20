@@ -31,12 +31,12 @@ static void conn_free(ECPConnection *conn) {
 int ecp_init(ECPContext *ctx) {
     int rv;
     
-    rv = ecp_ctx_create(ctx);
+    rv = ecp_ctx_create_vconn(ctx);
     if (rv) return rv;
     
     ctx->rng = v_rng;
     ctx->conn_alloc = conn_alloc;
     ctx->conn_free = conn_free;
     
-    return ecp_ctx_vconn_init(ctx);
+    return ECP_OK;
 }
