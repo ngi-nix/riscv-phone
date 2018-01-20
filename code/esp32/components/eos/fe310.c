@@ -161,8 +161,9 @@ void eos_fe310_init(void) {
     assert(ret==ESP_OK);
 
     eos_msgq_init(&send_q, send_q_array, EOS_FE310_SIZE_Q);
-    mutex = xSemaphoreCreateMutex();
-    xTaskCreate(&worker, "fe310_receiver", 4096, NULL, 5, NULL);
+    mutex = xSemaphoreCreateBinary();
+    xSemaphoreGive(mutex);
+    xTaskCreatePinnedToCore(&worker, "fe310_receiver", 4096, NULL, 5, NULL, 1);
 }
 
 int eos_fe310_send(unsigned char cmd, unsigned char *buffer, uint16_t len) {

@@ -2,6 +2,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <sys/time.h>
 
 #include "core.h"
 #include "util.h"
@@ -15,6 +16,10 @@ ECPConnection conn;
 
 #define CTYPE_TEST  0
 #define MTYPE_MSG   8
+
+int counter = 0;
+uint64_t t_start = 0;
+uint64_t t_end = 0;
 
 ssize_t handle_open_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s, ECP2Buffer *b) {
     uint32_t seq = 0;
@@ -31,17 +36,32 @@ ssize_t handle_open_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsign
     strcpy((char *)buf, msg);
     ssize_t _rv = ecp_send(conn, MTYPE_MSG, buf, 1000);
 
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    t_start = tv.tv_sec*(uint64_t)1000000+tv.tv_usec;
+
     return s;
 }
 
 ssize_t handle_msg_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s, ECP2Buffer *b) {
-    printf("MSG C:%s size:%ld\n", p, s);
+    counter++;
+    // printf("MSG C:%s size:%ld\n", p, s);
     char *msg = "PERA JE CAR!";
     unsigned char buf[1000];
 
     strcpy((char *)buf, msg);
     ssize_t _rv = ecp_send(conn, MTYPE_MSG, buf, 1000);
 
+    if (counter % 100 == 0) {
+        struct timeval tv;
+        uint64_t t_time;
+
+        gettimeofday(&tv, NULL);
+        t_end = tv.tv_sec*(uint64_t)1000000+tv.tv_usec;
+        t_time = t_end - t_start;
+        printf("T:%f\n", (float)t_time/1000000);
+        t_start = t_end;
+    }
     return s;
 }
 

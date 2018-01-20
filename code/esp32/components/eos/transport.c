@@ -158,7 +158,7 @@ static esp_err_t esp32_wifi_event_handler(void *ctx, system_event_t *event) {
             ESP_LOGI(TAG, "* - Our IP address is: " IPSTR, IP2STR(&event->event_info.got_ip.ip_info.ip));
             ESP_LOGI(TAG, "********************************************");
             t_open();
-            xTaskCreate(&receiver, "receiver", 4096, NULL, 5, &receiver_task);
+            xTaskCreatePinnedToCore(&receiver, "receiver", 4096, NULL, 5, &receiver_task, 1);
             eos_fe310_send(EOS_FE310_CMD_CONNECT, NULL, 0);
             break;
 
@@ -175,7 +175,7 @@ void eos_net_init(void) {
 
     memset(&wifi_config, 0, sizeof(wifi_config));
     tcpip_adapter_init();
-    ESP_ERROR_CHECK( nvs_flash_init() );
+//    ESP_ERROR_CHECK( nvs_flash_init() );
     ESP_ERROR_CHECK( esp_event_loop_init(esp32_wifi_event_handler, NULL) );
     ESP_ERROR_CHECK( esp_wifi_init(&cfg) );
     ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM) );
