@@ -513,9 +513,12 @@ static ssize_t vconn_pack_raw(ECPSocket *sock, ECPConnection *parent, ECPBuffer 
 }
 */
 
-int ecp_ctx_vconn_init(ECPContext *ctx) {
+int ecp_ctx_create_vconn(ECPContext *ctx) {
     int rv;
     
+    rv = ecp_ctx_create(ctx);
+    if (rv) return rv;
+
     rv = ecp_conn_handler_init(&handler_vc);
     if (rv) return rv;
     
