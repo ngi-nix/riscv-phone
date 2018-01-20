@@ -49,6 +49,7 @@ static void packet_handler(unsigned char cmd, unsigned char *buffer, uint16_t le
     memcpy(addr.host, buffer, sizeof(addr.host));
     memcpy(&addr.port, buffer+sizeof(addr.host), sizeof(addr.port));
     ssize_t rv = ecp_pkt_handle(_sock, &addr, NULL, &bufs, len-addr_len);
+    if (rv < 0) DPRINT(rv, "ERR:packet_handler - RV:%d\n", rv);
     if (bufs.packet->buffer) eos_net_free(buffer, 0);
     eos_net_release(0);
 }
@@ -56,7 +57,7 @@ static void packet_handler(unsigned char cmd, unsigned char *buffer, uint16_t le
 int ecp_init(ECPContext *ctx) {
     int rv;
     
-    rv = ecp_ctx_create(ctx);
+    rv = ecp_ctx_create_vconn(ctx);
     if (rv) return rv;
     
     eos_evtq_set_handler(EOS_EVT_TIMER, timer_handler);
