@@ -1,18 +1,17 @@
 /*
-chacha-merged.c version 20080118
-D. J. Bernstein
-Public domain.
-*/
+ * chacha-merged.c version 20080118
+ * D. J. Bernstein
+ * Public domain.
+ */
 
-/* $OpenBSD: chacha_private.h,v 1.2 2013/10/04 07:02:27 djm Exp $ */
+/* $OpenBSD$ */
+
+#include <stdint.h>
+
 
 typedef unsigned char u8;
-typedef unsigned int u32;
+typedef uint32_t      u32;
 
-typedef struct
-{
-  u32 input[16]; /* could be compressed */
-} chacha_ctx;
 
 #define U8C(v) (v##U)
 #define U32C(v) (v##U)
@@ -54,26 +53,28 @@ static const char tau[16] = "expand 16-byte k";
 static void
 chacha_keysetup(chacha_ctx *x,const u8 *k,u32 kbits,u32 ivbits)
 {
-  const char *constants;
+    const char *constants;
 
-  x->input[4] = U8TO32_LITTLE(k + 0);
-  x->input[5] = U8TO32_LITTLE(k + 4);
-  x->input[6] = U8TO32_LITTLE(k + 8);
-  x->input[7] = U8TO32_LITTLE(k + 12);
-  if (kbits == 256) { /* recommended */
-    k += 16;
-    constants = sigma;
-  } else { /* kbits == 128 */
-    constants = tau;
-  }
-  x->input[8] = U8TO32_LITTLE(k + 0);
-  x->input[9] = U8TO32_LITTLE(k + 4);
-  x->input[10] = U8TO32_LITTLE(k + 8);
-  x->input[11] = U8TO32_LITTLE(k + 12);
-  x->input[0] = U8TO32_LITTLE(constants + 0);
-  x->input[1] = U8TO32_LITTLE(constants + 4);
-  x->input[2] = U8TO32_LITTLE(constants + 8);
-  x->input[3] = U8TO32_LITTLE(constants + 12);
+    (void)ivbits;
+
+    x->input[4] = U8TO32_LITTLE(k + 0);
+    x->input[5] = U8TO32_LITTLE(k + 4);
+    x->input[6] = U8TO32_LITTLE(k + 8);
+    x->input[7] = U8TO32_LITTLE(k + 12);
+    if (kbits == 256) { /* recommended */
+        k += 16;
+        constants = sigma;
+    } else { /* kbits == 128 */
+        constants = tau;
+    }
+    x->input[8] = U8TO32_LITTLE(k + 0);
+    x->input[9] = U8TO32_LITTLE(k + 4);
+    x->input[10] = U8TO32_LITTLE(k + 8);
+    x->input[11] = U8TO32_LITTLE(k + 12);
+    x->input[0] = U8TO32_LITTLE(constants + 0);
+    x->input[1] = U8TO32_LITTLE(constants + 4);
+    x->input[2] = U8TO32_LITTLE(constants + 8);
+    x->input[3] = U8TO32_LITTLE(constants + 12);
 }
 
 static void
