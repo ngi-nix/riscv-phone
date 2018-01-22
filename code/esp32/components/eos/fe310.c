@@ -16,6 +16,7 @@
 #include <esp_heap_caps.h>
 #include <driver/spi_slave.h>
 
+#include "eos.h"
 #include "msgq.h"
 #include "transport.h"
 #include "fe310.h"
@@ -40,7 +41,7 @@ static void bad_handler(unsigned char cmd, unsigned char *buffer, uint16_t len) 
     ESP_LOGI(TAG, "FE310 RECV: bad handler: %d", cmd);
 }
 
-static void worker(void *pvParameters) {
+static void transceiver(void *pvParameters) {
     int repeat = 0;
     esp_err_t ret;
     unsigned char cmd = 0;
@@ -51,13 +52,14 @@ static void worker(void *pvParameters) {
 
     spi_slave_transaction_t t;
     memset(&t, 0, sizeof(t));
+
     t.length = EOS_FE310_SIZE_BUF*8;
     t.tx_buffer = buf_send;
     t.rx_buffer = buf_recv;
-    
-    xSemaphoreTake(mutex, portMAX_DELAY);
     for (;;) {
         if (!repeat) {
+            xSemaphoreTake(mutex, portMAX_DELAY);
+
             eos_msgq_pop(&send_q, &cmd, &buffer, &len);
             if (cmd) {
                 buf_send[0] = ((cmd << 3) | (len >> 8)) & 0xFF;
@@ -68,14 +70,14 @@ static void worker(void *pvParameters) {
                 buf_send[0] = 0;
                 buf_send[1] = 0;
             }
+
+            xSemaphoreGive(mutex);
         }
+
         memset(buf_recv, 0, EOS_FE310_SIZE_BUF);
         ret = spi_slave_transmit(HSPI_HOST, &t, portMAX_DELAY);
-
         repeat = 0;
         if (buf_recv[0] != 0) {
-            xSemaphoreGive(mutex);
-            
             cmd = (buf_recv[0] >> 3);
             len = ((buf_recv[0] & 0x07) << 8);
             len |= buf_recv[1];
@@ -89,25 +91,20 @@ static void worker(void *pvParameters) {
             } else {
                 bad_handler(cmd, buffer, len);
             }
-
-            xSemaphoreTake(mutex, portMAX_DELAY);
         } else {
             // ESP_LOGI(TAG, "FE310 RECV NULL");
         }
         // vTaskDelay(5000 / portTICK_PERIOD_MS);
     }
-    xSemaphoreGive(mutex);
 }
 
 // Called after a transaction is queued and ready for pickup by master. We use this to set the handshake line high.
 static void _post_setup_cb(spi_slave_transaction_t *trans) {
-    xSemaphoreGive(mutex);
     WRITE_PERI_REG(GPIO_OUT_W1TS_REG, (1 << SPI_GPIO_CTS));
 }
 
 // Called after transaction is sent/received. We use this to set the handshake line low.
 static void _post_trans_cb(spi_slave_transaction_t *trans) {
-    xSemaphoreTake(mutex, portMAX_DELAY);
     WRITE_PERI_REG(GPIO_OUT_W1TC_REG, (1 << SPI_GPIO_CTS));
 }
 
@@ -163,7 +160,8 @@ void eos_fe310_init(void) {
     eos_msgq_init(&send_q, send_q_array, EOS_FE310_SIZE_Q);
     mutex = xSemaphoreCreateBinary();
     xSemaphoreGive(mutex);
-    xTaskCreatePinnedToCore(&worker, "fe310_receiver", 4096, NULL, 5, NULL, 1);
+    xTaskCreate(&transceiver, "fe310_transceiver", 4096, NULL, EOS_PRIORITY_SPI, NULL);
+    // xTaskCreatePinnedToCore(&transceiver, "fe310_transceiver", 4096, NULL, EOS_PRIORITY_SPI, NULL, 1);
 }
 
 int eos_fe310_send(unsigned char cmd, unsigned char *buffer, uint16_t len) {
