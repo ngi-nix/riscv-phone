@@ -54,7 +54,7 @@ ssize_t handle_msg(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned 
     unsigned char buf[1000];
 
     strcpy((char *)buf, msg);
-    ssize_t _rv = ecp_send(conn, MTYPE_MSG, buf, strlen(msg)+1);
+    ssize_t _rv = ecp_send(conn, MTYPE_MSG, buf, 1000);
 
     if (counter % 100 == 0) {
         struct timeval tv;

@@ -557,6 +557,7 @@ int ecp_conn_init(ECPConnection *conn, ECPNode *node) {
     conn->node = *node;
     rv = ecp_dhkey_generate(ctx, &key);
     if (!rv) rv = ctx->rng(conn->nonce, ECP_AEAD_SIZE_NONCE);
+    if (!rv) rv = ctx->rng(&conn->seq_out, sizeof(conn->seq_out));
     
     if (!rv) rv = conn_dhkey_new_pair(conn, &key);
     if (!rv) rv = conn_dhkey_new_pub_local(conn, conn->key_curr);
@@ -648,6 +649,7 @@ int ecp_conn_reset(ECPConnection *conn) {
 
     if (!rv) rv = conn_dhkey_new_pub_local(conn, conn->key_curr);
     if (!rv) rv = ctx->rng(conn->nonce, ECP_AEAD_SIZE_NONCE);
+    if (!rv) rv = ctx->rng(&conn->seq_out, sizeof(conn->seq_out));
     conn->flags &= ~ECP_CONN_FLAG_OPEN;
 
 #ifdef ECP_WITH_PTHREAD
@@ -708,6 +710,7 @@ int ecp_conn_handle_new(ECPSocket *sock, ECPConnection *parent, unsigned char *p
     if (conn == NULL) return ECP_ERR_ALLOC;
 
     rv = ecp_conn_create(conn, sock, ctype);
+    if (!rv) rv = sock->ctx->rng(&conn->seq_out, sizeof(conn->seq_out));
     if (rv) {
         if (sock->ctx->conn_free) sock->ctx->conn_free(conn);
         return rv;
@@ -1146,6 +1149,7 @@ ssize_t ecp_unpack(ECPSocket *sock, ECPNetAddr *addr, ECPConnection *parent, ECP
     unsigned char is_open = 0;
     unsigned char is_new = 0;
     unsigned char seq_check = 1;
+    unsigned char seq_reset = 0;
     ecp_seq_t seq_c, seq_p, seq_n;
     ecp_ack_t seq_map;
     ssize_t dec_size;
@@ -1282,10 +1286,15 @@ ssize_t ecp_unpack(ECPSocket *sock, ECPNetAddr *addr, ECPConnection *parent, ECP
                 }
             }
 
+            if ((rv == ECP_ERR_SEQ) && (payload[ECP_SIZE_PLD_HDR] == ECP_MTYPE_OPEN_REQ) && key) {
+                rv = ECP_OK;
+                seq_reset = 1;
+            }
             if (rv) goto ecp_unpack_err;
         }
+    }
 
-    } else {
+    if (!is_open || seq_reset) {
         seq_n = seq_p;
         seq_map = 1;
 
