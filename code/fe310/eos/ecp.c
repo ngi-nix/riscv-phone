@@ -12,20 +12,11 @@
 
 static ECPSocket *_sock = NULL;
 
-static unsigned char net_buf_reserved = 0;
 static void timer_handler(unsigned char cmd, unsigned char *buffer, uint16_t len) {
-    int ok = eos_net_acquire(net_buf_reserved);
-    if (ok) {
-        ecp_cts_t next = ecp_timer_exe(_sock);
-        if (next) {
-            uint32_t tick = next * (uint64_t)RTC_FREQ / 1000;
-            eos_timer_set(tick, 1);
-        }
-        eos_net_release(1);
-        net_buf_reserved = 0;
-    } else {
-        net_buf_reserved = 1;
-        eos_evtq_push(EOS_EVT_TIMER, NULL, 0);
+    ecp_cts_t next = ecp_timer_exe(_sock);
+    if (next) {
+        uint32_t tick = next * (uint64_t)RTC_FREQ / 1000;
+        eos_timer_set(tick, 1);
     }
 }
 
@@ -60,9 +51,8 @@ int ecp_init(ECPContext *ctx) {
     rv = ecp_ctx_create_vconn(ctx);
     if (rv) return rv;
     
-    eos_evtq_set_handler(EOS_EVT_TIMER, timer_handler);
-    eos_evtq_set_handler(EOS_EVT_MASK_NET | EOS_NET_CMD_PKT, packet_handler);
-
+    eos_evtq_set_handler(EOS_EVT_TIMER, timer_handler, EOS_EVT_FLAG_WRAP);
+    eos_net_set_handler(EOS_NET_CMD_PKT, packet_handler, 0);
     return ECP_OK;
 }
 

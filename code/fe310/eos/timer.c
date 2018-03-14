@@ -13,7 +13,7 @@ static eos_timer_fptr_t timer_ext_handler = NULL;
 volatile uint64_t timer_next = 0;
 volatile uint64_t timer_next_evt = 0;
 
-void handle_m_time_interrupt(void) {
+void eos_timer_handle(void) {
     volatile uint64_t *mtime = (uint64_t *) (CLINT_CTRL_ADDR + CLINT_MTIME);
     volatile uint64_t *mtimecmp = (uint64_t *) (CLINT_CTRL_ADDR + CLINT_MTIMECMP);
     uint64_t now = *mtime;
@@ -44,10 +44,9 @@ void eos_timer_set(uint32_t tick, unsigned char is_evt) {
     volatile uint64_t *mtime = (uint64_t *) (CLINT_CTRL_ADDR + CLINT_MTIME);
     volatile uint64_t *mtimecmp = (uint64_t *) (CLINT_CTRL_ADDR + CLINT_MTIMECMP);
 
-    clear_csr(mstatus, MSTATUS_MIE);
+    clear_csr(mie, MIP_MTIP);
 
     uint64_t now = *mtime;
-    uint64_t then = *mtimecmp;
     uint64_t next = now + tick;
     if (is_evt) {
         if ((timer_next_evt == 0) || (next < timer_next_evt)) timer_next_evt = next;
@@ -56,16 +55,15 @@ void eos_timer_set(uint32_t tick, unsigned char is_evt) {
         if ((timer_next == 0) || (next < timer_next)) timer_next = next;
         next = timer_next_evt ? MIN(timer_next, timer_next_evt) : timer_next;
     }
-    if ((then == 0) || (next < then)) *mtimecmp = next;
-    if (then == 0) set_csr(mie, MIP_MTIP);
+    if ((*mtimecmp == 0) || (next < *mtimecmp)) *mtimecmp = next;
 
-    set_csr(mstatus, MSTATUS_MIE);
+    if (*mtimecmp != 0) set_csr(mie, MIP_MTIP);
 }
 
 void eos_timer_clear(unsigned char is_evt) {
     volatile uint64_t *mtimecmp = (uint64_t *) (CLINT_CTRL_ADDR + CLINT_MTIMECMP);
 
-    clear_csr(mstatus, MSTATUS_MIE);
+    clear_csr(mie, MIP_MTIP);
 
     if (is_evt) {
         timer_next_evt = 0;
@@ -74,13 +72,14 @@ void eos_timer_clear(unsigned char is_evt) {
         timer_next = 0;
         *mtimecmp = timer_next_evt;
     }
-    if (*mtimecmp == 0) clear_csr(mie, MIP_MTIP);
 
-    set_csr(mstatus, MSTATUS_MIE);
+    if (*mtimecmp != 0) set_csr(mie, MIP_MTIP);
 }
 
 void eos_timer_set_handler(eos_timer_fptr_t handler) {
-    clear_csr(mstatus, MSTATUS_MIE);
+    volatile uint64_t *mtimecmp = (uint64_t *) (CLINT_CTRL_ADDR + CLINT_MTIMECMP);
+
+    clear_csr(mie, MIP_MTIP);
     timer_ext_handler = handler;
-    set_csr(mstatus, MSTATUS_MIE);
+    if (*mtimecmp != 0) set_csr(mie, MIP_MTIP);
 }
