@@ -29,7 +29,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
-#include <assert.h>
 
 #define ARC4R_KEYSZ     32
 #define ARC4R_IVSZ      8
@@ -66,8 +65,6 @@ static int (*getentropy) (void* buf, size_t n);
 static inline void
 _rs_init(rand_state* st, u8 *buf, size_t n)
 {
-    assert(n >= (ARC4R_KEYSZ + ARC4R_IVSZ));
-
     chacha_keysetup(&st->rs_chacha, buf, ARC4R_KEYSZ * 8, 0);
     chacha_ivsetup(&st->rs_chacha,  buf + ARC4R_KEYSZ);
 }
@@ -104,9 +101,7 @@ _rs_stir(rand_state* st)
     u8 rnd[ARC4R_KEYSZ + ARC4R_IVSZ];
 
 
-    int r = getentropy(rnd, sizeof rnd);
-    assert(r == 0);
-
+    getentropy(rnd, sizeof rnd);
     _rs_rekey(st, rnd, sizeof(rnd));
 
     /* invalidate rs_buf */
