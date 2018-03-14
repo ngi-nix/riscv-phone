@@ -1,4 +1,4 @@
-include ../ecp/Makefile.platform
+include ../ecp/Makefile.posix
 CFLAGS=$(CFLAGS_PL) -I../ecp
 LDFLAGS=$(LDFLAGS_PL)
 

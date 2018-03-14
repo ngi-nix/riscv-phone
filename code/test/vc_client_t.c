@@ -26,14 +26,12 @@ int counter = 0;
 uint64_t t_start = 0;
 uint64_t t_end = 0;
 ssize_t handle_open(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s, ECP2Buffer *b) {
-    uint32_t seq = 0;
-    
-    ecp_conn_handle_open(conn, sq, t, p, s, b);
-    if (s < 0) {
+    ssize_t rv = ecp_conn_handle_open(conn, sq, t, p, s, b);
+    if (rv < 0) {
         printf("OPEN ERR:%ld\n", s);
-        return s;
+        return rv;
     }
-    
+
     char *msg = "PERA JE CAR!";
     unsigned char buf[1000];
 
@@ -44,12 +42,15 @@ ssize_t handle_open(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned
     gettimeofday(&tv, NULL);
     t_start = tv.tv_sec*(uint64_t)1000000+tv.tv_usec;
 
-    return s;
+    return rv;
 }
 
 ssize_t handle_msg(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s, ECP2Buffer *b) {
-    counter++;
+    // write(2, p, s);
+    // fflush(stderr);
     // printf("MSG C:%s size:%ld\n", p, s);
+    // return s;
+    counter++;
     char *msg = "PERA JE CAR!";
     unsigned char buf[1000];
 
