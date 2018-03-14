@@ -5,6 +5,7 @@
 #include "encoding.h"
 #include "platform.h"
 #include "plic/plic_driver.h"
+
 #include "interrupt.h"
 
 // Global Instance data for the PLIC

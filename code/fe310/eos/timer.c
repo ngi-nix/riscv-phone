@@ -3,6 +3,7 @@
 
 #include "encoding.h"
 #include "platform.h"
+
 #include "event.h"
 #include "timer.h"
 

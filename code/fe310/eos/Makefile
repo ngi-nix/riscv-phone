@@ -5,10 +5,13 @@ AR = $(FE310_HOME)/work/build/riscv-gnu-toolchain/riscv64-unknown-elf/prefix/bin
 
 CFLAGS = -O3 -fno-builtin-printf -march=rv32imac -mabi=ilp32 -mcmodel=medany -I$(FE310_HOME)/bsp/include -I$(FE310_HOME)/bsp/drivers -I$(FE310_HOME)/bsp/env -I$(FE310_HOME)/bsp/env/freedom-e300-hifive1 -I../..
  
-obj = eos.o msgq.o event.o interrupt.o timer.o net.o ecp.o
+obj = trap_entry.o eos.o msgq.o event.o interrupt.o timer.o i2s.o net.o ecp.o
 
 
 %.o: %.c %.h
+	$(CC) $(CFLAGS) -c $<
+
+%.o: %.S
 	$(CC) $(CFLAGS) -c $<
 
 all: $(obj)

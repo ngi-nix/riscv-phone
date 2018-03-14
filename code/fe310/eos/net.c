@@ -6,7 +6,6 @@
 
 #include "encoding.h"
 #include "platform.h"
-#include "plic/plic_driver.h"
 
 #include "eos.h"
 #include "msgq.h"
