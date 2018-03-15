@@ -12,5 +12,4 @@ PLATFORM=$1
 
 rm -f $BASEDIR/platform
 ln -sf ./$PLATFORM $BASEDIR/platform
-ln -sf ./config_$PLATFORM.h $BASEDIR/config.h
 ln -sf ./Makefile.$PLATFORM $BASEDIR/Makefile.platform

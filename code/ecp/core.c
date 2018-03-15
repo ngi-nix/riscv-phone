@@ -1008,7 +1008,7 @@ int ecp_conn_dhkey_get_curr(ECPConnection *conn, unsigned char *idx, unsigned ch
     if (idx) *idx = _idx;
     return ECP_OK;
 }
-    
+
 ssize_t ecp_pack(ECPContext *ctx, unsigned char *packet, size_t pkt_size, unsigned char s_idx, unsigned char c_idx, ecp_dh_public_t *public, ecp_aead_key_t *shsec, unsigned char *nonce, ecp_seq_t seq, unsigned char *payload, size_t pld_size) {
     ssize_t rv;
 
@@ -1029,9 +1029,9 @@ ssize_t ecp_pack(ECPContext *ctx, unsigned char *packet, size_t pkt_size, unsign
     payload[3] = (seq & 0x000000FF);
     rv = ctx->cr.aead_enc(packet+ECP_SIZE_PKT_HDR, pkt_size-ECP_SIZE_PKT_HDR, payload, pld_size, shsec, nonce);
     if (rv < 0) return ECP_ERR_ENCRYPT;
-    
+
     memcpy(nonce, packet+ECP_SIZE_PKT_HDR, ECP_AEAD_SIZE_NONCE);
-        
+
     return rv+ECP_SIZE_PKT_HDR;
 }
 
@@ -1694,6 +1694,67 @@ ssize_t ecp_receive(ECPConnection *conn, unsigned char mtype, unsigned char *msg
 #endif
 }
 
+#ifdef ECP_DEBUG
+static char *_utoa(unsigned value, char *str, int base) {
+  const char digits[] = "0123456789abcdefghijklmnopqrstuvwxyz";
+  int i, j;
+  unsigned remainder;
+  char c;
+  
+  /* Check base is supported. */
+  if ((base < 2) || (base > 36))
+    { 
+      str[0] = '\0';
+      return NULL;
+    }  
+    
+  /* Convert to string. Digits are in reverse order.  */
+  i = 0;
+  do 
+    {
+      remainder = value % base;
+      str[i++] = digits[remainder];
+      value = value / base;
+    } while (value != 0);  
+  str[i] = '\0'; 
+  
+  /* Reverse string.  */
+  for (j = 0, i--; j < i; j++, i--)
+    {
+      c = str[j];
+      str[j] = str[i];
+      str[i] = c; 
+    }       
+  
+  return str;
+}
+
+static char *_itoa(int value, char *str, int base) {
+  unsigned uvalue;
+  int i = 0;
+  
+  /* Check base is supported. */
+  if ((base < 2) || (base > 36))
+    { 
+      str[0] = '\0';
+      return NULL;
+    }  
+    
+  /* Negative numbers are only supported for decimal.
+   * Cast to unsigned to avoid overflow for maximum negative value.  */ 
+  if ((base == 10) && (value < 0))
+    {              
+      str[i++] = '-';
+      uvalue = (unsigned)-value;
+    }
+  else
+    uvalue = (unsigned)value;
+  
+  _utoa(uvalue, &str[i], base);
+  return str;
+}
+#endif
+
 static int recv_p(ECPSocket *sock, ECPNetAddr *addr, ECPBuffer *packet, size_t size) {
     ECP2Buffer bufs;
     ECPBuffer payload;
@@ -1727,7 +1788,14 @@ int ecp_receiver(ECPSocket *sock) {
         rv = sock->ctx->tr.recv(&sock->sock, &packet, &addr, next ? next : sock->poll_timeout);
         if (rv > 0) {
             int _rv = recv_p(sock, &addr, &packet, rv);
-            DPRINT(_rv, "ERR:recv_p - RV:%d\n", _rv);
+#ifdef ECP_DEBUG
+            if (_rv) {
+                char b[16];
+                puts("ERR:");
+                puts(_itoa(_rv, b, 10));
+                puts("\n");
+            }
+#endif
         }
         next = ecp_timer_exe(sock);
     }

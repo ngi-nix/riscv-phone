@@ -4,5 +4,6 @@ htable=htable
 vconn=vconn
 obj_rbuf=rbuf.o rbuf_send.o rbuf_recv.o msgq.o
 
-CFLAGS_PL=-O3
+CFLAGS_PL=-O3 -DECP_WITH_PTHREAD=1 -DECP_WITH_HTABLE=1 -DECP_WITH_RBUF=1 -DECP_WITH_MSGQ=1 -DECP_DEBUG=1
+
 LDFLAGS_PL=-lm -pthread

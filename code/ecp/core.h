@@ -3,8 +3,6 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "config.h"
-
 #ifdef ECP_WITH_PTHREAD
 #include <pthread.h>
 #endif
@@ -133,9 +131,6 @@ typedef uint32_t ecp_seq_t;
 
 #ifdef ECP_DEBUG
 #include <stdio.h>
-#define DPRINT(cnd, format, ...)    { if (cnd) { fprintf (stderr, format, __VA_ARGS__); } }
-#else
-#define DPRINT(cnd, format, ...)    {}
 #endif
 
 struct ECPBuffer;
