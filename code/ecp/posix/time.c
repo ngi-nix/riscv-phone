@@ -2,8 +2,9 @@
 #include <sys/time.h>
 
 #include <core.h>
+#include <tm.h>
 
-static ecp_cts_t t_abstime_ms(ecp_cts_t msec) {
+ecp_cts_t ecp_tm_abstime_ms(ecp_cts_t msec) {
     struct timeval tv;
     ecp_cts_t ms_now;
     
@@ -12,13 +13,8 @@ static ecp_cts_t t_abstime_ms(ecp_cts_t msec) {
     return ms_now + msec;
 }
 
-static void t_sleep_ms(ecp_cts_t msec) {
+void ecp_tm_sleep_ms(ecp_cts_t msec) {
     usleep(msec*1000);
 }
 
-int ecp_time_init(ECPTimeIface *t) {
-    t->init = 1;
-    t->abstime_ms = t_abstime_ms;
-    t->sleep_ms = t_sleep_ms;
-    return 0;
-}
+void ecp_tm_timer_set(ecp_cts_t next) {}

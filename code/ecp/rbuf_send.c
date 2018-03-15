@@ -1,4 +1,5 @@
 #include "core.h"
+#include "tr.h"
 
 #define NACK_RATE_UNIT   10000
 
@@ -84,7 +85,6 @@ static void cc_flush(ECPConnection *conn) {
 
 ssize_t ecp_rbuf_handle_ack(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size, ECP2Buffer *b) {
     ECPRBSend *buf;
-    ECPContext *ctx = conn->sock->ctx;
     ssize_t rsize = sizeof(ecp_seq_t)+sizeof(ecp_ack_t);
     ecp_seq_t seq_ack = 0;
     ecp_ack_t ack_map = 0;
@@ -108,7 +108,7 @@ ssize_t ecp_rbuf_handle_ack(ECPConnection *conn, ecp_seq_t seq, unsigned char mt
         (msg[6] << 8)  | \
         (msg[7]);
 
-    if (ctx->tr.buf_flag_set) ctx->tr.buf_flag_set(b, ECP_SEND_FLAG_MORE);
+    ecp_tr_buf_flag_set(b, ECP_SEND_FLAG_MORE);
 
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&buf->mutex);
@@ -201,7 +201,7 @@ ssize_t ecp_rbuf_handle_ack(ECPConnection *conn, ecp_seq_t seq, unsigned char mt
         if (_rv < 0) rv = _rv;
     }
 
-    if (ctx->tr.buf_flag_clear) ctx->tr.buf_flag_clear(b, ECP_SEND_FLAG_MORE);
+    ecp_tr_buf_flag_clear(b, ECP_SEND_FLAG_MORE);
 
     if (rv) return rv;
     return rsize;

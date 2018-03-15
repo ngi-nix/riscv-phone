@@ -56,7 +56,7 @@ ssize_t ecp_rbuf_pld_send(ECPConnection *conn, ECPBuffer *packet, ECPBuffer *pay
     seq_item.seq_w = 1;
     seq_item.rb_pass = 1;
 
-    rv = ctx->pack(conn, packet, ECP_ECDH_IDX_INV, ECP_ECDH_IDX_INV, payload, pld_size, &seq_item, &addr);
+    rv = ecp_pack(conn, packet, ECP_ECDH_IDX_INV, ECP_ECDH_IDX_INV, payload, pld_size, &seq_item, &addr);
     if (rv < 0) return rv;
 
     rv = ecp_pkt_send(sock, &addr, packet, rv, flags);

@@ -1,4 +1,6 @@
 #include "core.h"
+#include "tr.h"
+#include "tm.h"
 
 #define ACK_RATE            8
 #define ACK_MASK_FIRST      ((ecp_ack_t)1 << (ECP_SIZE_ACKB - 1))
@@ -76,7 +78,7 @@ static void msg_flush(ECPConnection *conn, ECP2Buffer *b) {
 
                 rv = ecp_msg_get_pts(buf->rbuf.msg[idx].msg, buf->rbuf.msg[idx].size, &msg_pts);
                 if (rv == ECP_OK) {
-                    ecp_pts_t now = conn->sock->ctx->tm.abstime_ms(0);
+                    ecp_pts_t now = ecp_tm_abstime_ms(0);
                     if (ECP_PTS_LT(now, msg_pts)) {
                         ECPTimerItem ti;
                         ecp_seq_t seq_offset = seq - seq_next;
@@ -196,11 +198,10 @@ static int ack_shift(ECPRBRecv *buf) {
 ssize_t ecp_rbuf_handle_flush(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size, ECP2Buffer *b) {
     if (size < 0) return size;
     
-    ECPContext *ctx = conn->sock->ctx;
     ECPRBRecv *buf = conn->rbuf.recv;
     if (buf == NULL) return ECP_ERR;
 
-    if (ctx->tr.buf_free) ctx->tr.buf_free(b, ECP_SEND_FLAG_MORE);
+    ecp_tr_buf_free(b, ECP_SEND_FLAG_MORE);
     ack_send(conn);
     return 0;
 }

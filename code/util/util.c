@@ -3,6 +3,7 @@
 #include <unistd.h>
 
 #include "core.h"
+#include "cr.h"
 #include "util.h"
 
 int ecp_util_key_save(ECPContext *ctx, ECPDHKey *key, char *filename) {
@@ -10,7 +11,7 @@ int ecp_util_key_save(ECPContext *ctx, ECPDHKey *key, char *filename) {
     ssize_t rv;
     
     if ((fd = open(filename, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR)) < 0) return ECP_ERR;
-    rv = write(fd, ctx->cr.dh_pub_get_buf(&key->public), ECP_ECDH_SIZE_KEY);
+    rv = write(fd, ecp_cr_dh_pub_get_buf(&key->public), ECP_ECDH_SIZE_KEY);
     if (rv != ECP_ECDH_SIZE_KEY) {
         close(fd);
         return ECP_ERR;
@@ -42,7 +43,7 @@ int ecp_util_key_load(ECPContext *ctx, ECPDHKey *key, char *filename) {
     }
     close(fd);
 
-    ctx->cr.dh_pub_from_buf(&key->public, buf);
+    ecp_cr_dh_pub_from_buf(&key->public, buf);
     
     key->valid = 1;
     return ECP_OK;
@@ -53,7 +54,7 @@ int ecp_util_node_save(ECPContext *ctx, ECPNode *node, char *filename) {
     ssize_t rv;
     
     if ((fd = open(filename, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR)) < 0) return ECP_ERR;
-    rv = write(fd, ctx->cr.dh_pub_get_buf(&node->public), ECP_ECDH_SIZE_KEY);
+    rv = write(fd, ecp_cr_dh_pub_get_buf(&node->public), ECP_ECDH_SIZE_KEY);
     if (rv != ECP_ECDH_SIZE_KEY) {
         close(fd);
         return ECP_ERR;
@@ -85,7 +86,7 @@ int ecp_util_node_load(ECPContext *ctx, ECPNode *node, char *filename) {
     }
     close(fd);
 
-    ctx->cr.dh_pub_from_buf(&node->public, buf);
+    ecp_cr_dh_pub_from_buf(&node->public, buf);
 
     return ECP_OK;
 }

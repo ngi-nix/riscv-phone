@@ -5,16 +5,17 @@
 #include <poll.h>
 
 #include <core.h>
+#include <tr.h>
 
 #define ADDR_S_MAX  32
 
-static int t_addr_eq(ECPNetAddr *addr1, ECPNetAddr *addr2) {
+int ecp_tr_addr_eq(ECPNetAddr *addr1, ECPNetAddr *addr2) {
     if (addr1->port != addr2->port) return 0;
     if (memcmp(addr1->host, addr2->host, sizeof(addr1->host)) != 0) return 0;
     return 1;
 }
 
-static int t_addr_set(ECPNetAddr *addr, void *addr_s) {
+int ecp_tr_addr_set(ECPNetAddr *addr, void *addr_s) {
     int rv;
     char addr_c[ADDR_S_MAX];
     char *colon = NULL;
@@ -37,14 +38,14 @@ static int t_addr_set(ECPNetAddr *addr, void *addr_s) {
     return 0;
 }
 
-static int t_open(int *sock, void *addr_s) {
+int ecp_tr_open(int *sock, void *addr_s) {
     struct sockaddr_in _myaddr;
 
     memset((char *)&_myaddr, 0, sizeof(_myaddr));
     _myaddr.sin_family = AF_INET;
     if (addr_s) {
         ECPNetAddr addr;
-        int rv = t_addr_set(&addr, addr_s);
+        int rv = ecp_tr_addr_set(&addr, addr_s);
         if (rv) return rv;
 
         memcpy((void *)&_myaddr.sin_addr, addr.host, sizeof(addr.host));
@@ -62,14 +63,14 @@ static int t_open(int *sock, void *addr_s) {
         close(*sock);
         return rv;
     }
-    return 0;
+    return ECP_OK;
 }
 
-static void t_close(int *sock) {
+void ecp_tr_close(int *sock) {
     close(*sock);
 }
 
-static ssize_t t_send(int *sock, ECPBuffer *packet, size_t msg_size, ECPNetAddr *addr, unsigned char flags) {
+ssize_t ecp_tr_send(int *sock, ECPBuffer *packet, size_t msg_size, ECPNetAddr *addr, unsigned char flags) {
     struct sockaddr_in servaddr;
 
     memset((void *)&servaddr, 0, sizeof(servaddr));
@@ -79,7 +80,7 @@ static ssize_t t_send(int *sock, ECPBuffer *packet, size_t msg_size, ECPNetAddr 
     return sendto(*sock, packet->buffer, msg_size, 0, (struct sockaddr *)&servaddr, sizeof(servaddr));
 }
 
-static ssize_t t_recv(int *sock, ECPBuffer *packet, ECPNetAddr *addr, int timeout) {
+ssize_t ecp_tr_recv(int *sock, ECPBuffer *packet, ECPNetAddr *addr, int timeout) {
     struct sockaddr_in servaddr;
     socklen_t addrlen = sizeof(servaddr);
     struct pollfd fds[] = {
@@ -102,13 +103,7 @@ static ssize_t t_recv(int *sock, ECPBuffer *packet, ECPNetAddr *addr, int timeou
     return ECP_ERR_TIMEOUT;
 }
 
-int ecp_transport_init(ECPTransportIface *t) {
-    t->init = 1;
-    t->open = t_open;
-    t->close = t_close;
-    t->send = t_send;
-    t->recv = t_recv;
-    t->addr_eq = t_addr_eq;
-    t->addr_set = t_addr_set;
-    return ECP_OK;
-}
+void ecp_tr_buf_free(ECP2Buffer *b, unsigned char flags) {}
+void ecp_tr_buf_flag_set(ECP2Buffer *b, unsigned char flags) {}
+void ecp_tr_buf_flag_clear(ECP2Buffer *b, unsigned char flags) {}
+

@@ -1,4 +1,5 @@
 #include "core.h"
+#include "tm.h"
 
 int ecp_timer_create(ECPTimer *timer) {
     int rv = ECP_OK;
@@ -37,10 +38,9 @@ int ecp_timer_item_init(ECPTimerItem *ti, ECPConnection *conn, unsigned char mty
 int ecp_timer_push(ECPTimerItem *ti) {
     int i, is_reg, rv = ECP_OK;
     ECPConnection *conn = ti->conn;
-    ECPContext *ctx = conn->sock->ctx;
     ECPTimer *timer = &conn->sock->timer;
     
-    ti->abstime = ctx->tm.abstime_ms(ti->timeout);
+    ti->abstime = ecp_tm_abstime_ms(ti->timeout);
 
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&timer->mutex);
@@ -56,7 +56,7 @@ int ecp_timer_push(ECPTimerItem *ti) {
     if (!rv && !is_reg) rv = ECP_ERR_CLOSED;
 
     if (!rv) {
-        if (ctx->tm.timer_set) ctx->tm.timer_set(ti->timeout);
+        ecp_tm_timer_set(ti->timeout);
         for (i=timer->head; i>=0; i--) {
             if (ECP_CTS_LTE(ti->abstime, timer->item[i].abstime)) {
                 if (i != timer->head) memmove(timer->item+i+2, timer->item+i+1, sizeof(ECPTimerItem) * (timer->head-i));
@@ -154,7 +154,7 @@ ecp_cts_t ecp_timer_exe(ECPSocket *sock) {
     ECPTimer *timer = &sock->timer;
     ECPTimerItem to_exec[ECP_MAX_TIMER];
     int to_exec_size = 0;
-    ecp_cts_t now = sock->ctx->tm.abstime_ms(0);
+    ecp_cts_t now = ecp_tm_abstime_ms(0);
 
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&timer->mutex);

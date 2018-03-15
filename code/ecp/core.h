@@ -161,55 +161,6 @@ typedef void ecp_conn_destroy_t (struct ECPConnection *c);
 typedef ssize_t ecp_conn_open_t (struct ECPConnection *c);
 typedef void ecp_conn_close_t (struct ECPConnection *c);
 
-typedef struct ECPCryptoIface {
-    int init;
-    int (*dh_mkpair) (ecp_dh_public_t *p, ecp_dh_private_t *s, ecp_rng_t *rb);
-    int (*dh_shsec) (ecp_aead_key_t *sh, ecp_dh_public_t *p, ecp_dh_private_t *s);
-    unsigned char *(*dh_pub_get_buf) (ecp_dh_public_t *p);
-    void (*dh_pub_to_buf) (unsigned char *b, ecp_dh_public_t *p);
-    void (*dh_pub_from_buf) (ecp_dh_public_t *p, unsigned char *b);
-    int (*dh_pub_eq) (unsigned char *p1, ecp_dh_public_t *p2);
-    unsigned int (*dh_pub_hash_fn) (unsigned char *p);
-    int (*dh_pub_hash_eq) (unsigned char *p1, unsigned char *p2);
-    
-    ssize_t (*aead_enc) (unsigned char *ct, size_t cl, unsigned char *pt, size_t pl, ecp_aead_key_t *k, unsigned char *n);
-    ssize_t (*aead_dec) (unsigned char *pt, size_t pl, unsigned char *ct, size_t cl, ecp_aead_key_t *k, unsigned char *n);
-    int (*dsa_mkpair) (ecp_dsa_public_t *p, ecp_dsa_private_t *s, ecp_rng_t *rb);
-    int (*dsa_sign) (unsigned char *sig, unsigned char *m, size_t ml, ecp_dsa_public_t *p, ecp_dsa_private_t *s);
-    int (*dsa_verify) (unsigned char *m, size_t ml, unsigned char *sig, ecp_dsa_public_t *p);
-} ECPCryptoIface;
-
-typedef struct ECPTransportIface {
-    int init;
-    int (*open) (ECPNetSock *, void *addr);
-    void (*close) (ECPNetSock *);
-    ssize_t (*send) (ECPNetSock *, struct ECPBuffer *packet, size_t, ECPNetAddr *, unsigned char);
-    ssize_t (*recv) (ECPNetSock *, struct ECPBuffer *packet, ECPNetAddr *, int);
-    int (*addr_eq) (ECPNetAddr *, ECPNetAddr *);
-    int (*addr_set) (ECPNetAddr *, void *addr);
-    void (*buf_free) (struct ECP2Buffer *, unsigned char);
-    void (*buf_flag_set) (struct ECP2Buffer *, unsigned char);
-    void (*buf_flag_clear) (struct ECP2Buffer *, unsigned char);
-} ECPTransportIface;
-
-typedef struct ECPTimeIface {
-    int init;
-    ecp_cts_t (*abstime_ms) (ecp_cts_t);
-    void (*sleep_ms) (ecp_cts_t);
-    void (*timer_set) (ecp_cts_t);
-} ECPTimeIface;
-
-#ifdef ECP_WITH_HTABLE
-typedef struct ECPHTableIface {
-    int init;
-    void *(*create) (struct ECPContext *c);
-    void (*destroy) (void *t);
-    int (*insert) (void *t, unsigned char *k, struct ECPConnection *v);
-    struct ECPConnection *(*remove) (void *t, unsigned char *k);
-    struct ECPConnection *(*search) (void *t, unsigned char *k);
-} ECPHTableIface;
-#endif
-
 typedef struct ECPBuffer {
     unsigned char *buffer;
     size_t size;
@@ -289,14 +240,6 @@ typedef struct ECPContext {
     ecp_rng_t *rng;
     ecp_conn_alloc_t *conn_alloc;
     ecp_conn_free_t *conn_free;
-    ECPCryptoIface cr;
-    ECPTransportIface tr;
-    ECPTimeIface tm;
-#ifdef ECP_WITH_HTABLE
-    ECPHTableIface ht;
-#endif
-    ssize_t (*pack) (struct ECPConnection *conn, ECPBuffer *packet, unsigned char s_idx, unsigned char c_idx, ECPBuffer *payload, size_t pld_size, ECPSeqItem *si, ECPNetAddr *addr);
-    ssize_t (*pack_raw) (struct ECPSocket *sock, struct ECPConnection *parent, ECPBuffer *packet, unsigned char s_idx, unsigned char c_idx, ecp_dh_public_t *public, ecp_aead_key_t *shsec, unsigned char *nonce, ecp_seq_t seq, ECPBuffer *payload, size_t pld_size, ECPNetAddr *addr);
     ECPConnHandler *handler[ECP_MAX_CTYPE];
 } ECPContext;
 
@@ -347,12 +290,6 @@ typedef struct ECPConnection {
 } ECPConnection;
 
 int ecp_init(ECPContext *ctx);
-int ecp_crypto_init(ECPCryptoIface *t);
-int ecp_transport_init(ECPTransportIface *t);
-int ecp_time_init(ECPTimeIface *t);
-#ifdef ECP_WITH_HTABLE
-int ecp_htable_init(ECPHTableIface *h);
-#endif
 
 int ecp_dhkey_generate(ECPContext *ctx, ECPDHKey *key);
 int ecp_node_init(ECPContext *ctx, ECPNode *node, ecp_dh_public_t *public, void *addr);
@@ -388,12 +325,12 @@ int ecp_conn_dhkey_new(ECPConnection *conn);
 int ecp_conn_dhkey_new_pub(ECPConnection *conn, unsigned char idx, unsigned char *public);
 int ecp_conn_dhkey_get_curr(ECPConnection *conn, unsigned char *idx, unsigned char *public);
 
-ssize_t ecp_pack(ECPContext *ctx, unsigned char *packet, size_t pkt_size, unsigned char s_idx, unsigned char c_idx, ecp_dh_public_t *public, ecp_aead_key_t *shsec, unsigned char *nonce, ecp_seq_t seq, unsigned char *payload, size_t pld_size);
-ssize_t ecp_pack_raw(ECPSocket *sock, ECPConnection *parent, unsigned char *packet, size_t pkt_size, unsigned char s_idx, unsigned char c_idx, ecp_dh_public_t *public, ecp_aead_key_t *shsec, unsigned char *nonce, ecp_seq_t seq, unsigned char *payload, size_t pld_size, ECPNetAddr *addr);
+ssize_t ecp_pkt_pack(ECPContext *ctx, unsigned char *packet, size_t pkt_size, unsigned char s_idx, unsigned char c_idx, ecp_dh_public_t *public, ecp_aead_key_t *shsec, unsigned char *nonce, ecp_seq_t seq, unsigned char *payload, size_t pld_size);
+ssize_t ecp_pkt_pack_raw(ECPSocket *sock, ECPConnection *parent, unsigned char *packet, size_t pkt_size, unsigned char s_idx, unsigned char c_idx, ecp_dh_public_t *public, ecp_aead_key_t *shsec, unsigned char *nonce, ecp_seq_t seq, unsigned char *payload, size_t pld_size, ECPNetAddr *addr);
 ssize_t ecp_conn_pack(ECPConnection *conn, unsigned char *packet, size_t pkt_size, unsigned char s_idx, unsigned char c_idx, unsigned char *payload, size_t pld_size, ECPSeqItem *si, ECPNetAddr *addr);
 
-ssize_t _ecp_pack(ECPConnection *conn, ECPBuffer *packet, unsigned char s_idx, unsigned char c_idx, ECPBuffer *payload, size_t pld_size, ECPSeqItem *si, ECPNetAddr *addr);
-ssize_t _ecp_pack_raw(ECPSocket *sock, ECPConnection *parent, ECPBuffer *packet, unsigned char s_idx, unsigned char c_idx, ecp_dh_public_t *public, ecp_aead_key_t *shsec, unsigned char *nonce, ecp_seq_t seq, ECPBuffer *payload, size_t pld_size, ECPNetAddr *addr);
+ssize_t ecp_pack(ECPConnection *conn, ECPBuffer *packet, unsigned char s_idx, unsigned char c_idx, ECPBuffer *payload, size_t pld_size, ECPSeqItem *si, ECPNetAddr *addr);
+ssize_t ecp_pack_raw(ECPSocket *sock, ECPConnection *parent, ECPBuffer *packet, unsigned char s_idx, unsigned char c_idx, ecp_dh_public_t *public, ecp_aead_key_t *shsec, unsigned char *nonce, ecp_seq_t seq, ECPBuffer *payload, size_t pld_size, ECPNetAddr *addr);
 
 ssize_t ecp_unpack(ECPSocket *sock, ECPNetAddr *addr, ECPConnection *parent, ECP2Buffer *bufs, size_t pkt_size, ECPConnection **_conn, ecp_seq_t *_seq);
 ssize_t ecp_pkt_handle(ECPSocket *sock, ECPNetAddr *addr, ECPConnection *parent, ECP2Buffer *bufs, size_t pkt_size);
