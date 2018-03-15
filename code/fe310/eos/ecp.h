@@ -1,4 +1,3 @@
-#include <ecp/config_fe310.h>
 #include <ecp/core.h>
 #include <ecp/vconn/vconn.h>
 
