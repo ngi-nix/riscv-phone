@@ -59,17 +59,15 @@ static int ctable_create(ECPSockCTable *conn, ECPContext *ctx) {
     memset(conn, 0, sizeof(ECPSockCTable));
 
 #ifdef ECP_WITH_HTABLE
-    if (ctx->ht.init) {
-        conn->htable = ctx->ht.create(ctx);
-        if (conn->htable == NULL) return ECP_ERR_ALLOC;
-    }
+    conn->htable = ctx->ht.create(ctx);
+    if (conn->htable == NULL) return ECP_ERR_ALLOC;
 #endif
 
 #ifdef ECP_WITH_PTHREAD
     rv = pthread_mutex_init(&conn->mutex, NULL);
     if (rv) {
 #ifdef ECP_WITH_HTABLE
-        if (ctx->ht.init) ctx->ht.destroy(conn->htable);
+        ctx->ht.destroy(conn->htable);
 #endif
         return ECP_ERR;
     }
@@ -83,7 +81,7 @@ static void ctable_destroy(ECPSockCTable *conn, ECPContext *ctx) {
     pthread_mutex_destroy(&conn->mutex);
 #endif
 #ifdef ECP_WITH_HTABLE
-    if (ctx->ht.init) ctx->ht.destroy(conn->htable);
+    ctx->ht.destroy(conn->htable);
 #endif
 }
 
@@ -93,7 +91,7 @@ static int ctable_insert(ECPConnection *conn) {
     ECPContext *ctx = sock->ctx;
 
 #ifdef ECP_WITH_HTABLE
-    if (ctx->ht.init) with_htable = 1;
+    with_htable = 1;
 #endif
     
     if (with_htable) {
@@ -138,7 +136,7 @@ static void ctable_remove(ECPConnection *conn) {
     ECPContext *ctx = sock->ctx;
     
 #ifdef ECP_WITH_HTABLE
-    if (ctx->ht.init) with_htable = 1;
+    with_htable = 1;
 #endif
 
     if (with_htable) {
@@ -169,7 +167,7 @@ static ECPConnection *ctable_search(ECPSocket *sock, unsigned char c_idx, unsign
     ECPConnection *conn = NULL;
     
 #ifdef ECP_WITH_HTABLE
-    if (sock->ctx->ht.init) with_htable = 1;
+    with_htable = 1;
 #endif
 
     if (with_htable) {
@@ -308,7 +306,7 @@ static int conn_dhkey_new_pair(ECPConnection *conn, ECPDHKey *key) {
 
     conn->key_curr = conn->key_curr == ECP_ECDH_IDX_INV ? 0 : (conn->key_curr+1) % ECP_MAX_CONN_KEY;
 #ifdef ECP_WITH_HTABLE
-    if (ctx->ht.init && conn->out && ecp_conn_is_reg(conn) && conn->key[conn->key_curr].valid) {
+    if (conn->out && ecp_conn_is_reg(conn) && conn->key[conn->key_curr].valid) {
         ctx->ht.remove(sock->conn.htable, ctx->cr.dh_pub_get_buf(&conn->key[conn->key_curr].public));
     }
 #endif
@@ -317,7 +315,7 @@ static int conn_dhkey_new_pair(ECPConnection *conn, ECPDHKey *key) {
     conn->key_idx_map[conn->key_curr] = ECP_ECDH_IDX_INV;
 
 #ifdef ECP_WITH_HTABLE
-    if (ctx->ht.init && conn->out && ecp_conn_is_reg(conn)) {
+    if (conn->out && ecp_conn_is_reg(conn)) {
         int rv = ctx->ht.insert(sock->conn.htable, ctx->cr.dh_pub_get_buf(&conn->key[conn->key_curr].public), conn);
         if (rv) return rv;
     }
@@ -331,7 +329,7 @@ static void conn_dhkey_del_pair(ECPConnection *conn, unsigned char idx) {
     ECPContext *ctx = sock->ctx;
     
 #ifdef ECP_WITH_HTABLE
-    if (ctx->ht.init && conn->out && ecp_conn_is_reg(conn) && conn->key[idx].valid) {
+    if (conn->out && ecp_conn_is_reg(conn) && conn->key[idx].valid) {
         ctx->ht.remove(sock->conn.htable, ctx->cr.dh_pub_get_buf(&conn->key[idx].public));
     }
 #endif
@@ -371,7 +369,7 @@ static int conn_dhkey_new_pub_remote(ECPConnection *conn, unsigned char idx, uns
     if ((remote->key_idx_map[idx] != ECP_ECDH_IDX_INV) && ctx->cr.dh_pub_eq(public, &remote->key[remote->key_idx_map[idx]].public)) return ECP_ERR_ECDH_KEY_DUP;
 
 #ifdef ECP_WITH_HTABLE
-    if (ctx->ht.init && !conn->out && ecp_conn_is_reg(conn) && (remote->key[new].idx != ECP_ECDH_IDX_INV)) {
+    if (!conn->out && ecp_conn_is_reg(conn) && (remote->key[new].idx != ECP_ECDH_IDX_INV)) {
         ctx->ht.remove(sock->conn.htable, ctx->cr.dh_pub_get_buf(&remote->key[new].public));
     }
 #endif
@@ -383,7 +381,7 @@ static int conn_dhkey_new_pub_remote(ECPConnection *conn, unsigned char idx, uns
     remote->key_curr = new;
 
 #ifdef ECP_WITH_HTABLE
-    if (ctx->ht.init && !conn->out && ecp_conn_is_reg(conn)) {
+    if (!conn->out && ecp_conn_is_reg(conn)) {
         int rv = ctx->ht.insert(sock->conn.htable, ctx->cr.dh_pub_get_buf(&remote->key[new].public), conn);
         if (rv) return rv;
     }

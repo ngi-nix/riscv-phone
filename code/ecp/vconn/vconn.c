@@ -2,18 +2,22 @@
 
 #include "vconn.h"
 
+#ifdef ECP_WITH_HTABLE
 #ifdef ECP_WITH_PTHREAD
+static void *key_perma_table;
+static void *key_next_table;
 static pthread_mutex_t key_perma_mutex;
 static pthread_mutex_t key_next_mutex;
 #endif
+#endif
 
-static void *key_perma_table;
-static void *key_next_table;
     
 static unsigned char key_null[ECP_ECDH_SIZE_KEY] = { 0 };
 
 static ECPConnHandler handler_vc;
 static ECPConnHandler handler_vl;
+
+#ifdef ECP_WITH_HTABLE
 
 static int vconn_create(ECPConnection *conn, unsigned char *payload, size_t size) {
     ECPContext *ctx = conn->sock->ctx;
@@ -33,9 +37,7 @@ static int vconn_create(ECPConnection *conn, unsigned char *payload, size_t size
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&key_next_mutex);
 #endif
-#ifdef ECP_WITH_HTABLE
-    rv = ctx->ht.init ? ctx->ht.insert(key_next_table, conn_v->key_next[conn_v->key_next_curr], conn) : ECP_ERR;
-#endif
+    rv = ctx->ht.insert(key_next_table, conn_v->key_next[conn_v->key_next_curr], conn);
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_unlock(&key_next_mutex);
 #endif
@@ -54,19 +56,17 @@ static void vconn_destroy(ECPConnection *conn) {
     pthread_mutex_lock(&key_next_mutex);
     pthread_mutex_lock(&conn->mutex);
 #endif
-#ifdef ECP_WITH_HTABLE
-    if (ctx->ht.init) {
-        int i;
-        for (i=0; i<ECP_MAX_NODE_KEY; i++) {
-            if (memcmp(conn_v->key_next[i], key_null, ECP_ECDH_SIZE_KEY)) ctx->ht.remove(key_next_table, conn_v->key_next[i]);
-        }
+    int i;
+    for (i=0; i<ECP_MAX_NODE_KEY; i++) {
+        if (memcmp(conn_v->key_next[i], key_null, ECP_ECDH_SIZE_KEY)) ctx->ht.remove(key_next_table, conn_v->key_next[i]);
     }
-#endif
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_unlock(&conn->mutex);
     pthread_mutex_unlock(&key_next_mutex);
 #endif
 }
+
+#endif  /* ECP_WITH_HTABLE */
 
 static ssize_t _vconn_send_open(ECPConnection *conn, ECPTimerItem *ti) {
     ECPBuffer packet;
@@ -114,9 +114,11 @@ static ssize_t vconn_handle_open(ECPConnection *conn, ecp_seq_t seq, unsigned ch
 
         return ecp_conn_handle_open(conn, seq, mtype, msg, size, b);
     } else {
+        int rv = ECP_OK;
+
+#ifdef ECP_WITH_HTABLE
         ECPContext *ctx = conn->sock->ctx;
         ECPVConnIn *conn_v = (ECPVConnIn *)conn;
-        int rv = ECP_OK;
         unsigned char ctype = 0;
 
         if (conn->out) return ECP_ERR;
@@ -134,14 +136,8 @@ static ssize_t vconn_handle_open(ECPConnection *conn, ecp_seq_t seq, unsigned ch
         if (!ecp_conn_is_open(conn)) conn->flags |= ECP_CONN_FLAG_OPEN;
         if (memcmp(conn_v->key_next[conn_v->key_next_curr], msg, ECP_ECDH_SIZE_KEY)) {
             conn_v->key_next_curr = (conn_v->key_next_curr + 1) % ECP_MAX_NODE_KEY;
-#ifdef ECP_WITH_HTABLE
-            if (ctx->ht.init) {
-                if (memcmp(conn_v->key_next[conn_v->key_next_curr], key_null, ECP_ECDH_SIZE_KEY)) ctx->ht.remove(key_next_table, conn_v->key_next[conn_v->key_next_curr]);
-                rv = ctx->ht.insert(key_next_table, conn_v->key_next[conn_v->key_next_curr], conn);
-            } else {
-                rv = ECP_ERR;
-            }
-#endif
+            if (memcmp(conn_v->key_next[conn_v->key_next_curr], key_null, ECP_ECDH_SIZE_KEY)) ctx->ht.remove(key_next_table, conn_v->key_next[conn_v->key_next_curr]);
+            rv = ctx->ht.insert(key_next_table, conn_v->key_next[conn_v->key_next_curr], conn);
             if (!rv) memcpy(conn_v->key_next[conn_v->key_next_curr], msg, ECP_ECDH_SIZE_KEY);
         }
 
@@ -149,6 +145,11 @@ static ssize_t vconn_handle_open(ECPConnection *conn, ecp_seq_t seq, unsigned ch
         pthread_mutex_unlock(&conn->mutex);
         pthread_mutex_unlock(&key_next_mutex);
 #endif
+#else   /* ECP_WITH_HTABLE */
+
+        rv = ECP_ERR;
+
+#endif  /* ECP_WITH_HTABLE */
     
         if (rv) return rv;
 
@@ -158,6 +159,7 @@ static ssize_t vconn_handle_open(ECPConnection *conn, ecp_seq_t seq, unsigned ch
     return ECP_ERR;
 }
 
+#ifdef ECP_WITH_HTABLE
 static ssize_t vconn_handle_relay(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size, ECP2Buffer *b) {
     ECPContext *ctx = conn->sock->ctx;
     ECPConnection *conn_out = NULL;
@@ -174,9 +176,7 @@ static ssize_t vconn_handle_relay(ECPConnection *conn, ecp_seq_t seq, unsigned c
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&key_perma_mutex);
 #endif
-#ifdef ECP_WITH_HTABLE
-    conn_out = ctx->ht.init ? ctx->ht.search(key_perma_table, conn_v->key_out) : NULL;
-#endif
+    conn_out = ctx->ht.search(key_perma_table, conn_v->key_out);
     if (conn_out) {
 #ifdef ECP_WITH_PTHREAD
         pthread_mutex_lock(&conn_out->mutex);
@@ -218,9 +218,7 @@ static int vlink_insert(ECPConnection *conn) {
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&key_perma_mutex);
 #endif
-#ifdef ECP_WITH_HTABLE
-    rv = ctx->ht.init ? ctx->ht.insert(key_perma_table, ctx->cr.dh_pub_get_buf(&conn->node.public), conn) : ECP_OK;
-#endif
+    rv = ctx->ht.insert(key_perma_table, ctx->cr.dh_pub_get_buf(&conn->node.public), conn);
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_unlock(&key_perma_mutex);
 #endif
@@ -234,9 +232,7 @@ static void vlink_remove(ECPConnection *conn) {
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&key_perma_mutex);
 #endif
-#ifdef ECP_WITH_HTABLE
-    if (ctx->ht.init) ctx->ht.remove(key_perma_table, ctx->cr.dh_pub_get_buf(&conn->node.public));
-#endif
+    ctx->ht.remove(key_perma_table, ctx->cr.dh_pub_get_buf(&conn->node.public));
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_unlock(&key_perma_mutex);
 #endif
@@ -263,6 +259,7 @@ static void vlink_destroy(ECPConnection *conn) {
 
     vlink_remove(conn);
 }
+#endif  /* ECP_WITH_HTABLE */
 
 static ssize_t _vlink_send_open(ECPConnection *conn, ECPTimerItem *ti) {
     ECPSocket *sock = conn->sock;
@@ -293,7 +290,9 @@ static ssize_t vlink_open(ECPConnection *conn) {
 }
 
 static void vlink_close(ECPConnection *conn) {
+#ifdef ECP_WITH_HTABLE
     vlink_remove(conn);
+#endif  /* ECP_WITH_HTABLE */
 }
 
 static ssize_t vlink_handle_open(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size, ECP2Buffer *b) {
@@ -317,12 +316,15 @@ static ssize_t vlink_handle_open(ECPConnection *conn, ecp_seq_t seq, unsigned ch
 
     if (mtype & ECP_MTYPE_FLAG_REP) {
         if (!conn->out) return ECP_ERR;
+#ifdef ECP_WITH_HTABLE
         if (!is_open) {
             int rv = vlink_insert(conn);
             if (rv) return rv;
         }
+#endif  /* ECP_WITH_HTABLE */
         return rv;
     } else {
+#ifdef ECP_WITH_HTABLE
         if (conn->out) return ECP_ERR;
         if (size < rv+ECP_ECDH_SIZE_KEY) return ECP_ERR;
 
@@ -330,11 +332,18 @@ static ssize_t vlink_handle_open(ECPConnection *conn, ecp_seq_t seq, unsigned ch
 
         // XXX should verify perma_key
         return rv+ECP_ECDH_SIZE_KEY;
+        
+#else   /* ECP_WITH_HTABLE */
+
+        return ECP_ERR; 
+
+#endif  /* ECP_WITH_HTABLE */
     }
 
     return ECP_ERR;
 }
 
+#ifdef ECP_WITH_HTABLE
 static ssize_t vlink_handle_relay(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size, ECP2Buffer *b) {
     ECPContext *ctx = conn->sock->ctx;
     ssize_t rv;
@@ -348,9 +357,7 @@ static ssize_t vlink_handle_relay(ECPConnection *conn, ecp_seq_t seq, unsigned c
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&key_next_mutex);
 #endif
-#ifdef ECP_WITH_HTABLE
-    conn = ctx->ht.init ? ctx->ht.search(key_next_table, msg+ECP_SIZE_PROTO+1) : NULL;
-#endif
+    conn = ctx->ht.search(key_next_table, msg+ECP_SIZE_PROTO+1);
     if (conn) {
 #ifdef ECP_WITH_PTHREAD
         pthread_mutex_lock(&conn->mutex);
@@ -384,6 +391,7 @@ static ssize_t vlink_handle_relay(ECPConnection *conn, ecp_seq_t seq, unsigned c
     if (rv < 0) return rv;
     return size;
 }
+#endif  /* ECP_WITH_HTABLE */
 
 static ssize_t vconn_set_msg(ECPConnection *conn, ECPBuffer *payload, unsigned char mtype) {
     if (conn->out && (conn->type == ECP_CTYPE_VCONN) && ((mtype == ECP_MTYPE_OPEN_REQ) || (mtype == ECP_MTYPE_KGET_REQ))) {
@@ -522,42 +530,47 @@ int ecp_ctx_create_vconn(ECPContext *ctx) {
     rv = ecp_conn_handler_init(&handler_vc);
     if (rv) return rv;
     
+#ifdef ECP_WITH_HTABLE
     handler_vc.conn_create = vconn_create;
     handler_vc.conn_destroy = vconn_destroy;
+#endif  /* ECP_WITH_HTABLE */
     handler_vc.conn_open = vconn_open;
     handler_vc.msg[ECP_MTYPE_OPEN] = vconn_handle_open;
     handler_vc.msg[ECP_MTYPE_EXEC] = ecp_conn_handle_exec;
+#ifdef ECP_WITH_HTABLE
     handler_vc.msg[ECP_MTYPE_RELAY] = vconn_handle_relay;
+#endif  /* ECP_WITH_HTABLE */
     ctx->handler[ECP_CTYPE_VCONN] = &handler_vc;
 
     rv = ecp_conn_handler_init(&handler_vl);
     if (rv) return rv;
 
+#ifdef ECP_WITH_HTABLE
     handler_vl.conn_create = vlink_create;
     handler_vl.conn_destroy = vlink_destroy;
+#endif  /* ECP_WITH_HTABLE */
     handler_vl.conn_open = vlink_open;
     handler_vl.conn_close = vlink_close;
     handler_vl.msg[ECP_MTYPE_OPEN] = vlink_handle_open;
     handler_vl.msg[ECP_MTYPE_EXEC] = ecp_conn_handle_exec;
+#ifdef ECP_WITH_HTABLE
     handler_vl.msg[ECP_MTYPE_RELAY] = vlink_handle_relay;
+#endif  /* ECP_WITH_HTABLE */
     ctx->handler[ECP_CTYPE_VLINK] = &handler_vl;
 
     ctx->pack = vconn_pack;
     ctx->pack_raw = vconn_pack_raw;
 
+#ifdef ECP_WITH_HTABLE
 #ifdef ECP_WITH_PTHREAD
     rv = pthread_mutex_init(&key_perma_mutex, NULL);
     if (!rv) pthread_mutex_init(&key_next_mutex, NULL);
     if (rv) return ECP_ERR;
 #endif
-
-#ifdef ECP_WITH_HTABLE
-    if (ctx->ht.init) {
-        key_perma_table = ctx->ht.create(ctx);
-        key_next_table = ctx->ht.create(ctx);
-        if ((key_perma_table == NULL) || (key_next_table == NULL)) return ECP_ERR;
-    }
-#endif
+    key_perma_table = ctx->ht.create(ctx);
+    key_next_table = ctx->ht.create(ctx);
+    if ((key_perma_table == NULL) || (key_next_table == NULL)) return ECP_ERR;
+#endif  /* ECP_WITH_HTABLE */
     
     return ECP_OK;
 }
