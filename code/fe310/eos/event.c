@@ -26,11 +26,16 @@ void eos_evtq_init(void) {
 }
 
 int eos_evtq_push(unsigned char cmd, unsigned char *buffer, uint16_t len) {
-    return eos_msgq_push(&_eos_event_q, cmd, buffer, len);
+    clear_csr(mstatus, MSTATUS_MIE);
+    int ret = eos_msgq_push(&_eos_event_q, cmd, buffer, len);
+    set_csr(mstatus, MSTATUS_MIE);
+    return ret;
 }
 
 void eos_evtq_pop(unsigned char *cmd, unsigned char **buffer, uint16_t *len) {
+    clear_csr(mstatus, MSTATUS_MIE);
     eos_msgq_pop(&_eos_event_q, cmd, buffer, len);
+    set_csr(mstatus, MSTATUS_MIE);
 }
 
 void eos_evtq_bad_handler(unsigned char cmd, unsigned char *buffer, uint16_t len) {
@@ -71,7 +76,7 @@ void eos_evtq_loop(void) {
 
     while(foo) {
         clear_csr(mstatus, MSTATUS_MIE);
-        eos_evtq_pop(&cmd, &buffer, &len);
+        eos_msgq_pop(&_eos_event_q, &cmd, &buffer, &len);
         if (cmd) {
             set_csr(mstatus, MSTATUS_MIE);
             eos_evtq_handle(cmd, buffer, len);

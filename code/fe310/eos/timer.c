@@ -4,6 +4,7 @@
 #include "encoding.h"
 #include "platform.h"
 
+#include "msgq.h"
 #include "event.h"
 #include "timer.h"
 
@@ -13,6 +14,8 @@
 static eos_timer_fptr_t timer_ext_handler = NULL;
 volatile uint64_t timer_next = 0;
 volatile uint64_t timer_next_evt = 0;
+
+extern EOSMsgQ _eos_event_q;
 
 void eos_timer_handle(void) {
     volatile uint64_t *mtime = (uint64_t *) (CLINT_CTRL_ADDR + CLINT_MTIME);
@@ -28,7 +31,7 @@ void eos_timer_handle(void) {
         }
     }
     if (timer_next_evt && (timer_next_evt <= now)) {
-        eos_evtq_push(EOS_EVT_TIMER, NULL, 0);
+        eos_msgq_push(&_eos_event_q, EOS_EVT_TIMER, NULL, 0);
         timer_next_evt = 0;
     }
     *mtimecmp = (timer_next && timer_next_evt) ? MIN(timer_next, timer_next_evt) : (timer_next ? timer_next : timer_next_evt);

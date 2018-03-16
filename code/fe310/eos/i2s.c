@@ -17,10 +17,13 @@
 
 EOSABuf _eos_i2s_mic_buf;
 EOSABuf _eos_i2s_spk_buf;
-uint16_t _eos_i2s_mic_wm;
-uint16_t _eos_i2s_spk_wm;
-uint32_t _eos_i2s_ck_period;
+uint32_t _eos_i2s_ck_period = 0;
+uint32_t _eos_i2s_mic_wm = 0;
+uint32_t _eos_i2s_spk_wm = 0;
 uint32_t _eos_i2s_mic_volume = 3;
+uint32_t _eos_i2s_spk_volume = 3;
+uint32_t _eos_i2s_mic_rd = 1;
+uint32_t _eos_i2s_spk_wr = 1;
 static eos_evt_fptr_t evt_handler[I2S_MAX_HANDLER];
 
 static void _abuf_init(EOSABuf *buf, uint8_t *array, uint16_t size) {
@@ -109,7 +112,7 @@ void eos_i2s_init(void) {
     I2S_PWM_REG_CK(PWM_COUNT)   = 0;
     I2S_PWM_REG_CK(PWM_CMP0)    = _eos_i2s_ck_period - 1;
     I2S_PWM_REG_CK(PWM_CMP1)    = I2S_PWM_REG_CK(PWM_CMP0) / 2;
-    I2S_PWM_REG_CK(PWM_CMP2)    = I2S_PWM_REG_CK(PWM_CMP0) / 4;
+    I2S_PWM_REG_CK(PWM_CMP2)    = I2S_PWM_REG_CK(PWM_CMP0) / 2;
 
     I2S_PWM_REG_WS(PWM_CFG)     = 0;
     I2S_PWM_REG_WS(PWM_COUNT)   = 0;
@@ -176,15 +179,28 @@ uint16_t eos_i2s_mic_len(void) {
 }
 
 uint16_t eos_i2s_mic_read(uint8_t *sample, uint16_t ssize) {
-    clear_csr(mstatus, MSTATUS_MIE);
-    uint16_t ret = _abuf_read(&_eos_i2s_mic_buf, sample, ssize);
-    set_csr(mstatus, MSTATUS_MIE);
-    return ret;
+    int i;
+    uint16_t _ssize = 0;
+    
+    for (i=0; i<ssize/I2S_ABUF_SIZE_CHUNK && _ssize == i*I2S_ABUF_SIZE_CHUNK; i++) {
+        clear_csr(mstatus, MSTATUS_MIE);
+        _ssize += _abuf_read(&_eos_i2s_mic_buf, sample+i*I2S_ABUF_SIZE_CHUNK, I2S_ABUF_SIZE_CHUNK);
+        if ((ssize == _ssize) || (_ssize != (i+1)*I2S_ABUF_SIZE_CHUNK)) _eos_i2s_mic_rd = 1;
+        set_csr(mstatus, MSTATUS_MIE);
+    }
+    if ((ssize > _ssize) && (_ssize == i*I2S_ABUF_SIZE_CHUNK)) {
+        clear_csr(mstatus, MSTATUS_MIE);
+        _ssize += _abuf_read(&_eos_i2s_mic_buf, sample+i*I2S_ABUF_SIZE_CHUNK, ssize - _ssize);
+        _eos_i2s_mic_rd = 1;
+        set_csr(mstatus, MSTATUS_MIE);
+    }
+    return _ssize;
 }
 
 int eos_i2s_mic_pop(uint8_t *sample) {
     clear_csr(mstatus, MSTATUS_MIE);
     int ret = _abuf_pop(&_eos_i2s_mic_buf, sample);
+    _eos_i2s_mic_rd = 1;
     set_csr(mstatus, MSTATUS_MIE);
     return ret;
 }
@@ -197,15 +213,28 @@ uint16_t eos_i2s_spk_len(void) {
 }
 
 uint16_t eos_i2s_spk_write(uint8_t *sample, uint16_t ssize) {
-    clear_csr(mstatus, MSTATUS_MIE);
-    uint16_t ret = _abuf_write(&_eos_i2s_spk_buf, sample, ssize);
-    set_csr(mstatus, MSTATUS_MIE);
-    return ret;
+    int i;
+    uint16_t _ssize = 0;
+    for (i=0; i<ssize/I2S_ABUF_SIZE_CHUNK && _ssize == i*I2S_ABUF_SIZE_CHUNK; i++) {
+        clear_csr(mstatus, MSTATUS_MIE);
+        _ssize += _abuf_write(&_eos_i2s_spk_buf, sample+i*I2S_ABUF_SIZE_CHUNK, I2S_ABUF_SIZE_CHUNK);
+        if ((ssize == _ssize) || (_ssize != (i+1)*I2S_ABUF_SIZE_CHUNK)) _eos_i2s_spk_wr = 1;
+        set_csr(mstatus, MSTATUS_MIE);
+    }
+    if ((ssize > _ssize) && (_ssize == i*I2S_ABUF_SIZE_CHUNK)) {
+        clear_csr(mstatus, MSTATUS_MIE);
+        _ssize += _abuf_write(&_eos_i2s_spk_buf, sample+i*I2S_ABUF_SIZE_CHUNK, ssize - _ssize);
+        _eos_i2s_spk_wr = 1;
+        set_csr(mstatus, MSTATUS_MIE);
+    }
+    return _ssize;
+
 }
 
 int eos_i2s_spk_push(uint8_t sample) {
     clear_csr(mstatus, MSTATUS_MIE);
     int ret = _abuf_push(&_eos_i2s_spk_buf, sample);
+    _eos_i2s_spk_wr = 1;
     set_csr(mstatus, MSTATUS_MIE);
     return ret;
 }

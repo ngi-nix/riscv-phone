@@ -168,7 +168,7 @@ handler_sd:
   xori x8, x8, 0x55
   andi x8, x8, 0xff
 
-  # push to mic but
+  # push to mic buf
   la x9, _eos_i2s_mic_buf
   lhu x18, I2S_ABUF_OFF_IDXR(x9)
   lhu x19, I2S_ABUF_OFF_IDXW(x9)
@@ -186,16 +186,22 @@ handler_sd:
   addi x19, x19, 1
   sh x19, I2S_ABUF_OFF_IDXW(x9)
 
-  # push to event queue
+  # check for push to event queue
   la x9, _eos_i2s_mic_wm
-  lhu x20, 0(x9)
+  lw x20, 0(x9)
   beqz x20, handler_sd_exit
   
   la x9, _eos_i2s_mic_buf
   lhu x18, I2S_ABUF_OFF_IDXR(x9)
   sub x18, x19, x18
-  bne x18, x20, handler_sd_exit
+  blt x18, x20, handler_sd_exit
 
+  la x9, _eos_i2s_mic_rd
+  lw x18, 0(x9)
+  beqz x18, handler_sd_exit
+  sw x0, 0(x9)
+
+  # push to event queue
   la x9, _eos_event_q
   lbu x18, MSGQ_OFF_IDXR(x9)
   lbu x19, MSGQ_OFF_IDXW(x9)

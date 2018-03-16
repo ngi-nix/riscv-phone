@@ -26,6 +26,8 @@ static uint16_t evt_handler_wrapper_en = 0;
 static SPIBufQ spi_bufq;
 static unsigned char spi_bufq_array[SPI_SIZE_BUFQ][SPI_SIZE_BUF];
 
+extern EOSMsgQ _eos_event_q;
+
 static int spi_bufq_push(unsigned char *buffer) {
     spi_bufq.array[SPI_BUFQ_IDX_MASK(spi_bufq.idx_w++)] = buffer;
     return EOS_OK;
@@ -162,7 +164,7 @@ static void spi_xchg_handler(void) {
         SPI1_REG(SPI_REG_CSMODE) = SPI_CSMODE_AUTO;
         SPI1_REG(SPI_REG_IE) = 0x0;
         if (spi_state.cmd) {
-            int r = eos_evtq_push(EOS_EVT_NET | spi_state.cmd, spi_state.buf, spi_state.len_rx);
+            int r = eos_msgq_push(&_eos_event_q, EOS_EVT_NET | spi_state.cmd, spi_state.buf, spi_state.len_rx);
             if (r) spi_bufq_push(spi_state.buf);
         } else if ((spi_state.next_cnt || (spi_state.flags & SPI_FLAG_ONEW)) && (spi_state.next_buf == NULL)) {
             spi_state.next_buf = spi_state.buf;

@@ -21,6 +21,8 @@
 
 #define I2S_SMPL_WIDTH          13
 
+#define I2S_ABUF_SIZE_CHUNK     64
+
 /* asm */
 #define I2S_ABUF_OFF_IDXR       0
 #define I2S_ABUF_OFF_IDXW       2
