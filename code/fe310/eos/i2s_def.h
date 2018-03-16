@@ -19,7 +19,8 @@
 #define I2S_IRQ_CI_PRIORITY     6
 #define I2S_IRQ_MASK            5
 
-#define I2S_SMPL_WIDTH          13
+#define I2S_SMPL_BITS           13
+#define I2S_SMPL_BITS_S         5
 
 #define I2S_ABUF_SIZE_CHUNK     64
 

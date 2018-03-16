@@ -15,6 +15,10 @@
 
 #define PWM_CFG           0x00
 #define PWM_COUNT         0x08
+#define PWM_CMP0          0x20
+#define PWM_CMP1          0x24
+#define PWM_CMP2          0x28
+#define PWM_CMP3          0x2C
 
 #define PWM_CFG_CMP0IP    0x10000000
 #define PWM_CFG_CMP1IP    0x20000000
@@ -63,6 +67,12 @@ eos_trap_entry:
   j handler
 
 handler_sd:
+  # exit if too early
+  li x18, I2S_PWM_CTRL_ADDR_CK
+  lw x8, PWM_COUNT(x18)
+  lw x9, PWM_CMP2(x18)
+  blt x8, x9, handler_sd_exit_
+
   # read mic value -> x8
   li x18, GPIO_CTRL_ADDR
   lw x8, GPIO_INPUT_VAL(x18)
@@ -84,8 +94,10 @@ handler_sd:
   addi sp, sp, -1*REGBYTES
   STORE x20, 0*REGBYTES(sp)
 
-  # bit <= 0 -> exit
+  # bit <= 0 or bit > 32 -> exit
+  li x18, 32
   bge x0, x9, handler_sd_exit
+  bge x9, x18, handler_sd_exit
 
   # sample |= sd gpio value << (32 - bit) -> x8
   # sample_mask |= 1 << (32 - bit) -> x20
@@ -108,8 +120,8 @@ handler_sd:
   sw x19, 0(x18)
   mv x8, x19
 
-  # bit < I2S_SMPL_WIDTH -> exit
-  li x18, I2S_SMPL_WIDTH
+  # bit < I2S_SMPL_BITS -> exit
+  li x18, I2S_SMPL_BITS
   blt x9, x18, handler_sd_exit
 
   # disable ck irq
@@ -127,15 +139,21 @@ handler_sd:
   sw x0, 0(x18)
   
   # correct for missed bits
-  la x18, sd_sample_save
+  # la x18, sd_sample_save
+  # don't correct
+  # j 0f
   li x19, 0x80000000
-  srai x19, x19, I2S_SMPL_WIDTH-1
+  srai x19, x19, I2S_SMPL_BITS_S-1
   and x20, x20, x19
   beq x19, x20, 0f
-  lw x8, 0(x18)
+  # drop missing
+  # bne x19, x20, handler_sd_exit
+  # lw x8, 0(x18)
+  # zero missing frame
+  mv x8, x0
 0:
-  sw x8, 0(x18)
-  srai x8, x8, 32-I2S_SMPL_WIDTH
+  # sw x8, 0(x18)
+  srai x8, x8, 32-I2S_SMPL_BITS
 
   # aLaw encode -> x8
   li x18, 0x800
@@ -227,6 +245,7 @@ handler_sd_exit:
   LOAD x20, 0*REGBYTES(sp)
   addi sp, sp, 1*REGBYTES
 
+handler_sd_exit_:
   # complete
   li x18, I2S_IRQ_SD_ID
   li x19, PLIC_CLAIM
@@ -250,7 +269,7 @@ handler_ck:
   j trap_exit_data
   
 handler_ws:
-  # enable wsc irq
+  # enable ci irq
   li x18, PLIC_PRIORITY
   li x19, I2S_IRQ_CI_PRIORITY
   sw x19, 4*I2S_IRQ_CI_ID(x18)
@@ -264,7 +283,13 @@ handler_ws:
   j trap_exit_data
 
 handler_ci:
-  # disable wsc/enable ck irq
+  # exit if too early
+  li x18, I2S_PWM_CTRL_ADDR_WS
+  lw x8, PWM_COUNT(x18)
+  lw x9, PWM_CMP2(x18)
+  blt x8, x9, handler_ci_exit
+
+  # disable ci/enable ck irq
   li x18, PLIC_PRIORITY
   sw x0, 4*I2S_IRQ_CI_ID(x18)
   li x19, I2S_IRQ_CK_PRIORITY
@@ -274,7 +299,8 @@ handler_ci:
   li x18, PLIC_THRESHOLD
   li x19, I2S_IRQ_MASK
   sw x19, 0(x18)
-  
+
+handler_ci_exit:
   # complete
   li x18, I2S_IRQ_CI_ID
   li x19, PLIC_CLAIM

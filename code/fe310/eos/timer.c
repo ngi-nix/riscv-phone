@@ -38,6 +38,10 @@ void eos_timer_handle(void) {
     if (*mtimecmp == 0) clear_csr(mie, MIP_MTIP);
 }
 
+void handle_m_time_interrupt(void) {
+    return eos_timer_handle();
+}
+
 void eos_timer_init(void) {
     volatile uint64_t *mtimecmp = (uint64_t *) (CLINT_CTRL_ADDR + CLINT_MTIMECMP);
     *mtimecmp = 0;
