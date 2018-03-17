@@ -10,7 +10,7 @@
 #include "i2s.h"
 #include "i2s_def.h"
 
-#define I2S_PWM_REG_CK  PWM1_REG
+#define I2S_PWM_REG_CK  PWM0_REG
 #define I2S_PWM_REG_WS  PWM2_REG
 
 #define EOS_ABUF_IDX_MASK(IDX, SIZE)  ((IDX) & ((SIZE) - 1))
@@ -90,6 +90,7 @@ void eos_i2s_init(void) {
     unsigned long f = get_cpu_freq();
 
     _eos_i2s_ck_period = 512;
+    uint32_t _ck_period_scaled = _eos_i2s_ck_period >> I2S_PWM_SCALE_CK;
     GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_LR);
     GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << I2S_PIN_LR);
     GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << I2S_PIN_LR);
@@ -110,15 +111,15 @@ void eos_i2s_init(void) {
 
     I2S_PWM_REG_CK(PWM_CFG)     = 0;
     I2S_PWM_REG_CK(PWM_COUNT)   = 0;
-    I2S_PWM_REG_CK(PWM_CMP0)    = _eos_i2s_ck_period - 1;
-    I2S_PWM_REG_CK(PWM_CMP1)    = I2S_PWM_REG_CK(PWM_CMP0) / 2;
-    I2S_PWM_REG_CK(PWM_CMP2)    = I2S_PWM_REG_CK(PWM_CMP0) / 8;
+    I2S_PWM_REG_CK(PWM_CMP0)    = _ck_period_scaled;
+    I2S_PWM_REG_CK(PWM_CMP1)    = _ck_period_scaled / 2;
+    I2S_PWM_REG_CK(PWM_CMP2)    = _ck_period_scaled / 4;
 
     I2S_PWM_REG_WS(PWM_CFG)     = 0;
     I2S_PWM_REG_WS(PWM_COUNT)   = 0;
-    I2S_PWM_REG_WS(PWM_CMP0)    = _eos_i2s_ck_period * 64 - 1;
-    I2S_PWM_REG_WS(PWM_CMP1)    = I2S_PWM_REG_WS(PWM_CMP0) / 2;
-    I2S_PWM_REG_WS(PWM_CMP2)    = I2S_PWM_REG_WS(PWM_CMP0) - _eos_i2s_ck_period;
+    I2S_PWM_REG_WS(PWM_CMP0)    = (_eos_i2s_ck_period + 1) * 64 - 1;
+    I2S_PWM_REG_WS(PWM_CMP1)    = (_eos_i2s_ck_period + 1) * 32;
+    I2S_PWM_REG_WS(PWM_CMP2)    = (_eos_i2s_ck_period + 1) * 62;
 
     eos_intr_set(I2S_IRQ_SD_ID, I2S_IRQ_SD_PRIORITY, NULL);
     eos_intr_set(I2S_IRQ_CK_ID, I2S_IRQ_CK_PRIORITY, NULL);
@@ -147,7 +148,7 @@ void eos_i2s_start(void) {
     I2S_PWM_REG_CK(PWM_COUNT)   = 0;
     I2S_PWM_REG_WS(PWM_COUNT)   = 0;
 
-    I2S_PWM_REG_CK(PWM_CFG)     = PWM_CFG_ENALWAYS | PWM_CFG_ZEROCMP;
+    I2S_PWM_REG_CK(PWM_CFG)     = PWM_CFG_ENALWAYS | PWM_CFG_ZEROCMP | I2S_PWM_SCALE_CK;
     I2S_PWM_REG_WS(PWM_CFG)     = PWM_CFG_ENALWAYS | PWM_CFG_ZEROCMP;
 
     GPIO_REG(GPIO_IOF_SEL)      |=  (1 << I2S_PIN_CK);

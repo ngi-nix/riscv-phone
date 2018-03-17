@@ -32,7 +32,7 @@
 #define INT_PWM1_BASE     44
 #define INT_PWM2_BASE     48
 
-#define I2S_PWM_CTRL_ADDR_CK  PWM1_CTRL_ADDR
+#define I2S_PWM_CTRL_ADDR_CK  PWM0_CTRL_ADDR
 #define I2S_PWM_CTRL_ADDR_WS  PWM2_CTRL_ADDR
 
 #include "i2s_def.h"
@@ -71,17 +71,19 @@ handler_sd:
   li x18, I2S_PWM_CTRL_ADDR_CK
   lw x8, PWM_COUNT(x18)
   lw x9, PWM_CMP2(x18)
+  srli x9, x9, I2S_PWM_SCALE_CK
   blt x8, x9, handler_sd_exit_
 
   # read mic value -> x8
   li x18, GPIO_CTRL_ADDR
   lw x8, GPIO_INPUT_VAL(x18)
 
-  # set bit as ws pwm counter/ck period - sd volume -> x9
+  # set bit as ws pwm counter/(ck period + 1) - sd volume -> x9
   li x18, I2S_PWM_CTRL_ADDR_WS
   lw x9, PWM_COUNT(x18)
   la x18, _eos_i2s_ck_period
   lw x19, 0(x18)
+  addi x19, x19, 1
   divu x9, x9, x19
   la x18, _eos_i2s_mic_volume
   lw x19, 0(x18)
