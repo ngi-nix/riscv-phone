@@ -8,8 +8,8 @@ typedef struct EOSABuf {
 } EOSABuf;
 
 void eos_i2s_init(void);
-void eos_i2s_init_mic(uint8_t *mic_arr, uint16_t mic_arr_size, uint16_t mic_wm, eos_evt_fptr_t mic_wm_handler);
-void eos_i2s_init_spk(uint8_t *spk_arr, uint16_t spk_arr_size, uint16_t spk_wm, eos_evt_fptr_t spk_wm_handler);
+void eos_i2s_init_mic(uint8_t *mic_arr, uint16_t mic_arr_size, eos_evt_fptr_t mic_wm_handler, uint16_t mic_wm);
+void eos_i2s_init_spk(uint8_t *spk_arr, uint16_t spk_arr_size, eos_evt_fptr_t spk_wm_handler, uint16_t spk_wm);
 void eos_i2s_start(void);
 void eos_i2s_stop(void);
 uint16_t eos_i2s_mic_len(void);
