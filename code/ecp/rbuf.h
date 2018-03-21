@@ -111,8 +111,8 @@ ssize_t ecp_rbuf_recv_store(struct ECPConnection *conn, ecp_seq_t seq, unsigned 
 int ecp_rbuf_send_create(struct ECPConnection *conn, ECPRBSend *buf, ECPRBMessage *msg, unsigned int msg_size);
 void ecp_rbuf_send_destroy(struct ECPConnection *conn);
 int ecp_rbuf_send_start(struct ECPConnection *conn);
-int ecp_rbuf_send_flush(ECPConnection *conn);
-int ecp_rbuf_send_set_wsize(ECPConnection *conn, ecp_win_t size);
+int ecp_rbuf_send_flush(struct ECPConnection *conn);
+int ecp_rbuf_send_set_wsize(struct ECPConnection *conn, ecp_win_t size);
 
 int ecp_rbuf_pkt_prep(ECPRBSend *buf, struct ECPSeqItem *si, unsigned char mtype);
 ssize_t ecp_rbuf_pkt_send(ECPRBSend *buf, struct ECPSocket *sock, ECPNetAddr *addr, struct ECPBuffer *packet, size_t pkt_size, unsigned char flags, ECPTimerItem *ti, struct ECPSeqItem *si);
