@@ -46,7 +46,7 @@ void eos_evtq_handler_wrapper(unsigned char cmd, unsigned char *buffer, uint16_t
     int ok = eos_net_acquire(*flags_acq & flag);
     if (ok) {
         f(cmd, buffer, len);
-        eos_net_release(1);
+        eos_net_release();
         *flags_acq &= ~flag;
     } else {
         *flags_acq |= flag;

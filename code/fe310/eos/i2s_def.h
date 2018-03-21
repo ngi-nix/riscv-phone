@@ -24,7 +24,7 @@
 #define I2S_SMPL_BITS_S         5
 
 #define I2S_PWM_SCALE_CK        2
-#define I2S_ABUF_SIZE_CHUNK     64
+#define I2S_ABUF_SIZE_CHUNK     16
 
 /* asm */
 #define I2S_ABUF_OFF_IDXR       0

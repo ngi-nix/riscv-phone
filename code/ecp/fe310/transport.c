@@ -4,6 +4,8 @@
 #include <eos/eos.h>
 #include <eos/net.h>
 
+static unsigned char _flags = 0;
+
 int ecp_tr_addr_eq(ECPNetAddr *addr1, ECPNetAddr *addr2) {
     if (addr1->port != addr2->port) return 0;
     if (memcmp(addr1->host, addr2->host, sizeof(addr1->host)) != 0) return 0;
@@ -29,11 +31,15 @@ ssize_t ecp_tr_send(int *sock, ECPBuffer *packet, size_t msg_size, ECPNetAddr *a
     unsigned char cmd = EOS_NET_CMD_PKT;
     int rv;
 
+    flags |= _flags;
     if (flags & ECP_SEND_FLAG_MORE) {
         cmd |= EOS_NET_CMD_FLAG_ONEW;
     }
     if (flags & ECP_SEND_FLAG_REPLY) {
-        if (packet && packet->buffer) buf = packet->buffer-addr_len;
+        if (packet && packet->buffer) {
+            buf = packet->buffer-addr_len;
+            packet->buffer = NULL;
+        }
     } else {
         buf = eos_net_alloc();
         memcpy(buf+addr_len, packet->buffer, msg_size);
@@ -52,18 +58,18 @@ ssize_t ecp_tr_recv(int *sock, ECPBuffer *packet, ECPNetAddr *addr, int timeout)
 
 void ecp_tr_buf_free(ECP2Buffer *b, unsigned char flags) {
     size_t addr_len = ECP_IPv4_ADDR_SIZE + sizeof(uint16_t);
-    if (b && b->packet && b->packet->buffer) eos_net_free(b->packet->buffer-addr_len, flags & ECP_SEND_FLAG_MORE);
+    if (b && b->packet && b->packet->buffer) {
+        eos_net_free(b->packet->buffer-addr_len, flags & ECP_SEND_FLAG_MORE);
+        b->packet->buffer = NULL;
+    }
 }
 
 void ecp_tr_buf_flag_set(ECP2Buffer *b, unsigned char flags) {
-    size_t addr_len = ECP_IPv4_ADDR_SIZE + sizeof(uint16_t);
-    if (flags & ECP_SEND_FLAG_MORE) {
-        if (b && b->packet && b->packet->buffer) eos_net_reserve(b->packet->buffer-addr_len);
-    }
+    _flags |= flags;
+    if (flags & ECP_SEND_FLAG_MORE) ecp_tr_buf_free(b, flags);
 }
 
 void ecp_tr_buf_flag_clear(ECP2Buffer *b, unsigned char flags) {
-    if (flags & ECP_SEND_FLAG_MORE) {
-        eos_net_release(1);
-    }
+    _flags &= ~flags;
+    if (flags & ECP_SEND_FLAG_MORE) eos_net_release();
 }

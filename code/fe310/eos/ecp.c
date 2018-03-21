@@ -50,7 +50,7 @@ static void packet_handler(unsigned char cmd, unsigned char *buffer, uint16_t le
     }
 #endif
     if (bufs.packet->buffer) eos_net_free(buffer, 0);
-    eos_net_release(0);
+    eos_net_release();
 }
 
 int ecp_init(ECPContext *ctx) {

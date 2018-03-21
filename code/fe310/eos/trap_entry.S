@@ -12,21 +12,10 @@
 #define PWM0_CTRL_ADDR    0x10015000
 #define PWM1_CTRL_ADDR    0x10025000
 #define PWM2_CTRL_ADDR    0x10035000
-
-#define PWM_CFG           0x00
-#define PWM_COUNT         0x08
-#define PWM_CMP0          0x20
-#define PWM_CMP1          0x24
-#define PWM_CMP2          0x28
-#define PWM_CMP3          0x2C
-
-#define PWM_CFG_CMP0IP    0x10000000
-#define PWM_CFG_CMP1IP    0x20000000
-#define PWM_CFG_CMP2IP    0x40000000
-#define PWM_CFG_CMP3IP    0x80000000
+#include "sifive/devices/pwm.h"
 
 #define GPIO_CTRL_ADDR    0x10012000
-#define GPIO_INPUT_VAL    0x00
+#include "sifive/devices/gpio.h"
 
 #define INT_PWM0_BASE     40
 #define INT_PWM1_BASE     44
@@ -45,7 +34,6 @@
 .global eos_trap_entry
 eos_trap_entry:
   addi sp, sp, -4*REGBYTES
-
   STORE x8, 0*REGBYTES(sp)
   STORE x9, 1*REGBYTES(sp)
   STORE x18, 2*REGBYTES(sp)
@@ -66,13 +54,37 @@ eos_trap_entry:
   beq x9, x18, handler_ci
   j handler
 
+evtq_push:
+  la x9, _eos_event_q
+  lbu x18, MSGQ_OFF_IDXR(x9)
+  lbu x19, MSGQ_OFF_IDXW(x9)
+  lbu x8, MSGQ_OFF_SIZE(x9)
+
+  sub x18, x19, x18
+  beq x18, x8, 1f
+
+  addi x8, x8, -1
+  and x8, x8, x19
+  li x18, MSGQ_ITEM_SIZE
+  mul x8, x8, x18
+  lw x18, MSGQ_OFF_ARRAY(x9)
+  add x8, x8, x18
+
+  addi x19, x19, 1
+  sb x19, MSGQ_OFF_IDXW(x9)
+  jalr x0, x20
+
+1:  
+  mv x8, x0
+  jalr x0, x20
+
 handler_sd:
   # exit if too early
   li x18, I2S_PWM_CTRL_ADDR_CK
   lw x8, PWM_COUNT(x18)
   lw x9, PWM_CMP2(x18)
   srli x9, x9, I2S_PWM_SCALE_CK
-  blt x8, x9, handler_sd_exit_
+  bltu x8, x9, handler_sd_exit_
 
   # read mic value -> x8
   li x18, GPIO_CTRL_ADDR
@@ -93,6 +105,7 @@ handler_sd:
   li x18, PLIC_PRIORITY
   sw x0, 4*I2S_IRQ_SD_ID(x18)
   
+  # store x20
   addi sp, sp, -1*REGBYTES
   STORE x20, 0*REGBYTES(sp)
 
@@ -214,7 +227,7 @@ handler_sd:
   la x9, _eos_i2s_mic_buf
   lhu x18, I2S_ABUF_OFF_IDXR(x9)
   sub x18, x19, x18
-  blt x18, x20, handler_sd_exit
+  bltu x18, x20, handler_sd_exit
 
   la x9, _eos_i2s_mic_rd
   lw x18, 0(x9)
@@ -222,26 +235,10 @@ handler_sd:
   sw x0, 0(x9)
 
   # push to event queue
-  la x9, _eos_event_q
-  lbu x18, MSGQ_OFF_IDXR(x9)
-  lbu x19, MSGQ_OFF_IDXW(x9)
-  lbu x20, MSGQ_OFF_SIZE(x9)
-
-  sub x18, x19, x18
-  beq x18, x20, handler_sd_exit
-
-  addi x20, x20, -1
-  and x20, x20, x19
-  li x18, MSGQ_ITEM_SIZE
-  mul x20, x20, x18
-  lw x18, MSGQ_OFF_ARRAY(x9)
-  add x20, x20, x18
+  jal x20, evtq_push
+  beqz x8, handler_sd_exit
   li x18, (EOS_EVT_AUDIO | I2S_EVT_MIC)
-  sb x18, 0(x20)
-  
-  addi x19, x19, 1
-  sb x19, MSGQ_OFF_IDXW(x9)
-  j handler_sd_exit
+  sb x18, MSGQ_ITEM_OFF_CMD(x8)
   
 handler_sd_exit:
   LOAD x20, 0*REGBYTES(sp)
@@ -289,7 +286,7 @@ handler_ci:
   li x18, I2S_PWM_CTRL_ADDR_WS
   lw x8, PWM_COUNT(x18)
   lw x9, PWM_CMP2(x18)
-  blt x8, x9, handler_ci_exit
+  bltu x8, x9, handler_ci_exit
 
   # disable ci/enable ck irq
   li x18, PLIC_PRIORITY
@@ -302,6 +299,74 @@ handler_ci:
   li x19, I2S_IRQ_MASK
   sw x19, 0(x18)
 
+  # pop from spk buf -> x8
+  la x9, _eos_i2s_spk_buf
+  lhu x18, I2S_ABUF_OFF_IDXR(x9)
+  lhu x19, I2S_ABUF_OFF_IDXW(x9)
+  beq x18, x19, handler_ci_exit
+  lhu x19, I2S_ABUF_OFF_SIZE(x9)
+
+  addi x19, x19, -1
+  and x19, x19, x18
+  lw x8, I2S_ABUF_OFF_ARRAY(x9)
+  add x19, x19, x8
+  lbu x8, 0(x19)
+  
+  addi x18, x18, 1
+  sh x18, I2S_ABUF_OFF_IDXR(x9)
+
+#define UART0_CTRL_ADDR 0x10013000
+#define UART_REG_TXFIFO 0x00
+  # li x18, UART0_CTRL_ADDR
+  # sw x8, UART_REG_TXFIFO(x18)
+  
+  # aLaw decode -> x8
+  xori x8, x8, 0x55
+  andi x9, x8, 0x80
+  beqz x9, 0f
+  li x9, 1
+  slli x9, x9, 7
+  not x9, x9
+  and x9, x8, x9
+  li x9, -1
+0:
+  andi x18, x8, 0xf0
+  srli x18, x18, 4
+  addi x18, x18, 4
+  
+  li x19, 4
+  beq x18, x19, 1f
+  
+  andi x8, x8, 0x0f
+  addi x19, x18, -4
+  sll x8, x8, x19
+  
+  li x19, 1
+  sll x19, x19, x18
+  or x8, x8, x19
+  
+  li x19, 1
+  addi x18, x18, -5
+  sll x19, x19, x18
+  or x8, x8, x19  
+  j 2f
+1:
+  slli x8, x8, 1
+  ori x8, x8, 1
+2:
+  beqz x9, 3f
+  mul x8, x8, x9
+3:
+  # END
+  # li x18, UART0_CTRL_ADDR
+  # mv x9, x8
+  # srai x9, x9, 8
+  # andi x9, x9, 0xff
+  # sw x9, UART_REG_TXFIFO(x18)
+  # mv x9, x8
+  # andi x9, x9, 0xff
+  # sw x9, UART_REG_TXFIFO(x18)
+  
 handler_ci_exit:
   # complete
   li x18, I2S_IRQ_CI_ID
@@ -311,6 +376,417 @@ handler_ci_exit:
   # exit
   j trap_exit_data
 
+#define SPI1_CTRL_ADDR    0x10024000
+#define IOF_SPI1_SS2      9
+
+#include "sifive/devices/spi.h"
+#include "net_def.h"
+#include "spi_def.h"
+
+spi_xchg_start:
+  ori x21, x21, SPI_FLAG_INIT
+  andi x21, x21, ~SPI_FLAG_CTS
+  la x22, _eos_spi_state_next_cnt
+  lbu x23, 0(x22)
+  beqz x23, 1f
+  la x22, _eos_spi_state_next_buf
+  lw x23, 0(x22)
+  bnez x23, 1f
+  ori x9, x9, EOS_NET_CMD_FLAG_ONEW
+  
+1:
+  andi x22, x9, EOS_NET_CMD_FLAG_ONEW
+  beqz x22, 2f
+  ori x21, x21, SPI_FLAG_ONEW
+2:
+  sw x21, 0(x20)
+
+  la x20, _eos_spi_state_cmd
+  sb x9, 0(x20)
+  la x20, _eos_spi_state_buf
+  sw x18, 0(x20)
+  la x20, _eos_spi_state_len_tx
+  sw x19, 0(x20)
+  la x20, _eos_spi_state_len_rx
+  sw x0, 0(x20)
+  la x20, _eos_spi_state_idx_tx
+  sw x0, 0(x20)
+  la x20, _eos_spi_state_idx_rx
+  sw x0, 0(x20)
+
+  li x20, SPI1_CTRL_ADDR
+  li x21, SPI_CSMODE_HOLD
+  sw x21, SPI_REG_CSMODE(x20)
+
+  slli x21, x9, 3
+  srli x22, x19, 8
+  or x21, x21, x22
+  andi x21, x21, 0xff
+  sw x21, SPI_REG_TXFIFO(x20)
+
+  andi x21, x19, 0xff
+  sw x21, SPI_REG_TXFIFO(x20)
+
+  li x21, 1
+  sw x21, SPI_REG_RXCTRL(x20)
+  li x21, SPI_IP_RXWM
+  sw x21, SPI_REG_IE(x20)
+  jalr x0, x8  
+  
+handler_spi_xchg:
+  addi sp, sp, -4*REGBYTES
+  STORE x20, 0*REGBYTES(sp)
+  STORE x21, 1*REGBYTES(sp)
+  STORE x22, 2*REGBYTES(sp)
+  STORE x23, 3*REGBYTES(sp)
+
+  li x19, SPI1_CTRL_ADDR
+  la x18, _eos_spi_state_flags
+  lbu x20, 0(x18)
+  andi x8, x20, SPI_FLAG_RST
+  beqz x8, 1f
+
+  andi x20, x20, ~SPI_FLAG_RST
+  sb x20, 0(x18)
+  lw x0, SPI_REG_RXFIFO(x19)
+  li x8, SPI_CSMODE_AUTO
+  sw x8, SPI_REG_CSMODE(x19)
+  sw x0, SPI_REG_IE(x19)
+  j handler_spi_xchg_exit
+
+1:
+  andi x8, x20, SPI_FLAG_INIT
+  beqz x8, 6f
+
+  andi x20, x20, ~SPI_FLAG_INIT
+  sb x20, 0(x18)
+  li x8, SPI_SIZE_TXWM
+  sw x8, SPI_REG_TXCTRL(x19)
+  li x8, SPI_SIZE_RXWM
+  sw x8, SPI_REG_RXCTRL(x19)
+  li x8, (SPI_IP_TXWM | SPI_IP_RXWM)
+  sw x8, SPI_REG_IE(x19)
+  lw x8, SPI_REG_RXFIFO(x19)
+  lw x9, SPI_REG_RXFIFO(x19)
+  andi x8, x8, 0xff
+  andi x9, x9, 0xff
+  la x18, _eos_spi_state_cmd
+  lbu x23, 0(x18)
+  andi x23, x23, EOS_NET_CMD_FLAG_ONEW
+  beqz x23, 2f
+  mv x8, x0
+  mv x9, x0
+
+2:
+  srli x23, x8, 3
+  sb x23, 0(x18)
+  andi x22, x8, 0x07
+  slli x22, x22, 8
+  or x22, x22, x9
+  la x18, _eos_spi_state_len_rx
+  sw x22, 0(x18)
+  la x18, _eos_spi_state_len_tx
+  lw x21, 0(x18)
+  bgeu x21, x22, 3f
+  mv x21, x22
+3:
+  li x8, 6
+  bgeu x21, x8, 4f
+  mv x21, x8
+  j 5f
+
+4:
+  addi x8, x21, 2
+  li x9, 4
+  remu x18, x8, x9
+  beqz x18, 5f
+  divu x21, x8, x9
+  addi x21, x21, 1
+  mul x21, x21, x9
+  addi x21, x21, -2
+
+5:
+  la x18, _eos_spi_state_len
+  sw x21, 0(x18)
+  j handler_spi_xchg_exit
+
+6:
+  la x18, _eos_spi_state_len
+  lw x20, 0(x18)
+  la x18, _eos_spi_state_idx_tx
+  lw x21, 0(x18)
+  la x18, _eos_spi_state_idx_rx
+  lw x22, 0(x18)
+  la x18, _eos_spi_state_buf
+  lw x23, 0(x18)
+  
+  lw x8, SPI_REG_IP(x19)
+  andi x8, x8, SPI_IP_TXWM
+  beqz x8, 9f
+  
+  sub x9, x20, x21
+  li x8, SPI_SIZE_CHUNK
+  bltu x8, x9, 7f
+  mv x8, x9
+7:
+  addi x8, x8, -1
+  add x9, x23, x21
+
+8:  
+  bltz x8, 9f
+  lw x18, SPI_REG_TXFIFO(x19)
+  bltz x18, 9f
+  lbu x18, 0(x9)
+  sw x18, SPI_REG_TXFIFO(x19)
+  addi x8, x8, -1
+  addi x9, x9, 1
+  addi x21, x21, 1
+  j 8b
+  
+9:
+  # lw x8, SPI_REG_IP(x19)
+  # andi x8, x8, SPI_IP_RXWM
+  # beqz x8, 11f
+  
+  sub x8, x21, x22
+  addi x8, x8, -1
+  add x9, x23, x22
+  
+10:  
+  bltz x8, 11f
+  lw x18, SPI_REG_RXFIFO(x19)
+  bltz x18, 11f
+  sb x18, 0(x9)
+  addi x8, x8, -1
+  addi x9, x9, 1
+  addi x22, x22, 1
+  j 10b
+
+11:
+  la x18, _eos_spi_state_idx_tx
+  sw x21, 0(x18)
+  la x18, _eos_spi_state_idx_rx
+  sw x22, 0(x18)
+  
+  bne x22, x20, 15f
+  li x8, SPI_CSMODE_AUTO
+  sw x8, SPI_REG_CSMODE(x19)
+  sw x0, SPI_REG_IE(x19)
+  la x18, _eos_spi_state_cmd
+  lbu x21, 0(x18)
+  beqz x21, 12f
+
+  # push to event queue
+  jal x20, evtq_push
+  beqz x8, 14f
+  ori x21, x21, EOS_EVT_NET
+  sb x21, MSGQ_ITEM_OFF_CMD(x8)
+  sw x23, MSGQ_ITEM_OFF_BUF(x8)
+  la x18, _eos_spi_state_len_rx
+  lw x22, 0(x18)
+  sh x22, MSGQ_ITEM_OFF_SIZE(x8)
+  j handler_spi_xchg_exit
+
+12:
+  la x18, _eos_spi_state_flags
+  lbu x8, 0(x18)
+  andi x19, x8, SPI_FLAG_ONEW
+  bnez x19, 13f
+  la x19, _eos_spi_state_next_cnt
+  lbu x9, 0(x19)
+  beqz x9, 14f
+13:
+  bnez x23, 14f
+  la x19, _eos_spi_state_next_buf
+  sw x23, 0(x19)
+  andi x8, x8, ~SPI_FLAG_ONEW
+  sb x8, 0(x18)
+  
+  j handler_spi_xchg_exit
+  
+14:
+  # push spi bufq
+  la x19, _eos_spi_buf_q
+  lbu x8, SPI_BUFQ_OFF_IDXW(x19)
+
+  andi x9, x8, SPI_SIZE_BUFQ - 1
+  slli x9, x9, 2
+  add x9, x19, x9
+  sw x23, SPI_BUFQ_OFF_ARRAY(x9)
+
+  addi x8, x8, 1
+  sb x8, SPI_BUFQ_OFF_IDXW(x19)
+
+  j handler_spi_xchg_exit
+
+15:  
+  bne x21, x20, handler_spi_xchg_exit
+  sub x8, x20, x22
+  addi x8, x8, -1
+  li x9, SPI_SIZE_RXWM
+  bltu x8, x9, 16f
+  mv x8, x9
+16:
+  sw x8, SPI_REG_RXCTRL(x19)
+  li x9, SPI_IP_RXWM
+  sw x9, SPI_REG_IE(x19)
+  
+handler_spi_xchg_exit:
+  LOAD x20, 0*REGBYTES(sp)
+  LOAD x21, 1*REGBYTES(sp)
+  LOAD x22, 2*REGBYTES(sp)
+  LOAD x23, 3*REGBYTES(sp)
+  addi sp, sp, 4*REGBYTES
+
+  # XXX should complete!
+  # li x18, I2S_IRQ_SD_ID
+  # li x19, PLIC_CLAIM
+  # sw x18, 0(x19)
+
+  # exit
+  j trap_exit_data
+
+handler_spi_cts:
+  addi sp, sp, -4*REGBYTES
+  STORE x20, 0*REGBYTES(sp)
+  STORE x21, 1*REGBYTES(sp)
+  STORE x22, 2*REGBYTES(sp)
+  STORE x23, 3*REGBYTES(sp)
+
+  li x8, 1
+  slli x8, x8, SPI_PIN_CTS
+  li x19, GPIO_CTRL_ADDR
+  sw x8, GPIO_RISE_IP(x19)
+
+  la x20, _eos_spi_state_flags
+  lw x21, 0(x20)
+  ori x21, x21, SPI_FLAG_CTS
+  sw x21, 0(x20)
+  andi x9, x21, SPI_FLAG_RDY
+  beqz x9, 2f
+  
+  # pop from send q
+  la x9, _eos_spi_send_q
+  lbu x18, MSGQ_OFF_IDXR(x9)
+  lbu x19, MSGQ_OFF_IDXW(x9)
+  beq x18, x19, 1f
+  lbu x8, MSGQ_OFF_SIZE(x9)
+
+  addi x8, x8, -1
+  and x8, x8, x18
+  li x19, MSGQ_ITEM_SIZE
+  mul x8, x8, x19
+  lw x19, MSGQ_OFF_ARRAY(x9)
+  add x8, x19, x8
+  addi x18, x18, 1
+  sb x18, MSGQ_OFF_IDXR(x9)
+
+  lbu x9, MSGQ_ITEM_OFF_CMD(x8)
+  lw x18, MSGQ_ITEM_OFF_BUF(x8)
+  lhu x19, MSGQ_ITEM_OFF_SIZE(x8)
+  beqz x9, 1f
+  beqz x18, 1f
+  beqz x19, 1f
+  jal x8, spi_xchg_start
+  
+  j handler_spi_cts_exit
+  
+1:
+  la x9, _eos_spi_buf_q
+  lbu x18, SPI_BUFQ_OFF_IDXR(x9)
+  lbu x19, SPI_BUFQ_OFF_IDXW(x9)
+  beq x18, x19, handler_spi_cts_exit
+
+  andi x8, x18, SPI_SIZE_BUFQ - 1
+  slli x8, x8, 2
+  add x8, x9, x8
+  addi x18, x18, 1
+  sb x18, SPI_BUFQ_OFF_IDXW(x9)
+  mv x9, x0
+  lw x18, SPI_BUFQ_OFF_ARRAY(x8)
+  mv x19, x0
+  beqz x18, handler_spi_cts_exit
+  jal x8, spi_xchg_start
+
+  j handler_spi_cts_exit
+
+2:
+  lw x8, GPIO_IOF_EN(x19)
+  li x9, 1
+  slli x9, x9, IOF_SPI1_SS2
+  not x9, x9
+  and x8, x8, x9
+  sw x8, GPIO_IOF_EN(x19)
+
+handler_spi_cts_exit:
+  LOAD x20, 0*REGBYTES(sp)
+  LOAD x21, 1*REGBYTES(sp)
+  LOAD x22, 2*REGBYTES(sp)
+  LOAD x23, 3*REGBYTES(sp)
+  addi sp, sp, 4*REGBYTES
+
+  # XXX should complete!
+  # li x18, I2S_IRQ_SD_ID
+  # li x19, PLIC_CLAIM
+  # sw x18, 0(x19)
+
+  # exit
+  j trap_exit_data
+
+handler_spi_rts:
+  li x8, 1
+  slli x8, x8, SPI_PIN_RTS
+  li x18, GPIO_CTRL_ADDR
+  la x19, _eos_spi_state_flags
+
+  lw x9, GPIO_RISE_IP(x18)
+  and x9, x9, x8
+  beqz x9, 1f
+
+  sw x8, GPIO_RISE_IP(x18)
+  lbu x8, 0(x19)
+  ori x8, x8, SPI_FLAG_RTS
+  sb x8, 0(x19)
+
+  andi x9, x8, SPI_FLAG_RDY
+  beqz x9, handler_spi_rts_exit
+  andi x9, x8, SPI_FLAG_CTS
+  beqz x9, handler_spi_rts_exit
+
+  andi x8, x8, ~SPI_FLAG_CTS
+  ori x8, x8, SPI_FLAG_RST
+  sb x8, 0(x19)
+
+  li x19, SPI1_CTRL_ADDR
+  li x8, SPI_CSMODE_HOLD
+  sw x8, SPI_REG_CSMODE(x19)
+  sw x0, SPI_REG_TXFIFO(x19)
+  sw x0, SPI_REG_RXCTRL(x19)
+  li x8, SPI_IP_RXWM
+  sw x8, SPI_REG_IE(x19)
+  
+  j handler_spi_rts_exit
+
+1:
+  lw x9, GPIO_FALL_IP(x18)
+  and x9, x9, x8
+  beqz x9, handler_spi_rts_exit
+
+  sw x8, GPIO_FALL_IP(x18)
+  lbu x8, 0(x18)
+  andi x8, x8, ~SPI_FLAG_RTS
+  sb x8, 0(x19)
+
+handler_spi_rts_exit:
+  # XXX should complete!
+  # li x18, I2S_IRQ_SD_ID
+  # li x19, PLIC_CLAIM
+  # sw x18, 0(x19)
+
+  # exit
+  j trap_exit_data
+  
+  
 trap_exit_data:
   # Remain in M-mode after mret
   li x18, MSTATUS_MPP
@@ -320,8 +796,8 @@ trap_exit_data:
   LOAD x9, 1*REGBYTES(sp)
   LOAD x18, 2*REGBYTES(sp)
   LOAD x19, 3*REGBYTES(sp)
-
   addi sp, sp, 4*REGBYTES
+
   mret
 
 handler:
