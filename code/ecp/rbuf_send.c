@@ -235,6 +235,14 @@ void ecp_rbuf_send_destroy(ECPConnection *conn) {
     conn->rbuf.send = NULL;
 }
 
+int ecp_rbuf_send_start(ECPConnection *conn) {
+    ECPRBSend *buf = conn->rbuf.send;
+
+    if (buf == NULL) return ECP_ERR;
+
+    return ecp_rbuf_start(&buf->rbuf, conn->seq_out);
+}
+
 int ecp_rbuf_send_set_wsize(ECPConnection *conn, ecp_win_t size) {
     ECPRBSend *buf = conn->rbuf.send;
 
@@ -254,15 +262,7 @@ int ecp_rbuf_send_set_wsize(ECPConnection *conn, ecp_win_t size) {
     return ECP_OK;
 }
 
-int ecp_rbuf_send_start(ECPConnection *conn) {
-    ECPRBSend *buf = conn->rbuf.send;
-
-    if (buf == NULL) return ECP_ERR;
-
-    return ecp_rbuf_start(&buf->rbuf, conn->seq_out);
-}
-
-int ecp_rbuf_flush(ECPConnection *conn) {
+int ecp_rbuf_send_flush(ECPConnection *conn) {
     ECPRBSend *buf = conn->rbuf.send;
     ecp_seq_t seq;
 

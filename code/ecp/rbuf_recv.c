@@ -245,24 +245,6 @@ void ecp_rbuf_recv_destroy(ECPConnection *conn) {
     conn->rbuf.recv = NULL;
 }
 
-int ecp_rbuf_recv_set_hole(ECPConnection *conn, unsigned short hole_max) {
-    ECPRBRecv *buf = conn->rbuf.recv;
-
-    buf->hole_max = hole_max;
-    buf->hole_mask_full = ~(~((ecp_ack_t)1) << (hole_max * 2));
-    buf->hole_mask_empty = ~(~((ecp_ack_t)1) << (hole_max + 1));
-    
-    return ECP_OK;
-}
-
-int ecp_rbuf_recv_set_delay(ECPConnection *conn, ecp_pts_t delay) {
-    ECPRBRecv *buf = conn->rbuf.recv;
-
-    buf->deliver_delay = delay;
-    
-    return ECP_OK;
-}
-
 int ecp_rbuf_recv_start(ECPConnection *conn, ecp_seq_t seq) {
     int rv;
     ECPRBRecv *buf = conn->rbuf.recv;
@@ -280,6 +262,24 @@ int ecp_rbuf_recv_start(ECPConnection *conn, ecp_seq_t seq) {
         if (rv) return rv;
     }
 #endif
+    
+    return ECP_OK;
+}
+
+int ecp_rbuf_recv_set_hole(ECPConnection *conn, unsigned short hole_max) {
+    ECPRBRecv *buf = conn->rbuf.recv;
+
+    buf->hole_max = hole_max;
+    buf->hole_mask_full = ~(~((ecp_ack_t)1) << (hole_max * 2));
+    buf->hole_mask_empty = ~(~((ecp_ack_t)1) << (hole_max + 1));
+    
+    return ECP_OK;
+}
+
+int ecp_rbuf_recv_set_delay(ECPConnection *conn, ecp_pts_t delay) {
+    ECPRBRecv *buf = conn->rbuf.recv;
+
+    buf->deliver_delay = delay;
     
     return ECP_OK;
 }

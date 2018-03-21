@@ -1,5 +1,35 @@
 #include "core.h"
 
+int ecp_rbuf_create(ECPConnection *conn, ECPRBSend *buf_s, ECPRBMessage *msg_s, unsigned int msg_s_size, ECPRBRecv *buf_r, ECPRBMessage *msg_r, unsigned int msg_r_size) {
+    int rv;
+    
+    if (buf_s) {
+        rv = ecp_rbuf_send_create(conn, buf_s, msg_s, msg_s_size);
+        if (rv) return rv;
+        
+        rv = ecp_rbuf_send_start(conn);
+        if (rv) {
+            ecp_rbuf_send_destroy(conn);
+            return rv;
+        }
+    }
+    
+    if (buf_r) {
+        rv = ecp_rbuf_recv_create(conn, buf_r, msg_r, msg_r_size);
+        if (rv) {
+            if (buf_s) ecp_rbuf_send_destroy(conn);
+            return rv;
+        }
+    }
+    
+    return ECP_OK;
+}
+
+void ecp_rbuf_destroy(ECPConnection *conn) {
+    ecp_rbuf_send_destroy(conn);
+    ecp_rbuf_recv_destroy(conn);
+}
+
 int ecp_rbuf_init(ECPRBuffer *rbuf, ECPRBMessage *msg, unsigned int msg_size) {
     rbuf->msg = msg;
     if (msg_size) {
@@ -65,32 +95,3 @@ ssize_t ecp_rbuf_pld_send(ECPConnection *conn, ECPBuffer *packet, ECPBuffer *pay
     return rv;
 }
 
-int ecp_rbuf_create(ECPConnection *conn, ECPRBSend *buf_s, ECPRBMessage *msg_s, unsigned int msg_s_size, ECPRBRecv *buf_r, ECPRBMessage *msg_r, unsigned int msg_r_size) {
-    int rv;
-    
-    if (buf_s) {
-        rv = ecp_rbuf_send_create(conn, buf_s, msg_s, msg_s_size);
-        if (rv) return rv;
-        
-        rv = ecp_rbuf_send_start(conn);
-        if (rv) {
-            ecp_rbuf_send_destroy(conn);
-            return rv;
-        }
-    }
-    
-    if (buf_r) {
-        rv = ecp_rbuf_recv_create(conn, buf_r, msg_r, msg_r_size);
-        if (rv) {
-            if (buf_s) ecp_rbuf_send_destroy(conn);
-            return rv;
-        }
-    }
-    
-    return ECP_OK;
-}
-
-void ecp_rbuf_destroy(ECPConnection *conn) {
-    ecp_rbuf_send_destroy(conn);
-    ecp_rbuf_recv_destroy(conn);
-}
