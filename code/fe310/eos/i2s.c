@@ -119,7 +119,7 @@ void eos_i2s_init(void) {
     I2S_PWM_REG_WS(PWM_COUNT)   = 0;
     I2S_PWM_REG_WS(PWM_CMP0)    = (_eos_i2s_ck_period + 1) * 64 - 1;
     I2S_PWM_REG_WS(PWM_CMP1)    = (_eos_i2s_ck_period + 1) * 32;
-    I2S_PWM_REG_WS(PWM_CMP2)    = (_eos_i2s_ck_period + 1) * 64 - 512;
+    I2S_PWM_REG_WS(PWM_CMP2)    = (_eos_i2s_ck_period + 1) * 64 - 2 * _eos_i2s_ck_period;
 
     eos_intr_set(I2S_IRQ_SD_ID, 0, NULL);
     eos_intr_set(I2S_IRQ_CK_ID, 0, NULL);
