@@ -7,8 +7,7 @@
 #define SPI_MODE3               0x03
 
 #define SPI_SIZE_CHUNK          4
-#define SPI_SIZE_TXWM           2
-#define SPI_SIZE_RXWM           3
+#define SPI_SIZE_WM             4
 
 #define SPI_PIN_RTS             0   // pin 8
 #define SPI_PIN_CTS             23  // pin 7

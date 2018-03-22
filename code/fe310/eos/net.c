@@ -56,7 +56,6 @@ static void spi_xchg_reset(void) {
     // before starting a transaction, set SPI peripheral to desired mode
     SPI1_REG(SPI_REG_CSMODE) = SPI_CSMODE_HOLD;
 
-    while (SPI1_REG(SPI_REG_TXFIFO) & SPI_TXFIFO_FULL);
     SPI1_REG(SPI_REG_TXFIFO) = 0;
 
     SPI1_REG(SPI_REG_RXCTRL) = SPI_RXWM(0);
@@ -80,10 +79,7 @@ static void spi_xchg_start(unsigned char cmd, unsigned char *buffer, uint16_t le
     // before starting a transaction, set SPI peripheral to desired mode
     SPI1_REG(SPI_REG_CSMODE) = SPI_CSMODE_HOLD;
 
-    while (SPI1_REG(SPI_REG_TXFIFO) & SPI_TXFIFO_FULL);
     SPI1_REG(SPI_REG_TXFIFO) = ((cmd << 3) | (len >> 8)) & 0xFF;
-
-    while (SPI1_REG(SPI_REG_TXFIFO) & SPI_TXFIFO_FULL);
     SPI1_REG(SPI_REG_TXFIFO) = len & 0xFF;
 
     SPI1_REG(SPI_REG_RXCTRL) = SPI_RXWM(1);
@@ -108,20 +104,23 @@ static int spi_xchg_next(unsigned char *_buffer) {
     return 1;
 }
 
-static void spi_xchg_handler(void) {
+static void spi_handler_xchg(void) {
     volatile uint32_t r1, r2;
     int i;
     
     if (_eos_spi_state_flags & SPI_FLAG_RST) {
-        while ((r1 = SPI1_REG(SPI_REG_RXFIFO)) & SPI_RXFIFO_EMPTY);
+        _eos_spi_state_flags &= ~SPI_FLAG_RST;
+
+        r1 = SPI1_REG(SPI_REG_RXFIFO);
         SPI1_REG(SPI_REG_CSMODE) = SPI_CSMODE_AUTO;
         SPI1_REG(SPI_REG_IE) = 0x0;
-        _eos_spi_state_flags &= ~SPI_FLAG_RST;
 
         return;
     } else if (_eos_spi_state_flags & SPI_FLAG_INIT) {
-        while ((r1 = SPI1_REG(SPI_REG_RXFIFO)) & SPI_RXFIFO_EMPTY);
-        while ((r2 = SPI1_REG(SPI_REG_RXFIFO)) & SPI_RXFIFO_EMPTY);
+        _eos_spi_state_flags &= ~SPI_FLAG_INIT;
+
+        r1 = SPI1_REG(SPI_REG_RXFIFO);
+        r2 = SPI1_REG(SPI_REG_RXFIFO);
     
         if (_eos_spi_state_cmd & EOS_NET_CMD_FLAG_ONEW) {
             r1 = 0;
@@ -140,22 +139,19 @@ static void spi_xchg_handler(void) {
             _eos_spi_state_len = ((_eos_spi_state_len + 2)/4 + 1) * 4 - 2;
         }
 
-        SPI1_REG(SPI_REG_TXCTRL) = SPI_TXWM(SPI_SIZE_TXWM);
-        SPI1_REG(SPI_REG_RXCTRL) = SPI_RXWM(SPI_SIZE_RXWM);
-        SPI1_REG(SPI_REG_IE) = SPI_IP_TXWM | SPI_IP_RXWM;
-        _eos_spi_state_flags &= ~SPI_FLAG_INIT;
+        SPI1_REG(SPI_REG_TXCTRL) = SPI_TXWM(SPI_SIZE_WM);
+        SPI1_REG(SPI_REG_IE) = SPI_IP_TXWM;
+
         return;
     }
 
-    if (SPI1_REG(SPI_REG_IP) & SPI_IP_TXWM) {
-        uint16_t sz_chunk = MIN(_eos_spi_state_len - _eos_spi_state_idx_tx, SPI_SIZE_CHUNK);
-        for (i=0; i<sz_chunk; i++) {
-            volatile uint32_t x = SPI1_REG(SPI_REG_TXFIFO);
-            if (x & SPI_TXFIFO_FULL) break;
-            SPI1_REG(SPI_REG_TXFIFO) = _eos_spi_state_buf[_eos_spi_state_idx_tx+i];
-        }
-        _eos_spi_state_idx_tx += i;
+    uint16_t sz_chunk = MIN(_eos_spi_state_len - _eos_spi_state_idx_tx, SPI_SIZE_CHUNK);
+    for (i=0; i<sz_chunk; i++) {
+        volatile uint32_t x = SPI1_REG(SPI_REG_TXFIFO);
+        if (x & SPI_TXFIFO_FULL) break;
+        SPI1_REG(SPI_REG_TXFIFO) = _eos_spi_state_buf[_eos_spi_state_idx_tx+i];
     }
+    _eos_spi_state_idx_tx += i;
     
     for (i=0; i<_eos_spi_state_idx_tx - _eos_spi_state_idx_rx; i++) {
         volatile uint32_t x = SPI1_REG(SPI_REG_RXFIFO);
@@ -177,12 +173,12 @@ static void spi_xchg_handler(void) {
             spi_bufq_push(_eos_spi_state_buf);
         }
     } else if (_eos_spi_state_idx_tx == _eos_spi_state_len) {
-        SPI1_REG(SPI_REG_RXCTRL) = SPI_RXWM(MIN(_eos_spi_state_len - _eos_spi_state_idx_rx - 1, SPI_SIZE_RXWM));
+        SPI1_REG(SPI_REG_RXCTRL) = SPI_RXWM(MIN(_eos_spi_state_len - _eos_spi_state_idx_rx - 1, SPI_SIZE_CHUNK - 1));
         SPI1_REG(SPI_REG_IE) = SPI_IP_RXWM;
     }
 }
 
-static void spi_cts_hanler(void) {
+static void spi_handler_cts(void) {
     GPIO_REG(GPIO_RISE_IP) = (0x1 << SPI_PIN_CTS);
     _eos_spi_state_flags |= SPI_FLAG_CTS;
 
@@ -194,7 +190,7 @@ static void spi_cts_hanler(void) {
     }
 }
 
-static void spi_rts_hanler(void) {
+static void spi_handler_rts(void) {
     uint32_t rts_offset = (0x1 << SPI_PIN_RTS);
     if (GPIO_REG(GPIO_RISE_IP) & rts_offset) {
         GPIO_REG(GPIO_RISE_IP) = rts_offset;
@@ -238,20 +234,20 @@ void eos_net_init(void) {
     eos_msgq_init(&_eos_spi_send_q, spi_sndq_array, SPI_SIZE_BUFQ);
     GPIO_REG(GPIO_IOF_SEL) &= ~SPI_IOF_MASK;
     GPIO_REG(GPIO_IOF_EN) |= SPI_IOF_MASK;
-    eos_intr_set(INT_SPI1_BASE, 5, spi_xchg_handler);
+    eos_intr_set(INT_SPI1_BASE, 5, spi_handler_xchg);
 
     GPIO_REG(GPIO_OUTPUT_EN) &= ~(0x1 << SPI_PIN_CTS);
     GPIO_REG(GPIO_PULLUP_EN) |= (0x1 << SPI_PIN_CTS);
     GPIO_REG(GPIO_INPUT_EN) |= (0x1 << SPI_PIN_CTS);
     GPIO_REG(GPIO_RISE_IE) |= (0x1 << SPI_PIN_CTS);
-    eos_intr_set(INT_GPIO_BASE + SPI_PIN_CTS, 4, spi_cts_hanler);
+    eos_intr_set(INT_GPIO_BASE + SPI_PIN_CTS, 4, spi_handler_cts);
     
     GPIO_REG(GPIO_OUTPUT_EN) &= ~(0x1 << SPI_PIN_RTS);
     GPIO_REG(GPIO_PULLUP_EN) |= (0x1 << SPI_PIN_RTS);
     GPIO_REG(GPIO_INPUT_EN) |= (0x1 << SPI_PIN_RTS);
     GPIO_REG(GPIO_RISE_IE) |= (0x1 << SPI_PIN_RTS);
     GPIO_REG(GPIO_FALL_IE) |= (0x1 << SPI_PIN_RTS);
-    eos_intr_set(INT_GPIO_BASE + SPI_PIN_RTS, 4, spi_rts_hanler);
+    eos_intr_set(INT_GPIO_BASE + SPI_PIN_RTS, 4, spi_handler_rts);
 
     for (i=0; i<EOS_NET_MAX_CMD; i++) {
         evt_handler[i] = eos_evtq_bad_handler;

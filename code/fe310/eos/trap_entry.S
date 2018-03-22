@@ -17,6 +17,13 @@
 #define GPIO_CTRL_ADDR    0x10012000
 #include "sifive/devices/gpio.h"
 
+#define SPI1_CTRL_ADDR    0x10024000
+#include "sifive/devices/spi.h"
+
+#include "evt_def.h"
+#include "msgq_def.h"
+#include "i2s_def.h"
+
 #define INT_PWM0_BASE     40
 #define INT_PWM1_BASE     44
 #define INT_PWM2_BASE     48
@@ -24,9 +31,13 @@
 #define I2S_PWM_CTRL_ADDR_CK  PWM0_CTRL_ADDR
 #define I2S_PWM_CTRL_ADDR_WS  PWM2_CTRL_ADDR
 
-#include "i2s_def.h"
-#include "evt_def.h"
-#include "msgq_def.h"
+#include "net_def.h"
+#include "spi_def.h"
+
+#define INT_SPI1_BASE     6
+#define INT_GPIO_BASE     8
+
+#define IOF_SPI1_SS2      9
 
   .section      .data.entry
   .align 2
@@ -76,6 +87,12 @@ eos_trap_entry:
   beq x9, x18, i2s_handler_ws
   li x18, I2S_IRQ_CI_ID
   beq x9, x18, i2s_handler_ci
+  li x18, INT_SPI1_BASE
+  beq x9, x18, spi_handler_xchg
+  li x18, INT_GPIO_BASE + SPI_PIN_CTS
+  beq x9, x18, spi_handler_cts
+  li x18, INT_GPIO_BASE + SPI_PIN_RTS
+  beq x9, x18, spi_handler_rts
   j handler
 
 i2s_handler_sd:
@@ -376,13 +393,6 @@ i2s_handler_ci_exit:
   # exit
   j trap_exit_data
 
-#define SPI1_CTRL_ADDR    0x10024000
-#define IOF_SPI1_SS2      9
-
-#include "sifive/devices/spi.h"
-#include "net_def.h"
-#include "spi_def.h"
-
 # x9 - cmd, x18 - buffer, x19 - len, x20 - &flags, x21 - flags
 spi_xchg_start:
   ori x21, x21, SPI_FLAG_INIT
@@ -461,11 +471,9 @@ spi_handler_xchg:
 
   andi x20, x20, ~SPI_FLAG_INIT
   sb x20, 0(x18)
-  li x8, SPI_SIZE_TXWM
+  li x8, SPI_SIZE_WM
   sw x8, SPI_REG_TXCTRL(x19)
-  li x8, SPI_SIZE_RXWM
-  sw x8, SPI_REG_RXCTRL(x19)
-  li x8, (SPI_IP_TXWM | SPI_IP_RXWM)
+  li x8, SPI_IP_TXWM
   sw x8, SPI_REG_IE(x19)
   lw x8, SPI_REG_RXFIFO(x19)
   lw x9, SPI_REG_RXFIFO(x19)
@@ -477,7 +485,6 @@ spi_handler_xchg:
   beqz x23, 2f
   mv x8, x0
   mv x9, x0
-
 2:
   srli x23, x8, 3
   sb x23, 0(x18)
@@ -490,12 +497,12 @@ spi_handler_xchg:
   lw x21, 0(x18)
   bgeu x21, x22, 3f
   mv x21, x22
+
 3:
   li x8, 6
   bgeu x21, x8, 4f
   mv x21, x8
   j 5f
-
 4:
   addi x8, x21, 2
   li x9, 4
@@ -521,10 +528,6 @@ spi_handler_xchg:
   la x18, _eos_spi_state_buf
   lw x23, 0(x18)
   
-  lw x8, SPI_REG_IP(x19)
-  andi x8, x8, SPI_IP_TXWM
-  beqz x8, 9f
-  
   sub x9, x20, x21
   li x8, SPI_SIZE_CHUNK
   bltu x8, x9, 7f
@@ -545,10 +548,6 @@ spi_handler_xchg:
   j 8b
   
 9:
-  # lw x8, SPI_REG_IP(x19)
-  # andi x8, x8, SPI_IP_RXWM
-  # beqz x8, 11f
-  
   sub x8, x21, x22
   addi x8, x8, -1
   add x9, x23, x22
@@ -597,16 +596,17 @@ spi_handler_xchg:
   lbu x9, 0(x19)
   beqz x9, 14f
 13:
-  bnez x23, 14f
   la x19, _eos_spi_state_next_buf
-  sw x23, 0(x19)
+  lw x9, 0(x19)
+  bnez x9, 14f
   andi x8, x8, ~SPI_FLAG_ONEW
   sb x8, 0(x18)
+  sw x23, 0(x19)
   
   j spi_handler_xchg_exit
   
 14:
-  # push spi bufq
+  # push to spi buf queue
   la x19, _eos_spi_buf_q
   lbu x8, SPI_BUFQ_OFF_IDXW(x19)
 
@@ -624,7 +624,7 @@ spi_handler_xchg:
   bne x21, x20, spi_handler_xchg_exit
   sub x8, x20, x22
   addi x8, x8, -1
-  li x9, SPI_SIZE_RXWM
+  li x9, SPI_SIZE_CHUNK - 1
   bltu x8, x9, 16f
   mv x8, x9
 16:
@@ -639,10 +639,10 @@ spi_handler_xchg_exit:
   LOAD x23, 3*REGBYTES(sp)
   addi sp, sp, 4*REGBYTES
 
-  # XXX should complete!
-  # li x18, I2S_IRQ_SD_ID
-  # li x19, PLIC_CLAIM
-  # sw x18, 0(x19)
+  # complete
+  li x18, INT_SPI1_BASE
+  li x19, PLIC_CLAIM
+  sw x18, 0(x19)
 
   # exit
   j trap_exit_data
@@ -685,9 +685,7 @@ spi_handler_cts:
   lbu x9, MSGQ_ITEM_OFF_CMD(x8)
   lw x18, MSGQ_ITEM_OFF_BUF(x8)
   lhu x19, MSGQ_ITEM_OFF_SIZE(x8)
-  beqz x9, 1f
   beqz x18, 1f
-  beqz x19, 1f
   jal x8, spi_xchg_start
   
   j spi_handler_cts_exit
@@ -726,10 +724,10 @@ spi_handler_cts_exit:
   LOAD x23, 3*REGBYTES(sp)
   addi sp, sp, 4*REGBYTES
 
-  # XXX should complete!
-  # li x18, I2S_IRQ_SD_ID
-  # li x19, PLIC_CLAIM
-  # sw x18, 0(x19)
+  # complete
+  li x18, INT_GPIO_BASE + SPI_PIN_CTS
+  li x19, PLIC_CLAIM
+  sw x18, 0(x19)
 
   # exit
   j trap_exit_data
@@ -774,20 +772,19 @@ spi_handler_rts:
   beqz x9, spi_handler_rts_exit
 
   sw x8, GPIO_FALL_IP(x18)
-  lbu x8, 0(x18)
+  lbu x8, 0(x19)
   andi x8, x8, ~SPI_FLAG_RTS
   sb x8, 0(x19)
 
 spi_handler_rts_exit:
-  # XXX should complete!
-  # li x18, I2S_IRQ_SD_ID
-  # li x19, PLIC_CLAIM
-  # sw x18, 0(x19)
+  # complete
+  li x18, INT_GPIO_BASE + SPI_PIN_RTS
+  li x19, PLIC_CLAIM
+  sw x18, 0(x19)
 
   # exit
   j trap_exit_data
-  
-  
+
 trap_exit_data:
   # Remain in M-mode after mret
   li x18, MSTATUS_MPP
