@@ -31,29 +31,6 @@
   .section      .data.entry
   .align 2
 
-.global eos_trap_entry
-eos_trap_entry:
-  addi sp, sp, -4*REGBYTES
-  STORE x8, 0*REGBYTES(sp)
-  STORE x9, 1*REGBYTES(sp)
-  STORE x18, 2*REGBYTES(sp)
-  STORE x19, 3*REGBYTES(sp)
-
-  csrr x8, mcause
-  li x18, MCAUSE_EXT
-  bne x8, x18, handler
-  li x18, PLIC_CLAIM
-  lw x9, 0(x18)
-  li x18, I2S_IRQ_SD_ID
-  beq x9, x18, handler_sd
-  li x18, I2S_IRQ_CK_ID
-  beq x9, x18, handler_ck
-  li x18, I2S_IRQ_WS_ID
-  beq x9, x18, handler_ws
-  li x18, I2S_IRQ_CI_ID
-  beq x9, x18, handler_ci
-  j handler
-
 evtq_push:
   la x9, _eos_event_q
   lbu x18, MSGQ_OFF_IDXR(x9)
@@ -78,13 +55,36 @@ evtq_push:
   mv x8, x0
   jalr x0, x20
 
-handler_sd:
+.global eos_trap_entry
+eos_trap_entry:
+  addi sp, sp, -4*REGBYTES
+  STORE x8, 0*REGBYTES(sp)
+  STORE x9, 1*REGBYTES(sp)
+  STORE x18, 2*REGBYTES(sp)
+  STORE x19, 3*REGBYTES(sp)
+
+  csrr x8, mcause
+  li x18, MCAUSE_EXT
+  bne x8, x18, handler
+  li x18, PLIC_CLAIM
+  lw x9, 0(x18)
+  li x18, I2S_IRQ_SD_ID
+  beq x9, x18, i2s_handler_sd
+  li x18, I2S_IRQ_CK_ID
+  beq x9, x18, i2s_handler_ck
+  li x18, I2S_IRQ_WS_ID
+  beq x9, x18, i2s_handler_ws
+  li x18, I2S_IRQ_CI_ID
+  beq x9, x18, i2s_handler_ci
+  j handler
+
+i2s_handler_sd:
   # exit if too early
   li x18, I2S_PWM_CTRL_ADDR_CK
   lw x8, PWM_COUNT(x18)
   lw x9, PWM_CMP2(x18)
   srli x9, x9, I2S_PWM_SCALE_CK
-  bltu x8, x9, handler_sd_exit_
+  bltu x8, x9, i2s_handler_sd_exit_
 
   # read mic value -> x8
   li x18, GPIO_CTRL_ADDR
@@ -111,8 +111,8 @@ handler_sd:
 
   # bit <= 0 or bit > 32 -> exit
   li x18, 32
-  bge x0, x9, handler_sd_exit
-  bge x9, x18, handler_sd_exit
+  bge x0, x9, i2s_handler_sd_exit
+  bge x9, x18, i2s_handler_sd_exit
 
   # sample |= sd gpio value << (32 - bit) -> x8
   # sample_mask |= 1 << (32 - bit) -> x20
@@ -137,7 +137,7 @@ handler_sd:
 
   # bit < I2S_SMPL_BITS -> exit
   li x18, I2S_SMPL_BITS
-  blt x9, x18, handler_sd_exit
+  blt x9, x18, i2s_handler_sd_exit
 
   # disable ck irq
   li x18, PLIC_PRIORITY
@@ -162,7 +162,7 @@ handler_sd:
   and x20, x20, x19
   beq x19, x20, 0f
   # drop missing
-  # bne x19, x20, handler_sd_exit
+  # bne x19, x20, i2s_handler_sd_exit
   # lw x8, 0(x18)
   # zero missing frame
   mv x8, x0
@@ -208,7 +208,7 @@ handler_sd:
   lhu x20, I2S_ABUF_OFF_SIZE(x9)
 
   sub x18, x19, x18
-  beq x18, x20, handler_sd_exit
+  beq x18, x20, i2s_handler_sd_exit
 
   addi x20, x20, -1
   and x20, x20, x19
@@ -222,29 +222,29 @@ handler_sd:
   # check for push to event queue
   la x9, _eos_i2s_mic_wm
   lw x20, 0(x9)
-  beqz x20, handler_sd_exit
+  beqz x20, i2s_handler_sd_exit
   
   la x9, _eos_i2s_mic_buf
   lhu x18, I2S_ABUF_OFF_IDXR(x9)
   sub x18, x19, x18
-  bltu x18, x20, handler_sd_exit
+  bltu x18, x20, i2s_handler_sd_exit
 
   la x9, _eos_i2s_mic_rd
   lw x18, 0(x9)
-  beqz x18, handler_sd_exit
+  beqz x18, i2s_handler_sd_exit
   sw x0, 0(x9)
 
   # push to event queue
   jal x20, evtq_push
-  beqz x8, handler_sd_exit
+  beqz x8, i2s_handler_sd_exit
   li x18, (EOS_EVT_AUDIO | I2S_EVT_MIC)
   sb x18, MSGQ_ITEM_OFF_CMD(x8)
   
-handler_sd_exit:
+i2s_handler_sd_exit:
   LOAD x20, 0*REGBYTES(sp)
   addi sp, sp, 1*REGBYTES
 
-handler_sd_exit_:
+i2s_handler_sd_exit_:
   # complete
   li x18, I2S_IRQ_SD_ID
   li x19, PLIC_CLAIM
@@ -253,7 +253,7 @@ handler_sd_exit_:
   # exit
   j trap_exit_data
   
-handler_ck:
+i2s_handler_ck:
   # enable sd irq
   li x18, PLIC_PRIORITY
   li x19, I2S_IRQ_SD_PRIORITY
@@ -267,7 +267,7 @@ handler_ck:
   # exit
   j trap_exit_data
   
-handler_ws:
+i2s_handler_ws:
   # enable ci irq
   li x18, PLIC_PRIORITY
   li x19, I2S_IRQ_CI_PRIORITY
@@ -281,12 +281,12 @@ handler_ws:
   # exit
   j trap_exit_data
 
-handler_ci:
+i2s_handler_ci:
   # exit if too early
   li x18, I2S_PWM_CTRL_ADDR_WS
   lw x8, PWM_COUNT(x18)
   lw x9, PWM_CMP2(x18)
-  bltu x8, x9, handler_ci_exit
+  bltu x8, x9, i2s_handler_ci_exit
 
   # disable ci/enable ck irq
   li x18, PLIC_PRIORITY
@@ -303,7 +303,7 @@ handler_ci:
   la x9, _eos_i2s_spk_buf
   lhu x18, I2S_ABUF_OFF_IDXR(x9)
   lhu x19, I2S_ABUF_OFF_IDXW(x9)
-  beq x18, x19, handler_ci_exit
+  beq x18, x19, i2s_handler_ci_exit
   lhu x19, I2S_ABUF_OFF_SIZE(x9)
 
   addi x19, x19, -1
@@ -367,7 +367,7 @@ handler_ci:
   # andi x9, x9, 0xff
   # sw x9, UART_REG_TXFIFO(x18)
   
-handler_ci_exit:
+i2s_handler_ci_exit:
   # complete
   li x18, I2S_IRQ_CI_ID
   li x19, PLIC_CLAIM
@@ -383,6 +383,7 @@ handler_ci_exit:
 #include "net_def.h"
 #include "spi_def.h"
 
+# x9 - cmd, x18 - buffer, x19 - len, x20 - &flags, x21 - flags
 spi_xchg_start:
   ori x21, x21, SPI_FLAG_INIT
   andi x21, x21, ~SPI_FLAG_CTS
@@ -433,7 +434,7 @@ spi_xchg_start:
   sw x21, SPI_REG_IE(x20)
   jalr x0, x8  
   
-handler_spi_xchg:
+spi_handler_xchg:
   addi sp, sp, -4*REGBYTES
   STORE x20, 0*REGBYTES(sp)
   STORE x21, 1*REGBYTES(sp)
@@ -452,7 +453,7 @@ handler_spi_xchg:
   li x8, SPI_CSMODE_AUTO
   sw x8, SPI_REG_CSMODE(x19)
   sw x0, SPI_REG_IE(x19)
-  j handler_spi_xchg_exit
+  j spi_handler_xchg_exit
 
 1:
   andi x8, x20, SPI_FLAG_INIT
@@ -508,7 +509,7 @@ handler_spi_xchg:
 5:
   la x18, _eos_spi_state_len
   sw x21, 0(x18)
-  j handler_spi_xchg_exit
+  j spi_handler_xchg_exit
 
 6:
   la x18, _eos_spi_state_len
@@ -585,7 +586,7 @@ handler_spi_xchg:
   la x18, _eos_spi_state_len_rx
   lw x22, 0(x18)
   sh x22, MSGQ_ITEM_OFF_SIZE(x8)
-  j handler_spi_xchg_exit
+  j spi_handler_xchg_exit
 
 12:
   la x18, _eos_spi_state_flags
@@ -602,7 +603,7 @@ handler_spi_xchg:
   andi x8, x8, ~SPI_FLAG_ONEW
   sb x8, 0(x18)
   
-  j handler_spi_xchg_exit
+  j spi_handler_xchg_exit
   
 14:
   # push spi bufq
@@ -617,10 +618,10 @@ handler_spi_xchg:
   addi x8, x8, 1
   sb x8, SPI_BUFQ_OFF_IDXW(x19)
 
-  j handler_spi_xchg_exit
+  j spi_handler_xchg_exit
 
 15:  
-  bne x21, x20, handler_spi_xchg_exit
+  bne x21, x20, spi_handler_xchg_exit
   sub x8, x20, x22
   addi x8, x8, -1
   li x9, SPI_SIZE_RXWM
@@ -631,7 +632,7 @@ handler_spi_xchg:
   li x9, SPI_IP_RXWM
   sw x9, SPI_REG_IE(x19)
   
-handler_spi_xchg_exit:
+spi_handler_xchg_exit:
   LOAD x20, 0*REGBYTES(sp)
   LOAD x21, 1*REGBYTES(sp)
   LOAD x22, 2*REGBYTES(sp)
@@ -646,7 +647,7 @@ handler_spi_xchg_exit:
   # exit
   j trap_exit_data
 
-handler_spi_cts:
+spi_handler_cts:
   addi sp, sp, -4*REGBYTES
   STORE x20, 0*REGBYTES(sp)
   STORE x21, 1*REGBYTES(sp)
@@ -689,13 +690,13 @@ handler_spi_cts:
   beqz x19, 1f
   jal x8, spi_xchg_start
   
-  j handler_spi_cts_exit
+  j spi_handler_cts_exit
   
 1:
   la x9, _eos_spi_buf_q
   lbu x18, SPI_BUFQ_OFF_IDXR(x9)
   lbu x19, SPI_BUFQ_OFF_IDXW(x9)
-  beq x18, x19, handler_spi_cts_exit
+  beq x18, x19, spi_handler_cts_exit
 
   andi x8, x18, SPI_SIZE_BUFQ - 1
   slli x8, x8, 2
@@ -705,10 +706,10 @@ handler_spi_cts:
   mv x9, x0
   lw x18, SPI_BUFQ_OFF_ARRAY(x8)
   mv x19, x0
-  beqz x18, handler_spi_cts_exit
+  beqz x18, spi_handler_cts_exit
   jal x8, spi_xchg_start
 
-  j handler_spi_cts_exit
+  j spi_handler_cts_exit
 
 2:
   lw x8, GPIO_IOF_EN(x19)
@@ -718,7 +719,7 @@ handler_spi_cts:
   and x8, x8, x9
   sw x8, GPIO_IOF_EN(x19)
 
-handler_spi_cts_exit:
+spi_handler_cts_exit:
   LOAD x20, 0*REGBYTES(sp)
   LOAD x21, 1*REGBYTES(sp)
   LOAD x22, 2*REGBYTES(sp)
@@ -733,7 +734,7 @@ handler_spi_cts_exit:
   # exit
   j trap_exit_data
 
-handler_spi_rts:
+spi_handler_rts:
   li x8, 1
   slli x8, x8, SPI_PIN_RTS
   li x18, GPIO_CTRL_ADDR
@@ -749,9 +750,9 @@ handler_spi_rts:
   sb x8, 0(x19)
 
   andi x9, x8, SPI_FLAG_RDY
-  beqz x9, handler_spi_rts_exit
+  beqz x9, spi_handler_rts_exit
   andi x9, x8, SPI_FLAG_CTS
-  beqz x9, handler_spi_rts_exit
+  beqz x9, spi_handler_rts_exit
 
   andi x8, x8, ~SPI_FLAG_CTS
   ori x8, x8, SPI_FLAG_RST
@@ -765,19 +766,19 @@ handler_spi_rts:
   li x8, SPI_IP_RXWM
   sw x8, SPI_REG_IE(x19)
   
-  j handler_spi_rts_exit
+  j spi_handler_rts_exit
 
 1:
   lw x9, GPIO_FALL_IP(x18)
   and x9, x9, x8
-  beqz x9, handler_spi_rts_exit
+  beqz x9, spi_handler_rts_exit
 
   sw x8, GPIO_FALL_IP(x18)
   lbu x8, 0(x18)
   andi x8, x8, ~SPI_FLAG_RTS
   sb x8, 0(x19)
 
-handler_spi_rts_exit:
+spi_handler_rts_exit:
   # XXX should complete!
   # li x18, I2S_IRQ_SD_ID
   # li x19, PLIC_CLAIM
