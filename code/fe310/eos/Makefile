@@ -1,4 +1,4 @@
-include ../../ecp/Makefile.platform
+include ../../ecp/Makefile.fe310
 
 FE310_HOME = /opt/my/freedom-e-sdk
 
