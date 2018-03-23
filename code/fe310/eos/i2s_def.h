@@ -15,15 +15,16 @@
 #define I2S_IRQ_CI_ID           (INT_PWM2_BASE + 2)
 
 #define I2S_IRQ_SD_PRIORITY     7
-#define I2S_IRQ_CK_PRIORITY     7
+#define I2S_IRQ_CK_PRIORITY     6
 #define I2S_IRQ_WS_PRIORITY     6
-#define I2S_IRQ_CI_PRIORITY     6
+#define I2S_IRQ_CI_PRIORITY     7
 #define I2S_IRQ_MASK            5
 
 #define I2S_SMPL_BITS           13
 #define I2S_SMPL_BITS_S         5
 
 #define I2S_PWM_SCALE_CK        2
+#define I2S_PWM_SCALE_CK_MASK   0x0003
 #define I2S_ABUF_SIZE_CHUNK     16
 
 /* asm */

@@ -7,7 +7,7 @@ typedef struct EOSABuf {
     uint8_t *array;
 } EOSABuf;
 
-void eos_i2s_init(void);
+void eos_i2s_init(uint32_t sample_rate);
 void eos_i2s_init_mic(uint8_t *mic_arr, uint16_t mic_arr_size, eos_evt_fptr_t mic_wm_handler, uint16_t mic_wm);
 void eos_i2s_init_spk(uint8_t *spk_arr, uint16_t spk_arr_size, eos_evt_fptr_t spk_wm_handler, uint16_t spk_wm);
 void eos_i2s_start(void);

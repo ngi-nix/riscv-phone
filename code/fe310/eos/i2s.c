@@ -20,11 +20,10 @@ EOSABuf _eos_i2s_spk_buf;
 uint32_t _eos_i2s_ck_period = 0;
 uint32_t _eos_i2s_mic_wm = 0;
 uint32_t _eos_i2s_spk_wm = 0;
-uint32_t _eos_i2s_mic_volume = 3;
+uint32_t _eos_i2s_mic_volume = 2;
 uint32_t _eos_i2s_spk_volume = 3;
-uint32_t _eos_i2s_mic_rd = 0;
-uint32_t _eos_i2s_spk_wr = 0;
 static eos_evt_fptr_t evt_handler[I2S_MAX_HANDLER];
+uint32_t _eos_i2s_evt_enable[I2S_MAX_HANDLER];
 
 static void _abuf_init(EOSABuf *buf, uint8_t *array, uint16_t size) {
     buf->idx_r = 0;
@@ -78,18 +77,21 @@ static uint16_t _abuf_len(EOSABuf *buf) {
 }
 
 static void audio_handler(unsigned char cmd, unsigned char *buffer, uint16_t len) {
-    if ((cmd & ~EOS_EVT_MASK) < I2S_MAX_HANDLER) {
-        evt_handler[cmd & ~EOS_EVT_MASK](cmd, buffer, len);
+    cmd = cmd & ~EOS_EVT_MASK;
+    
+    if (cmd < I2S_MAX_HANDLER) {
+        evt_handler[cmd](cmd, buffer, len);
+        _eos_i2s_evt_enable[cmd] = 1;
     } else {
         eos_evtq_bad_handler(cmd, buffer, len);
     }
 }
 
-void eos_i2s_init(void) {
+void eos_i2s_init(uint32_t sample_rate) {
     int i;
     unsigned long f = get_cpu_freq();
 
-    _eos_i2s_ck_period = 512;
+    _eos_i2s_ck_period = (f / (sample_rate * 64)) & ~I2S_PWM_SCALE_CK_MASK;
     uint32_t _ck_period_scaled = _eos_i2s_ck_period >> I2S_PWM_SCALE_CK;
     GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_LR);
     GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << I2S_PIN_LR);
@@ -113,13 +115,13 @@ void eos_i2s_init(void) {
     I2S_PWM_REG_CK(PWM_COUNT)   = 0;
     I2S_PWM_REG_CK(PWM_CMP0)    = _ck_period_scaled;
     I2S_PWM_REG_CK(PWM_CMP1)    = _ck_period_scaled / 2;
-    I2S_PWM_REG_CK(PWM_CMP2)    = _ck_period_scaled / 4;
+    I2S_PWM_REG_CK(PWM_CMP2)    = _ck_period_scaled / 8;
 
     I2S_PWM_REG_WS(PWM_CFG)     = 0;
     I2S_PWM_REG_WS(PWM_COUNT)   = 0;
     I2S_PWM_REG_WS(PWM_CMP0)    = (_eos_i2s_ck_period + 1) * 64 - 1;
     I2S_PWM_REG_WS(PWM_CMP1)    = (_eos_i2s_ck_period + 1) * 32;
-    I2S_PWM_REG_WS(PWM_CMP2)    = (_eos_i2s_ck_period + 1) * 64 - 2 * _eos_i2s_ck_period;
+    I2S_PWM_REG_WS(PWM_CMP2)    = (_eos_i2s_ck_period + 1) * 64 - 512;
 
     eos_intr_set(I2S_IRQ_SD_ID, 0, NULL);
     eos_intr_set(I2S_IRQ_CK_ID, 0, NULL);
@@ -136,9 +138,9 @@ void eos_i2s_init_mic(uint8_t *mic_arr, uint16_t mic_arr_size, eos_evt_fptr_t mi
     _eos_i2s_mic_wm = mic_wm;
     evt_handler[I2S_EVT_MIC] = mic_wm_handler;
     if (mic_wm) {
-        _eos_i2s_mic_rd = 1;
+        _eos_i2s_evt_enable[I2S_EVT_MIC] = 1;
     } else {
-        _eos_i2s_mic_rd = 0;
+        _eos_i2s_evt_enable[I2S_EVT_MIC] = 0;
     }
 }
 
@@ -147,9 +149,9 @@ void eos_i2s_init_spk(uint8_t *spk_arr, uint16_t spk_arr_size, eos_evt_fptr_t sp
     _eos_i2s_spk_wm = spk_wm;
     evt_handler[I2S_EVT_SPK] = spk_wm_handler;
     if (spk_wm) {
-        _eos_i2s_spk_wr = 1;
+        _eos_i2s_evt_enable[I2S_EVT_SPK] = 1;
     } else {
-        _eos_i2s_spk_wr = 0;
+        _eos_i2s_evt_enable[I2S_EVT_SPK] = 0;
     }
 }
 
@@ -209,13 +211,11 @@ uint16_t eos_i2s_mic_read(uint8_t *sample, uint16_t ssize) {
     for (i=0; i<ssize/I2S_ABUF_SIZE_CHUNK && _ssize == i*I2S_ABUF_SIZE_CHUNK; i++) {
         clear_csr(mstatus, MSTATUS_MIE);
         _ssize += _abuf_read(&_eos_i2s_mic_buf, sample+i*I2S_ABUF_SIZE_CHUNK, I2S_ABUF_SIZE_CHUNK);
-        if ((ssize == _ssize) || (_ssize != (i+1)*I2S_ABUF_SIZE_CHUNK)) _eos_i2s_mic_rd = 1;
         set_csr(mstatus, MSTATUS_MIE);
     }
     if ((ssize > _ssize) && (_ssize == i*I2S_ABUF_SIZE_CHUNK)) {
         clear_csr(mstatus, MSTATUS_MIE);
         _ssize += _abuf_read(&_eos_i2s_mic_buf, sample+i*I2S_ABUF_SIZE_CHUNK, ssize - _ssize);
-        _eos_i2s_mic_rd = 1;
         set_csr(mstatus, MSTATUS_MIE);
     }
     return _ssize;
@@ -224,7 +224,6 @@ uint16_t eos_i2s_mic_read(uint8_t *sample, uint16_t ssize) {
 int eos_i2s_mic_pop(uint8_t *sample) {
     clear_csr(mstatus, MSTATUS_MIE);
     int ret = _abuf_pop(&_eos_i2s_mic_buf, sample);
-    _eos_i2s_mic_rd = 1;
     set_csr(mstatus, MSTATUS_MIE);
     return ret;
 }
@@ -242,13 +241,11 @@ uint16_t eos_i2s_spk_write(uint8_t *sample, uint16_t ssize) {
     for (i=0; i<ssize/I2S_ABUF_SIZE_CHUNK && _ssize == i*I2S_ABUF_SIZE_CHUNK; i++) {
         clear_csr(mstatus, MSTATUS_MIE);
         _ssize += _abuf_write(&_eos_i2s_spk_buf, sample+i*I2S_ABUF_SIZE_CHUNK, I2S_ABUF_SIZE_CHUNK);
-        if ((ssize == _ssize) || (_ssize != (i+1)*I2S_ABUF_SIZE_CHUNK)) _eos_i2s_spk_wr = 1;
         set_csr(mstatus, MSTATUS_MIE);
     }
     if ((ssize > _ssize) && (_ssize == i*I2S_ABUF_SIZE_CHUNK)) {
         clear_csr(mstatus, MSTATUS_MIE);
         _ssize += _abuf_write(&_eos_i2s_spk_buf, sample+i*I2S_ABUF_SIZE_CHUNK, ssize - _ssize);
-        _eos_i2s_spk_wr = 1;
         set_csr(mstatus, MSTATUS_MIE);
     }
     return _ssize;
@@ -258,7 +255,6 @@ uint16_t eos_i2s_spk_write(uint8_t *sample, uint16_t ssize) {
 int eos_i2s_spk_push(uint8_t sample) {
     clear_csr(mstatus, MSTATUS_MIE);
     int ret = _abuf_push(&_eos_i2s_spk_buf, sample);
-    _eos_i2s_spk_wr = 1;
     set_csr(mstatus, MSTATUS_MIE);
     return ret;
 }

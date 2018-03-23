@@ -170,19 +170,18 @@ i2s_handler_sd:
   la x18, sd_sample_mask
   sw x0, 0(x18)
   
-  # correct for missed bits
+  # correct for missing bits
   # la x18, sd_sample_save
-  # don't correct
-  # j 0f
   li x19, 0x80000000
   srai x19, x19, I2S_SMPL_BITS_S-1
   and x20, x20, x19
   beq x19, x20, 0f
-  # drop missing
-  # bne x19, x20, i2s_handler_sd_exit
+  # 1. drop missing
+  # j i2s_handler_sd_exit
+  # 2. zero missing sample
+  # mv x8, x0
+  # 3. put saved sample to missing
   # lw x8, 0(x18)
-  # zero missing frame
-  mv x8, x0
 0:
   # sw x8, 0(x18)
   srai x8, x8, 32-I2S_SMPL_BITS
@@ -225,28 +224,27 @@ i2s_handler_sd:
   lhu x20, I2S_ABUF_OFF_SIZE(x9)
 
   sub x18, x19, x18
-  beq x18, x20, i2s_handler_sd_exit
+  beq x18, x20, 5f
 
-  addi x20, x20, -1
-  and x20, x20, x19
-  lw x18, I2S_ABUF_OFF_ARRAY(x9)
-  add x20, x20, x18
-  sb x8, 0(x20)
-  
   addi x19, x19, 1
   sh x19, I2S_ABUF_OFF_IDXW(x9)
 
+  addi x20, x20, -1
+  and x20, x20, x19
+  lw x19, I2S_ABUF_OFF_ARRAY(x9)
+  add x20, x19, x20
+
+  sb x8, 0(x20)
+  addi x18, x18, 1
+  
+5:
   # check for push to event queue
   la x9, _eos_i2s_mic_wm
   lw x20, 0(x9)
   beqz x20, i2s_handler_sd_exit
-  
-  la x9, _eos_i2s_mic_buf
-  lhu x18, I2S_ABUF_OFF_IDXR(x9)
-  sub x18, x19, x18
   bltu x18, x20, i2s_handler_sd_exit
 
-  la x9, _eos_i2s_mic_rd
+  la x9, _eos_i2s_evt_enable
   lw x18, 0(x9)
   beqz x18, i2s_handler_sd_exit
   sw x0, 0(x9)
@@ -660,9 +658,9 @@ spi_handler_cts:
   sw x8, GPIO_RISE_IP(x19)
 
   la x20, _eos_spi_state_flags
-  lw x21, 0(x20)
+  lbu x21, 0(x20)
   ori x21, x21, SPI_FLAG_CTS
-  sw x21, 0(x20)
+  sb x21, 0(x20)
   andi x9, x21, SPI_FLAG_RDY
   beqz x9, 2f
   
@@ -691,6 +689,10 @@ spi_handler_cts:
   j spi_handler_cts_exit
   
 1:
+  andi x9, x21, SPI_FLAG_RTS
+  beqz x9, spi_handler_cts_exit
+  
+  # pop from spi buf queue
   la x9, _eos_spi_buf_q
   lbu x18, SPI_BUFQ_OFF_IDXR(x9)
   lbu x19, SPI_BUFQ_OFF_IDXW(x9)
@@ -700,7 +702,7 @@ spi_handler_cts:
   slli x8, x8, 2
   add x8, x9, x8
   addi x18, x18, 1
-  sb x18, SPI_BUFQ_OFF_IDXW(x9)
+  sb x18, SPI_BUFQ_OFF_IDXR(x9)
   mv x9, x0
   lw x18, SPI_BUFQ_OFF_ARRAY(x8)
   mv x19, x0
