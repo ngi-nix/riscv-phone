@@ -94,7 +94,7 @@ static ssize_t vconn_open(ECPConnection *conn) {
 
     if (conn_next == NULL) return ECP_ERR;
 
-    ssize_t _rv = ecp_timer_send(conn_next, _vconn_send_open, ECP_MTYPE_KGET_REP, 3, 3000);
+    ssize_t _rv = ecp_timer_send(conn_next, _vconn_send_open, ECP_MTYPE_KGET_REP, 3, 1000);
     if (_rv < 0) return _rv;
 
     return _rv;

@@ -679,7 +679,7 @@ static ssize_t _conn_send_open(ECPConnection *conn, ECPTimerItem *ti) {
 }
 
 ssize_t ecp_conn_send_open(ECPConnection *conn) {
-    return ecp_timer_send(conn, _conn_send_open, ECP_MTYPE_OPEN_REP, 1, 500);
+    return ecp_timer_send(conn, _conn_send_open, ECP_MTYPE_OPEN_REP, 3, 500);
 }
 
 int ecp_conn_handle_new(ECPSocket *sock, ECPConnection *parent, unsigned char *payload, size_t payload_size, ECPConnection **_conn) {
@@ -743,7 +743,7 @@ ssize_t ecp_conn_handle_open(ECPConnection *conn, ecp_seq_t seq, unsigned char m
     pthread_mutex_lock(&conn->mutex);
 #endif
     int is_open = ecp_conn_is_open(conn);
-    if (!is_open) conn->flags |= ECP_CONN_FLAG_OPEN;
+    if (!is_open && (size >= 0)) conn->flags |= ECP_CONN_FLAG_OPEN;
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_unlock(&conn->mutex);
 #endif
