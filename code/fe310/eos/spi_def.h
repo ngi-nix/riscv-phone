@@ -6,8 +6,9 @@
 #define SPI_MODE2               0x02
 #define SPI_MODE3               0x03
 
+/* DO NOT TOUCH THEESE */
 #define SPI_SIZE_CHUNK          4
-#define SPI_SIZE_WM             4
+#define SPI_SIZE_WM             2
 
 #define SPI_PIN_RTS             0   // pin 8
 #define SPI_PIN_CTS             23  // pin 7

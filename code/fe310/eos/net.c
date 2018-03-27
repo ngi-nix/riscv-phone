@@ -118,6 +118,8 @@ static void spi_handler_xchg(void) {
         return;
     } else if (_eos_spi_state_flags & SPI_FLAG_INIT) {
         _eos_spi_state_flags &= ~SPI_FLAG_INIT;
+        SPI1_REG(SPI_REG_TXCTRL) = SPI_TXWM(SPI_SIZE_WM);
+        SPI1_REG(SPI_REG_IE) = SPI_IP_TXWM;
 
         r1 = SPI1_REG(SPI_REG_RXFIFO);
         r2 = SPI1_REG(SPI_REG_RXFIFO);
@@ -139,8 +141,10 @@ static void spi_handler_xchg(void) {
             _eos_spi_state_len = ((_eos_spi_state_len + 2)/4 + 1) * 4 - 2;
         }
 
-        SPI1_REG(SPI_REG_TXCTRL) = SPI_TXWM(SPI_SIZE_WM);
-        SPI1_REG(SPI_REG_IE) = SPI_IP_TXWM;
+        if (_eos_spi_state_len > SPI_SIZE_BUF) {
+            SPI1_REG(SPI_REG_CSMODE) = SPI_CSMODE_AUTO;
+            SPI1_REG(SPI_REG_IE) = 0x0;
+        }
 
         return;
     }
@@ -173,7 +177,7 @@ static void spi_handler_xchg(void) {
             spi_bufq_push(_eos_spi_state_buf);
         }
     } else if (_eos_spi_state_idx_tx == _eos_spi_state_len) {
-        SPI1_REG(SPI_REG_RXCTRL) = SPI_RXWM(MIN(_eos_spi_state_len - _eos_spi_state_idx_rx - 1, SPI_SIZE_CHUNK - 1));
+        SPI1_REG(SPI_REG_RXCTRL) = SPI_RXWM(MIN(_eos_spi_state_len - _eos_spi_state_idx_rx - 1, SPI_SIZE_WM - 1));
         SPI1_REG(SPI_REG_IE) = SPI_IP_RXWM;
     }
 }

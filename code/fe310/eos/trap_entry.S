@@ -87,12 +87,14 @@ eos_trap_entry:
   beq x9, x18, i2s_handler_ws
   li x18, I2S_IRQ_CI_ID
   beq x9, x18, i2s_handler_ci
+#ifdef EOS_WITH_SPI_ASM
   li x18, INT_SPI1_BASE
   beq x9, x18, spi_handler_xchg
   li x18, INT_GPIO_BASE + SPI_PIN_CTS
   beq x9, x18, spi_handler_cts
   li x18, INT_GPIO_BASE + SPI_PIN_RTS
   beq x9, x18, spi_handler_rts
+#endif
   j handler
 
 i2s_handler_sd:
@@ -239,7 +241,7 @@ i2s_handler_sd:
   
 5:
   # check for push to event queue
-  la x9, _eos_i2s_mic_wm
+  la x9, _eos_i2s_wm
   lw x20, 0(x9)
   beqz x20, i2s_handler_sd_exit
   bltu x18, x20, i2s_handler_sd_exit
@@ -391,6 +393,8 @@ i2s_handler_ci_exit:
   # exit
   j trap_exit_data
 
+#ifdef EOS_WITH_SPI_ASM
+
 # x9 - cmd, x18 - buffer, x19 - len, x20 - &flags, x21 - flags
 spi_xchg_start:
   ori x21, x21, SPI_FLAG_INIT
@@ -453,7 +457,7 @@ spi_handler_xchg:
   la x18, _eos_spi_state_flags
   lbu x20, 0(x18)
   andi x8, x20, SPI_FLAG_RST
-  beqz x8, 1f
+  beqz x8, 0f
 
   andi x20, x20, ~SPI_FLAG_RST
   sb x20, 0(x18)
@@ -463,7 +467,7 @@ spi_handler_xchg:
   sw x0, SPI_REG_IE(x19)
   j spi_handler_xchg_exit
 
-1:
+0:
   andi x8, x20, SPI_FLAG_INIT
   beqz x8, 6f
 
@@ -480,10 +484,10 @@ spi_handler_xchg:
   la x18, _eos_spi_state_cmd
   lbu x23, 0(x18)
   andi x23, x23, EOS_NET_CMD_FLAG_ONEW
-  beqz x23, 2f
+  beqz x23, 1f
   mv x8, x0
   mv x9, x0
-2:
+1:
   srli x23, x8, 3
   sb x23, 0(x18)
   andi x22, x8, 0x07
@@ -493,24 +497,33 @@ spi_handler_xchg:
   sw x22, 0(x18)
   la x18, _eos_spi_state_len_tx
   lw x21, 0(x18)
-  bgeu x21, x22, 3f
+  bgeu x21, x22, 2f
   mv x21, x22
 
-3:
+2:
   li x8, 6
-  bgeu x21, x8, 4f
+  bgeu x21, x8, 3f
   mv x21, x8
-  j 5f
-4:
+  j 4f
+3:
   addi x8, x21, 2
   li x9, 4
   remu x18, x8, x9
-  beqz x18, 5f
+  beqz x18, 4f
   divu x21, x8, x9
   addi x21, x21, 1
   mul x21, x21, x9
   addi x21, x21, -2
 
+4:
+  li x8, SPI_SIZE_BUF + 1
+  bltu x21, x8, 5f
+  li x8, SPI_CSMODE_AUTO
+  sw x8, SPI_REG_CSMODE(x19)
+  sw x0, SPI_REG_IE(x19)
+  
+  j spi_handler_xchg_exit
+  
 5:
   la x18, _eos_spi_state_len
   sw x21, 0(x18)
@@ -622,7 +635,7 @@ spi_handler_xchg:
   bne x21, x20, spi_handler_xchg_exit
   sub x8, x20, x22
   addi x8, x8, -1
-  li x9, SPI_SIZE_CHUNK - 1
+  li x9, SPI_SIZE_WM - 1
   bltu x8, x9, 16f
   mv x8, x9
 16:
@@ -786,6 +799,8 @@ spi_handler_rts_exit:
 
   # exit
   j trap_exit_data
+
+#endif  /* EOS_WITH_SPI_ASM */
 
 trap_exit_data:
   # Remain in M-mode after mret

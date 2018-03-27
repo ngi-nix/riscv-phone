@@ -18,12 +18,11 @@
 EOSABuf _eos_i2s_mic_buf;
 EOSABuf _eos_i2s_spk_buf;
 uint32_t _eos_i2s_ck_period = 0;
-uint32_t _eos_i2s_mic_wm = 0;
-uint32_t _eos_i2s_spk_wm = 0;
 uint32_t _eos_i2s_mic_volume = 2;
 uint32_t _eos_i2s_spk_volume = 3;
 static eos_evt_fptr_t evt_handler[I2S_MAX_HANDLER];
 uint32_t _eos_i2s_evt_enable[I2S_MAX_HANDLER];
+uint32_t _eos_i2s_wm[I2S_MAX_HANDLER];
 
 static void _abuf_init(EOSABuf *buf, uint8_t *array, uint16_t size) {
     buf->idx_r = 0;
@@ -123,6 +122,11 @@ void eos_i2s_init(uint32_t sample_rate) {
     I2S_PWM_REG_WS(PWM_CMP1)    = (_eos_i2s_ck_period + 1) * 32;
     I2S_PWM_REG_WS(PWM_CMP2)    = (_eos_i2s_ck_period + 1) * 64 - 512;
 
+    _eos_i2s_evt_enable[I2S_EVT_MIC] = 0;
+    _eos_i2s_evt_enable[I2S_EVT_SPK] = 0;
+    evt_handler[I2S_EVT_MIC] = NULL;
+    evt_handler[I2S_EVT_SPK] = NULL;
+    
     eos_intr_set(I2S_IRQ_SD_ID, 0, NULL);
     eos_intr_set(I2S_IRQ_CK_ID, 0, NULL);
     eos_intr_set(I2S_IRQ_WS_ID, 0, NULL);
@@ -133,29 +137,10 @@ void eos_i2s_init(uint32_t sample_rate) {
     eos_evtq_set_handler(EOS_EVT_AUDIO, audio_handler, EOS_EVT_FLAG_WRAP);
 }
 
-void eos_i2s_init_mic(uint8_t *mic_arr, uint16_t mic_arr_size, eos_evt_fptr_t mic_wm_handler, uint16_t mic_wm) {
-    _abuf_init(&_eos_i2s_mic_buf, mic_arr, mic_arr_size);
-    _eos_i2s_mic_wm = mic_wm;
-    evt_handler[I2S_EVT_MIC] = mic_wm_handler;
-    if (mic_wm) {
-        _eos_i2s_evt_enable[I2S_EVT_MIC] = 1;
-    } else {
-        _eos_i2s_evt_enable[I2S_EVT_MIC] = 0;
-    }
-}
-
-void eos_i2s_init_spk(uint8_t *spk_arr, uint16_t spk_arr_size, eos_evt_fptr_t spk_wm_handler, uint16_t spk_wm) {
-    _abuf_init(&_eos_i2s_spk_buf, spk_arr, spk_arr_size);
-    _eos_i2s_spk_wm = spk_wm;
-    evt_handler[I2S_EVT_SPK] = spk_wm_handler;
-    if (spk_wm) {
-        _eos_i2s_evt_enable[I2S_EVT_SPK] = 1;
-    } else {
-        _eos_i2s_evt_enable[I2S_EVT_SPK] = 0;
-    }
-}
-
 void eos_i2s_start(void) {
+    _eos_i2s_evt_enable[I2S_EVT_MIC] = 1;
+    _eos_i2s_evt_enable[I2S_EVT_SPK] = 1;
+    
     eos_intr_set_priority(I2S_IRQ_SD_ID, I2S_IRQ_SD_PRIORITY);
     eos_intr_set_priority(I2S_IRQ_CK_ID, I2S_IRQ_CK_PRIORITY);
     eos_intr_set_priority(I2S_IRQ_WS_ID, I2S_IRQ_WS_PRIORITY);
@@ -185,8 +170,8 @@ void eos_i2s_stop(void) {
     eos_intr_set_priority(I2S_IRQ_WS_ID, 0);
     eos_intr_set_priority(I2S_IRQ_CI_ID, 0);
     eos_intr_mask(0);
-    eos_i2s_init_mic(NULL, 0, NULL, 0);
-    eos_i2s_init_spk(NULL, 0, NULL, 0);
+    eos_i2s_mic_init(NULL, 0);
+    eos_i2s_spk_init(NULL, 0);
 
     GPIO_REG(GPIO_IOF_EN)       &= ~(1 << I2S_PIN_CK);
     GPIO_REG(GPIO_IOF_SEL)      &= ~(1 << I2S_PIN_CK);
@@ -195,6 +180,25 @@ void eos_i2s_stop(void) {
     GPIO_REG(GPIO_IOF_SEL)      &= ~(1 << I2S_PIN_WS);
     
     GPIO_REG(GPIO_OUTPUT_VAL)   &= ~((1 << I2S_PIN_CK) | (1 << I2S_PIN_WS));
+}
+
+void eos_i2s_mic_init(uint8_t *mic_arr, uint16_t mic_arr_size) {
+    clear_csr(mstatus, MSTATUS_MIE);
+    _abuf_init(&_eos_i2s_mic_buf, mic_arr, mic_arr_size);
+    set_csr(mstatus, MSTATUS_MIE);
+}
+
+void eos_i2s_mic_set_handler(eos_evt_fptr_t wm_handler) {
+    clear_csr(mstatus, MSTATUS_MIE);
+    evt_handler[I2S_EVT_MIC] = wm_handler;
+    set_csr(mstatus, MSTATUS_MIE);
+}
+
+void eos_i2s_mic_set_wm(uint16_t wm) {
+    clear_csr(mstatus, MSTATUS_MIE);
+    _eos_i2s_wm[I2S_EVT_MIC] = wm;
+    set_csr(mstatus, MSTATUS_MIE);
+    
 }
 
 uint16_t eos_i2s_mic_len(void) {
@@ -226,6 +230,24 @@ int eos_i2s_mic_pop(uint8_t *sample) {
     int ret = _abuf_pop(&_eos_i2s_mic_buf, sample);
     set_csr(mstatus, MSTATUS_MIE);
     return ret;
+}
+
+void eos_i2s_spk_init(uint8_t *spk_arr, uint16_t spk_arr_size) {
+    clear_csr(mstatus, MSTATUS_MIE);
+    _abuf_init(&_eos_i2s_spk_buf, spk_arr, spk_arr_size);
+    set_csr(mstatus, MSTATUS_MIE);
+}
+
+void eos_i2s_spk_set_handler(eos_evt_fptr_t wm_handler) {
+    clear_csr(mstatus, MSTATUS_MIE);
+    evt_handler[I2S_EVT_SPK] = wm_handler;
+    set_csr(mstatus, MSTATUS_MIE);
+}
+
+void eos_i2s_spk_set_wm(uint16_t wm) {
+    clear_csr(mstatus, MSTATUS_MIE);
+    _eos_i2s_wm[I2S_EVT_SPK] = wm;
+    set_csr(mstatus, MSTATUS_MIE);
 }
 
 uint16_t eos_i2s_spk_len(void) {
