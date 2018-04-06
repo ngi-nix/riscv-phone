@@ -15,14 +15,12 @@ static plic_instance_t plic;
 static eos_intr_fptr_t ext_interrupt_handler[PLIC_NUM_INTERRUPTS];
 
 uintptr_t eos_intr_handle(uintptr_t int_num) {
-    // plic_source int_num  = PLIC_claim_interrupt(&plic);
     if ((int_num >=1) && (int_num < PLIC_NUM_INTERRUPTS) && (ext_interrupt_handler[int_num])) {
         ext_interrupt_handler[int_num]();
     } else {
         write(1, "error\n", 6);
         exit(int_num);
     }
-    // PLIC_complete_interrupt(&plic, int_num);
     return int_num;
 }
 

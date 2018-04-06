@@ -18,7 +18,7 @@
 EOSABuf _eos_i2s_mic_buf;
 EOSABuf _eos_i2s_spk_buf;
 uint32_t _eos_i2s_ck_period = 0;
-uint32_t _eos_i2s_mic_volume = 2;
+uint32_t _eos_i2s_mic_volume = 3;
 uint32_t _eos_i2s_spk_volume = 3;
 static eos_evt_fptr_t evt_handler[I2S_MAX_HANDLER];
 uint32_t _eos_i2s_evt_enable[I2S_MAX_HANDLER];
@@ -104,6 +104,14 @@ void eos_i2s_init(uint32_t sample_rate) {
     GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << I2S_PIN_WS);
     GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << I2S_PIN_WS);
 
+    GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_CKE);
+    GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << I2S_PIN_CKE);
+    GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << I2S_PIN_CKE);
+
+    GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_CKF);
+    GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << I2S_PIN_CKF);
+    GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << I2S_PIN_CKF);
+
     GPIO_REG(GPIO_INPUT_EN)     |=  (1 << I2S_PIN_SD);
     GPIO_REG(GPIO_OUTPUT_EN)    &= ~(1 << I2S_PIN_SD);
     GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << I2S_PIN_SD);
@@ -114,23 +122,23 @@ void eos_i2s_init(uint32_t sample_rate) {
     I2S_PWM_REG_CK(PWM_COUNT)   = 0;
     I2S_PWM_REG_CK(PWM_CMP0)    = _ck_period_scaled;
     I2S_PWM_REG_CK(PWM_CMP1)    = _ck_period_scaled / 2;
-    I2S_PWM_REG_CK(PWM_CMP2)    = _ck_period_scaled / 8;
+    I2S_PWM_REG_CK(PWM_CMP2)    = 0;
+    I2S_PWM_REG_CK(PWM_CMP3)    = 0;
 
     I2S_PWM_REG_WS(PWM_CFG)     = 0;
     I2S_PWM_REG_WS(PWM_COUNT)   = 0;
     I2S_PWM_REG_WS(PWM_CMP0)    = (_eos_i2s_ck_period + 1) * 64 - 1;
     I2S_PWM_REG_WS(PWM_CMP1)    = (_eos_i2s_ck_period + 1) * 32;
-    I2S_PWM_REG_WS(PWM_CMP2)    = (_eos_i2s_ck_period + 1) * 64 - 512;
+    I2S_PWM_REG_WS(PWM_CMP2)    = (_eos_i2s_ck_period + 1) * _eos_i2s_mic_volume;
+    I2S_PWM_REG_WS(PWM_CMP3)    = I2S_PWM_REG_WS(PWM_CMP2) + (_eos_i2s_ck_period + 1) * 16;
 
     _eos_i2s_evt_enable[I2S_EVT_MIC] = 0;
     _eos_i2s_evt_enable[I2S_EVT_SPK] = 0;
     evt_handler[I2S_EVT_MIC] = NULL;
     evt_handler[I2S_EVT_SPK] = NULL;
     
-    eos_intr_set(I2S_IRQ_SD_ID, 0, NULL);
-    eos_intr_set(I2S_IRQ_CK_ID, 0, NULL);
     eos_intr_set(I2S_IRQ_WS_ID, 0, NULL);
-    eos_intr_set(I2S_IRQ_CI_ID, 0, NULL);
+    eos_intr_set(I2S_IRQ_SD_ID, 0, NULL);
     for (i=0; i<I2S_MAX_HANDLER; i++) {
         evt_handler[i] = eos_evtq_bad_handler;
     }
@@ -141,22 +149,24 @@ void eos_i2s_start(void) {
     _eos_i2s_evt_enable[I2S_EVT_MIC] = 1;
     _eos_i2s_evt_enable[I2S_EVT_SPK] = 1;
     
-    eos_intr_set_priority(I2S_IRQ_SD_ID, I2S_IRQ_SD_PRIORITY);
-    eos_intr_set_priority(I2S_IRQ_CK_ID, I2S_IRQ_CK_PRIORITY);
     eos_intr_set_priority(I2S_IRQ_WS_ID, I2S_IRQ_WS_PRIORITY);
-    eos_intr_set_priority(I2S_IRQ_CI_ID, I2S_IRQ_CI_PRIORITY);
 
     I2S_PWM_REG_CK(PWM_COUNT)   = 0;
     I2S_PWM_REG_WS(PWM_COUNT)   = 0;
 
     I2S_PWM_REG_CK(PWM_CFG)     = PWM_CFG_ENALWAYS | PWM_CFG_ZEROCMP | I2S_PWM_SCALE_CK;
-    I2S_PWM_REG_WS(PWM_CFG)     = PWM_CFG_ENALWAYS | PWM_CFG_ZEROCMP;
+    I2S_PWM_REG_WS(PWM_CFG)     = PWM_CFG_ENALWAYS | PWM_CFG_ZEROCMP | PWM_CFG_CMP2GANG;
 
     GPIO_REG(GPIO_IOF_SEL)      |=  (1 << I2S_PIN_CK);
     GPIO_REG(GPIO_IOF_EN)       |=  (1 << I2S_PIN_CK);
     
     GPIO_REG(GPIO_IOF_SEL)      |=  (1 << I2S_PIN_WS);
     GPIO_REG(GPIO_IOF_EN)       |=  (1 << I2S_PIN_WS);
+
+    GPIO_REG(GPIO_IOF_SEL)      |=  (1 << I2S_PIN_CKE);
+    GPIO_REG(GPIO_IOF_EN)       |=  (1 << I2S_PIN_CKE);
+
+    GPIO_REG(GPIO_OUTPUT_VAL)   |= (1 << I2S_PIN_CKF);
 }
 
 void eos_i2s_stop(void) {
@@ -165,10 +175,8 @@ void eos_i2s_stop(void) {
     I2S_PWM_REG_CK(PWM_COUNT)   = 0;
     I2S_PWM_REG_WS(PWM_COUNT)   = 0;
 
-    eos_intr_set_priority(I2S_IRQ_SD_ID, 0);
-    eos_intr_set_priority(I2S_IRQ_CK_ID, 0);
     eos_intr_set_priority(I2S_IRQ_WS_ID, 0);
-    eos_intr_set_priority(I2S_IRQ_CI_ID, 0);
+    eos_intr_set_priority(I2S_IRQ_SD_ID, 0);
     eos_intr_mask(0);
     eos_i2s_mic_init(NULL, 0);
     eos_i2s_spk_init(NULL, 0);
@@ -179,7 +187,11 @@ void eos_i2s_stop(void) {
     GPIO_REG(GPIO_IOF_EN)       &= ~(1 << I2S_PIN_WS);
     GPIO_REG(GPIO_IOF_SEL)      &= ~(1 << I2S_PIN_WS);
     
-    GPIO_REG(GPIO_OUTPUT_VAL)   &= ~((1 << I2S_PIN_CK) | (1 << I2S_PIN_WS));
+    GPIO_REG(GPIO_IOF_EN)       &= ~(1 << I2S_PIN_CKE);
+    GPIO_REG(GPIO_IOF_SEL)      &= ~(1 << I2S_PIN_CKE);
+
+    GPIO_REG(GPIO_OUTPUT_VAL)   &= ~((1 << I2S_PIN_CK) | (1 << I2S_PIN_WS) | (1 << I2S_PIN_CKE));
+    GPIO_REG(GPIO_OUTPUT_VAL)   |= (1 << I2S_PIN_CKF);
 }
 
 void eos_i2s_mic_init(uint8_t *mic_arr, uint16_t mic_arr_size) {
