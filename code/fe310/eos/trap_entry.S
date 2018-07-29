@@ -32,13 +32,17 @@
 #define I2S_PWM_CTRL_ADDR_CK  PWM0_CTRL_ADDR
 #define I2S_PWM_CTRL_ADDR_WS  PWM2_CTRL_ADDR
 
-#include "net_def.h"
-#include "spi_def.h"
+#define IOF_SPI1_SS0      2
+#define IOF_SPI1_SS1      8
+#define IOF_SPI1_SS2      9
+#define IOF_SPI1_SS3      10
 
 #define INT_SPI1_BASE     6
 #define INT_GPIO_BASE     8
 
-#define IOF_SPI1_SS2      9
+#include "net_def.h"
+#include "spi_def.h"
+
 
   .section      .data.entry
   .align 2
@@ -642,7 +646,7 @@ spi_handler_cts:
 2:
   lw x8, GPIO_IOF_EN(x19)
   li x9, 1
-  slli x9, x9, IOF_SPI1_SS2
+  slli x9, x9, SPI_PIN_CS
   not x9, x9
   and x8, x8, x9
   sw x8, GPIO_IOF_EN(x19)

@@ -189,7 +189,7 @@ static void spi_handler_cts(void) {
     if (_eos_spi_state_flags & SPI_FLAG_RDY) {
         spi_xchg_next(NULL);
     } else {
-        uint32_t iof_mask = ((uint32_t)1 << IOF_SPI1_SS2);
+        uint32_t iof_mask = ((uint32_t)1 << SPI_PIN_CS);
         GPIO_REG(GPIO_IOF_EN) &= ~iof_mask;
     }
 }
@@ -260,7 +260,7 @@ void eos_net_init(void) {
 }
 
 void eos_net_start(uint32_t sckdiv) {
-    uint32_t iof_mask = ((uint32_t)1 << IOF_SPI1_SS2);
+    uint32_t iof_mask = ((uint32_t)1 << SPI_PIN_CS);
 
     GPIO_REG(GPIO_IOF_SEL) &= ~iof_mask;
     GPIO_REG(GPIO_IOF_EN) |= iof_mask;
@@ -290,7 +290,7 @@ void eos_net_stop(void) {
     clear_csr(mstatus, MSTATUS_MIE);
     _eos_spi_state_flags &= ~SPI_FLAG_RDY;
     if (_eos_spi_state_flags & SPI_FLAG_CTS) {
-        uint32_t iof_mask = ((uint32_t)1 << IOF_SPI1_SS2);
+        uint32_t iof_mask = ((uint32_t)1 << SPI_PIN_CS);
         GPIO_REG(GPIO_IOF_EN) &= ~iof_mask;
         done = 1;
     }

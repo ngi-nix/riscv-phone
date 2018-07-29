@@ -5,7 +5,7 @@
 #define I2S_PIN_CK              1   // pin 9
 #define I2S_PIN_CKE             12  // pin 18
 #define I2S_PIN_CKF             18  // pin 2
-#define I2S_PIN_SD              20  // pin 4
+#define I2S_PIN_SD              13  // pin 19
 #define I2S_PIN_WS              11  // pin 17
 
 #define I2S_PIN_LR              13  // pin 19
