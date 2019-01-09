@@ -32,11 +32,12 @@ ssize_t handle_open(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned
         return rv;
     }
 
+    printf("OPEN\n");
     char *msg = "PERA JE CAR!";
     unsigned char buf[1000];
 
     strcpy((char *)buf, msg);
-    ssize_t _rv = ecp_send(conn, MTYPE_MSG, buf, 1000);
+    // ssize_t _rv = ecp_send(conn, MTYPE_MSG, buf, 1000);
 
     struct timeval tv;
     gettimeofday(&tv, NULL);
@@ -46,10 +47,12 @@ ssize_t handle_open(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned
 }
 
 ssize_t handle_msg(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s, ECP2Buffer *b) {
-    // write(2, p, s);
-    // fflush(stderr);
+    ecp_send(conn, t, p, s);
+    write(2, p+1, s-1);
+    fflush(stderr);
     // printf("MSG C:%s size:%ld\n", p, s);
-    // return s;
+    return s;
+
     counter++;
     char *msg = "PERA JE CAR!";
     unsigned char buf[1000];

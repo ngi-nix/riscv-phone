@@ -29,8 +29,9 @@
 #define INT_PWM1_BASE     44
 #define INT_PWM2_BASE     48
 
-#define I2S_PWM_CTRL_ADDR_CK  PWM0_CTRL_ADDR
-#define I2S_PWM_CTRL_ADDR_WS  PWM2_CTRL_ADDR
+#define I2S_PWM_CTRL_ADDR_CK      PWM0_CTRL_ADDR
+#define I2S_PWM_CTRL_ADDR_WS_SPK  PWM1_CTRL_ADDR
+#define I2S_PWM_CTRL_ADDR_WS_MIC  PWM2_CTRL_ADDR
 
 #define IOF_SPI1_SS0      2
 #define IOF_SPI1_SS1      8
@@ -104,59 +105,140 @@ evtq_push:
 
 i2s_handler_sd:
   # exit if too early
-  li x18, I2S_PWM_CTRL_ADDR_WS
+  li x18, I2S_PWM_CTRL_ADDR_WS_SPK
   lw x8, PWM_COUNT(x18)
-  lw x9, PWM_CMP3(x18)
+  lw x9, PWM_CMP2(x18)
   bltu x8, x9, i2s_handler_sd_exit
 
-  # read shift reg value -> x8
-  mv x8, x0
-  li x23, GPIO_CTRL_ADDR
-  lw x22, GPIO_OUTPUT_VAL(x23)
-  li x9, (0x1 << I2S_PIN_CKF)
-  or x22, x22, x9
-  not x9, x9
-  and x21, x22, x9
-  li x20, (0x1 << I2S_PIN_SD)
-  li x19, (32 - I2S_SMPL_BITS)
-  li x18, 32
-  
-0:
-  addi x18, x18, -1
-  # ck high
-  sw x21, GPIO_OUTPUT_VAL(x23)
+  # disable sd irq
+  li x18, PLIC_PRIORITY
+  sw x0, 4*I2S_IRQ_SD_ID(x18)
 
+  # pop from spk buf -> x8
+  mv x8, x0
+  la x9, _eos_i2s_spk_buf
+  lhu x18, I2S_ABUF_OFF_IDXR(x9)
+  lhu x19, I2S_ABUF_OFF_IDXW(x9)
+  beq x18, x19, i2s_handler_sd_xchg
+  lhu x19, I2S_ABUF_OFF_SIZE(x9)
+
+  addi x19, x19, -1
+  and x19, x19, x18
+  lw x8, I2S_ABUF_OFF_ARRAY(x9)
+  add x19, x19, x8
+  lbu x8, 0(x19)
+
+  addi x18, x18, 1
+  sh x18, I2S_ABUF_OFF_IDXR(x9)
+
+  # aLaw decode -> x8
+  xori x8, x8, 0x55
+  andi x9, x8, 0x80
+  beqz x9, 0f
+  li x9, 1
+  slli x9, x9, 7
+  not x9, x9
+  and x8, x8, x9
+  li x9, -1
+0:
+  andi x18, x8, 0xf0
+  srli x18, x18, 4
+  addi x18, x18, 4
+
+  li x19, 4
+  beq x18, x19, 1f
+
+  andi x8, x8, 0x0f
+  addi x19, x18, -4
+  sll x8, x8, x19
+
+  li x19, 1
+  sll x19, x19, x18
+  or x8, x8, x19
+
+  li x19, 1
+  addi x18, x18, -5
+  sll x19, x19, x18
+  or x8, x8, x19
+  j 2f
+1:
+  slli x8, x8, 1
+  ori x8, x8, 1
+2:
+  beqz x9, i2s_handler_sd_xchg
+  mul x8, x8, x9
+
+i2s_handler_sd_xchg:
+  # slli x8, x8, 4
+  # li x8, 0xAf0A
+  # li x8, 0x50f5
+  # read/write shift reg: x8 -> sr -> x8
+  li x18, GPIO_CTRL_ADDR
+  li x19, (0x1 << I2S_PIN_SD_IN)
+  li x20, (0x1 << I2S_PIN_SD_OUT)
+  li x21, (0x1 << I2S_PIN_CK_SR)
+  lw x22, GPIO_OUTPUT_VAL(x18)
+
+  lw x9, GPIO_OUTPUT_EN(x18)
+  or x9, x9, x20
+  sw x9, GPIO_OUTPUT_EN(x18)
+
+  not x20, x20
+  or x22, x22, x21
+
+  li x23, 17
+0:
+  addi x23, x23, -1
+  beqz x23, 1f
+  lw x9, GPIO_INPUT_VAL(x18)
+  and x9, x9, x19
+  srli x9, x9, I2S_PIN_SD_IN
+  slli x8, x8, 1
+  or x8, x8, x9
+
+1:
   # idle
   li x9, I2S_IDLE_CYCLES
-1:
+2:
   addi x9, x9, -1
-  bnez x9, 1b
-  
-  lw x9, GPIO_INPUT_VAL(x23)
-  # ck low
-  sw x22, GPIO_OUTPUT_VAL(x23)
+  bnez x9, 2b
 
-  and x9, x9, x20
-  srli x9, x9, I2S_PIN_SD
-  sll x9, x9, x18
-  or x8, x8, x9
-  beq x19, x18, 3f
+  # ck high
+  xor x22, x22, x21
+  sw x22, GPIO_OUTPUT_VAL(x18)
+
+  li x9, 0x1
+  slli x9, x9, 16
+  and x9, x9, x8
+#if I2S_PIN_SD_OUT > 16
+  slli x9, x9, (I2S_PIN_SD_OUT - 16)
+#else
+  srli x9, x9, (16 - I2S_PIN_SD_OUT)
+#endif
+  and x22, x22, x20
+  or x22, x22, x9
 
   # idle
   li x9, I2S_IDLE_CYCLES
 2:
   addi x9, x9, -1
   bnez x9, 2b
-  
+
+  # ck low
+  xor x22, x22, x21
+  sw x22, GPIO_OUTPUT_VAL(x18)
+
+  beqz x23, 3f
   j 0b
 
 3:
-  srai x8, x8, (32 - I2S_SMPL_BITS)
-  
-  # disable sd irq
-  li x18, PLIC_PRIORITY
-  sw x0, 4*I2S_IRQ_SD_ID(x18)
-  
+  slli x8, x8, 16
+  srai x8, x8, 16
+
+  lw x9, GPIO_OUTPUT_EN(x18)
+  and x9, x9, x20
+  sw x9, GPIO_OUTPUT_EN(x18)
+
   # aLaw encode -> x8
   li x18, 0x800
   li x19, 7
@@ -182,7 +264,7 @@ i2s_handler_sd:
   slli x19, x19, 4
   or x8, x8, x19
   bgez x8, 3f
-  ori x8, x8, 0x80 
+  ori x8, x8, 0x80
 3:
   xori x8, x8, 0x55
   andi x8, x8, 0xff
@@ -206,96 +288,24 @@ i2s_handler_sd:
 
   sb x8, 0(x20)
   addi x18, x18, 1
-  
+
 0:
   # check for push to event queue
   la x9, _eos_i2s_wm
   lw x20, 0(x9)
-  beqz x20, i2s_handler_sd_out
-  bltu x18, x20, i2s_handler_sd_out
+  beqz x20, i2s_handler_sd_exit
+  bltu x18, x20, i2s_handler_sd_exit
 
   la x9, _eos_i2s_evt_enable
   lw x18, 0(x9)
-  beqz x18, i2s_handler_sd_out
+  beqz x18, i2s_handler_sd_exit
   sw x0, 0(x9)
 
   # push to event queue
   jal x20, evtq_push
-  beqz x8, i2s_handler_sd_out
+  beqz x8, i2s_handler_sd_exit
   li x18, (EOS_EVT_AUDIO | I2S_EVT_MIC)
   sb x18, MSGQ_ITEM_OFF_CMD(x8)
-
-i2s_handler_sd_out:  
-  # pop from spk buf -> x8
-  la x9, _eos_i2s_spk_buf
-  lhu x18, I2S_ABUF_OFF_IDXR(x9)
-  lhu x19, I2S_ABUF_OFF_IDXW(x9)
-  beq x18, x19, i2s_handler_sd_exit
-  lhu x19, I2S_ABUF_OFF_SIZE(x9)
-
-  addi x19, x19, -1
-  and x19, x19, x18
-  lw x8, I2S_ABUF_OFF_ARRAY(x9)
-  add x19, x19, x8
-  lbu x8, 0(x19)
-  
-  addi x18, x18, 1
-  sh x18, I2S_ABUF_OFF_IDXR(x9)
-
-#define UART0_CTRL_ADDR 0x10013000
-#define UART_REG_TXFIFO 0x00
-  # END
-  # li x18, UART0_CTRL_ADDR
-  # sw x8, UART_REG_TXFIFO(x18)
-
-  # aLaw decode -> x8
-  xori x8, x8, 0x55
-  andi x9, x8, 0x80
-  beqz x9, 0f
-  li x9, 1
-  slli x9, x9, 7
-  not x9, x9
-  and x8, x8, x9
-  li x9, -1
-0:
-  andi x18, x8, 0xf0
-  srli x18, x18, 4
-  addi x18, x18, 4
-  
-  li x19, 4
-  beq x18, x19, 1f
-  
-  andi x8, x8, 0x0f
-  addi x19, x18, -4
-  sll x8, x8, x19
-  
-  li x19, 1
-  sll x19, x19, x18
-  or x8, x8, x19
-  
-  li x19, 1
-  addi x18, x18, -5
-  sll x19, x19, x18
-  or x8, x8, x19  
-  j 2f
-1:
-  slli x8, x8, 1
-  ori x8, x8, 1
-2:
-  beqz x9, 3f
-  mul x8, x8, x9
-3:
-#define UART0_CTRL_ADDR 0x10013000
-#define UART_REG_TXFIFO 0x00
-  # END
-  li x18, UART0_CTRL_ADDR
-  mv x9, x8
-  srai x9, x9, 8
-  andi x9, x9, 0xff
-  sw x9, UART_REG_TXFIFO(x18)
-  mv x9, x8
-  andi x9, x9, 0xff
-  sw x9, UART_REG_TXFIFO(x18)
 
 i2s_handler_sd_exit:
   # complete
@@ -305,7 +315,7 @@ i2s_handler_sd_exit:
 
   # exit
   j trap_exit_data
-  
+
 i2s_handler_ws:
   # enable sd irq
   li x18, PLIC_PRIORITY
@@ -320,6 +330,40 @@ i2s_handler_ws:
   # exit
   j trap_exit_data
 
+.global _eos_set_pwm
+_eos_set_pwm:
+  addi sp, sp, -8*REGBYTES
+  STORE x8, 0*REGBYTES(sp)
+  STORE x9, 1*REGBYTES(sp)
+  STORE x18, 2*REGBYTES(sp)
+  STORE x19, 3*REGBYTES(sp)
+  STORE x20, 4*REGBYTES(sp)
+  STORE x21, 5*REGBYTES(sp)
+  STORE x22, 6*REGBYTES(sp)
+  STORE x23, 7*REGBYTES(sp)
+
+  li x18, I2S_PWM_CTRL_ADDR_CK
+  li x19, I2S_PWM_CTRL_ADDR_WS_MIC
+  li x20, I2S_PWM_CTRL_ADDR_WS_SPK
+  li x21, PWM_CFG_ENALWAYS | PWM_CFG_ZEROCMP | I2S_PWM_SCALE_CK
+  li x22, PWM_CFG_ENALWAYS | PWM_CFG_ZEROCMP | PWM_CFG_CMP2GANG
+  li x23, PWM_CFG_ENALWAYS | PWM_CFG_ZEROCMP
+  sw x21, PWM_CFG(x18)
+  sw x22, PWM_CFG(x19)
+  sw x23, PWM_CFG(x20)
+
+  LOAD x8, 0*REGBYTES(sp)
+  LOAD x9, 1*REGBYTES(sp)
+  LOAD x18, 2*REGBYTES(sp)
+  LOAD x19, 3*REGBYTES(sp)
+  LOAD x20, 4*REGBYTES(sp)
+  LOAD x21, 5*REGBYTES(sp)
+  LOAD x22, 6*REGBYTES(sp)
+  LOAD x23, 7*REGBYTES(sp)
+  addi sp, sp, 8*REGBYTES
+
+  ret
+
 .global eos_flash_set
 eos_flash_set:
   li a3, SPI0_CTRL_ADDR
@@ -329,7 +373,7 @@ eos_flash_set:
   li a0, 1
   sw a0, SPI_REG_FCTRL(a3)
   ret
-  
+
 #ifdef EOS_WITH_SPI_ASM
 
 # x9 - cmd, x18 - buffer, x19 - len, x20 - &flags, x21 - flags
@@ -343,7 +387,7 @@ spi_xchg_start:
   lw x23, 0(x22)
   bnez x23, 1f
   ori x9, x9, EOS_NET_CMD_FLAG_ONEW
-  
+
 1:
   andi x22, x9, EOS_NET_CMD_FLAG_ONEW
   beqz x22, 2f
@@ -381,8 +425,8 @@ spi_xchg_start:
   sw x21, SPI_REG_RXCTRL(x20)
   li x21, SPI_IP_RXWM
   sw x21, SPI_REG_IE(x20)
-  jalr x0, x8  
-  
+  jalr x0, x8
+
 spi_handler_xchg:
   li x19, SPI1_CTRL_ADDR
   la x18, _eos_spi_state_flags
@@ -452,9 +496,9 @@ spi_handler_xchg:
   li x8, SPI_CSMODE_AUTO
   sw x8, SPI_REG_CSMODE(x19)
   sw x0, SPI_REG_IE(x19)
-  
+
   j spi_handler_xchg_exit
-  
+
 5:
   la x18, _eos_spi_state_len
   sw x21, 0(x18)
@@ -469,7 +513,7 @@ spi_handler_xchg:
   lw x22, 0(x18)
   la x18, _eos_spi_state_buf
   lw x23, 0(x18)
-  
+
   sub x9, x20, x21
   li x8, SPI_SIZE_CHUNK
   bltu x8, x9, 7f
@@ -478,7 +522,7 @@ spi_handler_xchg:
   addi x8, x8, -1
   add x9, x23, x21
 
-8:  
+8:
   bltz x8, 9f
   lw x18, SPI_REG_TXFIFO(x19)
   bltz x18, 9f
@@ -488,13 +532,13 @@ spi_handler_xchg:
   addi x9, x9, 1
   addi x21, x21, 1
   j 8b
-  
+
 9:
   sub x8, x21, x22
   addi x8, x8, -1
   add x9, x23, x22
-  
-10:  
+
+10:
   bltz x8, 11f
   lw x18, SPI_REG_RXFIFO(x19)
   bltz x18, 11f
@@ -509,7 +553,7 @@ spi_handler_xchg:
   sw x21, 0(x18)
   la x18, _eos_spi_state_idx_rx
   sw x22, 0(x18)
-  
+
   bne x22, x20, 15f
   li x8, SPI_CSMODE_AUTO
   sw x8, SPI_REG_CSMODE(x19)
@@ -544,9 +588,9 @@ spi_handler_xchg:
   andi x8, x8, ~SPI_FLAG_ONEW
   sb x8, 0(x18)
   sw x23, 0(x19)
-  
+
   j spi_handler_xchg_exit
-  
+
 14:
   # push to spi buf queue
   la x19, _eos_spi_buf_q
@@ -562,7 +606,7 @@ spi_handler_xchg:
 
   j spi_handler_xchg_exit
 
-15:  
+15:
   bne x21, x20, spi_handler_xchg_exit
   sub x8, x20, x22
   addi x8, x8, -1
@@ -573,7 +617,7 @@ spi_handler_xchg:
   sw x8, SPI_REG_RXCTRL(x19)
   li x9, SPI_IP_RXWM
   sw x9, SPI_REG_IE(x19)
-  
+
 spi_handler_xchg_exit:
   # complete
   li x18, INT_SPI1_BASE
@@ -595,7 +639,7 @@ spi_handler_cts:
   sb x21, 0(x20)
   andi x9, x21, SPI_FLAG_RDY
   beqz x9, 2f
-  
+
   # pop from send q
   la x9, _eos_spi_send_q
   lbu x18, MSGQ_OFF_IDXR(x9)
@@ -617,13 +661,13 @@ spi_handler_cts:
   lhu x19, MSGQ_ITEM_OFF_SIZE(x8)
   beqz x18, 1f
   jal x8, spi_xchg_start
-  
+
   j spi_handler_cts_exit
-  
+
 1:
   andi x9, x21, SPI_FLAG_RTS
   beqz x9, spi_handler_cts_exit
-  
+
   # pop from spi buf queue
   la x9, _eos_spi_buf_q
   lbu x18, SPI_BUFQ_OFF_IDXR(x9)
@@ -691,7 +735,7 @@ spi_handler_rts:
   sw x0, SPI_REG_RXCTRL(x19)
   li x8, SPI_IP_RXWM
   sw x8, SPI_REG_IE(x19)
-  
+
   j spi_handler_rts_exit
 
 1:
@@ -739,7 +783,7 @@ handler:
 
   .section      .text.entry
   .align 2
-  
+
 trap_entry_text:
   addi sp, sp, -24*REGBYTES
 
@@ -784,7 +828,7 @@ handle_ext:
   li x18, PLIC_CLAIM
   sw a0, 0(x18)
   j trap_exit_text
-  
+
 trap_exit_text:
   # Remain in M-mode after mret
   li t0, MSTATUS_MPP
