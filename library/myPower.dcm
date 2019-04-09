@@ -1,0 +1,8 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP +VSYS
+D power-flag symbol (positive system voltage)
+K Power Flag Symbol system
+$ENDCMP
+#
+#End Doc Library
