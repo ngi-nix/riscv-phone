@@ -10,9 +10,9 @@
 #define SPI_SIZE_CHUNK          4
 #define SPI_SIZE_WM             2
 
-#define SPI_PIN_RTS             0   // pin 8
-#define SPI_PIN_CTS             23  // pin 7
-#define SPI_PIN_CS             	IOF_SPI1_SS0	// pin 10
+#define SPI_PIN_RTS             0
+#define SPI_PIN_CTS             23
+#define SPI_PIN_CS             	IOF_SPI1_SS0
 
 #define SPI_FLAG_RDY            0x01
 #define SPI_FLAG_RST            0x02
