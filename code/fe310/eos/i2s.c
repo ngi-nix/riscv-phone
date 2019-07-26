@@ -21,7 +21,7 @@ EOSABuf _eos_i2s_mic_buf;
 EOSABuf _eos_i2s_spk_buf;
 uint32_t _eos_i2s_ck_period = 0;
 uint32_t _eos_i2s_mic_volume = 0;
-uint32_t _eos_i2s_spk_volume = 4;
+uint32_t _eos_i2s_spk_volume = 0;
 static eos_evt_fptr_t evt_handler[I2S_MAX_HANDLER];
 uint32_t _eos_i2s_evt_enable[I2S_MAX_HANDLER];
 uint32_t _eos_i2s_wm[I2S_MAX_HANDLER];

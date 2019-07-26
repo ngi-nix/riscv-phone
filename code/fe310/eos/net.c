@@ -273,7 +273,7 @@ void eos_net_start(uint32_t sckdiv) {
       SPI_FMT_LEN(8);
 
     // enable CS pin for selected channel/pin
-    SPI1_REG(SPI_REG_CSID) = 2; 
+    SPI1_REG(SPI_REG_CSID) = SPI_IDX_SS;
     
     // There is no way here to change the CS polarity.
     // SPI1_REG(SPI_REG_CSDEF) = 0xFFFF;
