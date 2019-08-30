@@ -13,5 +13,5 @@ void eos_init(void) {
 }
 
 void eos_start(void) {
-    eos_net_start(9);
+    eos_net_start(15);
 }

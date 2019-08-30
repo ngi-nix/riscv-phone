@@ -154,7 +154,7 @@ void eos_i2s_init(uint32_t sample_rate) {
     for (i=0; i<I2S_MAX_HANDLER; i++) {
         evt_handler[i] = eos_evtq_bad_handler;
     }
-    eos_evtq_set_handler(EOS_EVT_AUDIO, audio_handler, EOS_EVT_FLAG_WRAP);
+    eos_evtq_set_handler(EOS_EVT_AUDIO, audio_handler, EOS_EVT_FLAG_NET_BUF_ACQ);
 }
 
 extern void _eos_set_pwm(void);

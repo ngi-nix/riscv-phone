@@ -10,5 +10,5 @@ void eos_net_set_handler(unsigned char cmd, eos_evt_fptr_t handler, uint8_t flag
 int eos_net_acquire(unsigned char reserved);
 int eos_net_release(void);
 unsigned char *eos_net_alloc(void);
-int eos_net_free(unsigned char *buffer, unsigned char reserve_next);
+int eos_net_free(unsigned char *buffer, unsigned char more);
 int eos_net_send(unsigned char cmd, unsigned char *buffer, uint16_t len);

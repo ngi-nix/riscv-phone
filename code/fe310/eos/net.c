@@ -38,7 +38,8 @@ uint8_t _eos_spi_state_next_cnt = 0;
 unsigned char *_eos_spi_state_next_buf = NULL;
 
 static eos_evt_fptr_t evt_handler[EOS_NET_MAX_CMD];
-static uint16_t evt_handler_wrapper_en = 0;
+static uint16_t evt_handler_flags_buf_free = 0;
+static uint16_t evt_handler_flags_buf_acq = 0;
 
 static int spi_bufq_push(unsigned char *buffer) {
     _eos_spi_buf_q.array[SPI_BUFQ_IDX_MASK(_eos_spi_buf_q.idx_w++)] = buffer;
@@ -53,6 +54,7 @@ static unsigned char *spi_bufq_pop(void) {
 static void spi_xchg_reset(void) {
     _eos_spi_state_flags &= ~SPI_FLAG_CTS;
     _eos_spi_state_flags |= SPI_FLAG_RST;
+
     // before starting a transaction, set SPI peripheral to desired mode
     SPI1_REG(SPI_REG_CSMODE) = SPI_CSMODE_HOLD;
 
@@ -211,20 +213,29 @@ static void net_handler(unsigned char cmd, unsigned char *buffer, uint16_t len) 
         eos_evtq_bad_handler(cmd, buffer, len);
     } else {
         unsigned char idx = (cmd & ~EOS_EVT_MASK) - 1;
-        uint16_t wrap = ((uint16_t)1 << idx) & evt_handler_wrapper_en;
+        uint16_t buf_free = ((uint16_t)1 << idx) & evt_handler_flags_buf_free;
+        uint16_t buf_acq = ((uint16_t)1 << idx) & evt_handler_flags_buf_acq;
 
-        if (wrap) {
-            eos_net_free(buffer, 1);
+        if (buf_free) {
+            eos_net_free(buffer, buf_acq);
             buffer = NULL;
             len = 0;
         }
 
         evt_handler[idx](cmd, buffer, len);
 
-        if (wrap) eos_net_release();
+        if (buf_free && buf_acq) eos_net_release();
     }
 }
 
+void eos_net_set_handler(unsigned char cmd, eos_evt_fptr_t handler, uint8_t flags) {
+    if (flags) {
+        uint16_t flag = (uint16_t)1 << ((cmd & ~EOS_EVT_MASK) - 1);
+        if (flags & EOS_NET_FLAG_BUF_FREE) evt_handler_flags_buf_free |= flag;
+        if (flags & EOS_NET_FLAG_BUF_ACQ) evt_handler_flags_buf_acq |= flag;
+    }
+    evt_handler[(cmd & ~EOS_EVT_MASK) - 1] = handler;
+}
 
 void eos_net_init(void) {
     int i;
@@ -304,14 +315,6 @@ void eos_net_stop(void) {
     }
 }
 
-void eos_net_set_handler(unsigned char cmd, eos_evt_fptr_t handler, uint8_t flags) {
-    if (flags & EOS_EVT_FLAG_WRAP) {
-        uint16_t flag = (uint16_t)1 << ((cmd & ~EOS_EVT_MASK) - 1);
-        evt_handler_wrapper_en |= flag;
-    }
-    evt_handler[(cmd & ~EOS_EVT_MASK) - 1] = handler;
-}
-
 int eos_net_acquire(unsigned char reserved) {
     int ret = 0;
     
@@ -366,12 +369,12 @@ unsigned char *eos_net_alloc(void) {
     return ret;
 }
 
-int eos_net_free(unsigned char *buffer, unsigned char reserve) {
+int eos_net_free(unsigned char *buffer, unsigned char more) {
     int rv = EOS_OK;
     uint8_t do_release = 1;
 
     clear_csr(mstatus, MSTATUS_MIE);
-    if ((reserve || _eos_spi_state_next_cnt) && (_eos_spi_state_next_buf == NULL)) {
+    if ((more || _eos_spi_state_next_cnt) && (_eos_spi_state_next_buf == NULL)) {
         _eos_spi_state_next_buf = buffer;
     } else {
         if ((_eos_spi_state_flags & SPI_FLAG_RDY) && (_eos_spi_state_flags & SPI_FLAG_CTS)) do_release = spi_xchg_next(buffer);
@@ -389,7 +392,7 @@ int eos_net_send(unsigned char cmd, unsigned char *buffer, uint16_t len) {
     if ((_eos_spi_state_flags & SPI_FLAG_RDY) && (_eos_spi_state_flags & SPI_FLAG_CTS)) {
         spi_xchg_start(cmd, buffer, len);
     } else {
-        rv = eos_msgq_push(&_eos_spi_send_q, cmd, buffer, len);
+        rv = eos_msgq_push(&_eos_spi_send_q, EOS_EVT_NET | cmd, buffer, len);
     }
     set_csr(mstatus, MSTATUS_MIE);
 

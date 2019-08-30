@@ -59,7 +59,7 @@ int ecp_init(ECPContext *ctx) {
     rv = ecp_ctx_create_vconn(ctx);
     if (rv) return rv;
     
-    eos_evtq_set_handler(EOS_EVT_TIMER, timer_handler, EOS_EVT_FLAG_WRAP);
+    eos_evtq_set_handler(EOS_EVT_TIMER, timer_handler, EOS_EVT_FLAG_NET_BUF_ACQ);
     eos_net_set_handler(EOS_NET_CMD_PKT, packet_handler, 0);
     return ECP_OK;
 }
