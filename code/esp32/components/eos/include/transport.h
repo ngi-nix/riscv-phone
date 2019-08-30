@@ -7,7 +7,7 @@ typedef struct EOSNetAddr {
     uint16_t port;
 } EOSNetAddr;
 
-void eos_net_init(void);
-void eos_net_connect(char *ssid, char *password);
-void eos_net_disconnect(void);
-ssize_t eos_net_send(void *msg, size_t msg_size, EOSNetAddr *addr);
+void eos_wifi_init(void);
+void eos_wifi_connect(char *ssid, char *password);
+void eos_wifi_disconnect(void);
+ssize_t eos_wifi_send(void *msg, size_t msg_size, EOSNetAddr *addr);

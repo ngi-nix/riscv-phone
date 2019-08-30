@@ -46,6 +46,9 @@ SOFTWARE.
 #include "eos.h"
 #include "fe310.h"
 #include "transport.h"
+#include "modem.h"
+#include "bq25895.h"
+#include "drv2605l.h"
 
 static const char *TAG = "EOS";
 static int udp_sock = -1;
@@ -112,21 +115,8 @@ static void receiver(void *pvParameters) {
         }
         memcpy(buffer, addr.host, sizeof(addr.host));
         memcpy(buffer+sizeof(addr.host), &addr.port, sizeof(addr.port));
-        eos_fe310_send(EOS_FE310_CMD_PKT, buffer, rv+addr_len);
+        eos_fe310_send(EOS_FE310_CMD_WIFI_PKT, buffer, rv+addr_len);
     }
-}
-
-static void fe310_connect_cmd_handler(unsigned char cmd, unsigned char *buffer, uint16_t size) {
-    eos_net_connect((char *)buffer, (char *)(buffer+strlen((char *)buffer)+1));
-}
-
-static void fe310_packet_cmd_handler(unsigned char cmd, unsigned char *buffer, uint16_t size) {
-    EOSNetAddr addr;
-    size_t addr_len = sizeof(addr.host) + sizeof(addr.port);
-    
-    memcpy(addr.host, buffer, sizeof(addr.host));
-    memcpy(&addr.port, buffer+sizeof(addr.host), sizeof(addr.port));
-    eos_net_send(buffer+addr_len, size-addr_len, &addr);
 }
 
 static esp_err_t esp32_wifi_event_handler(void *ctx, system_event_t *event) {
@@ -154,13 +144,14 @@ static esp_err_t esp32_wifi_event_handler(void *ctx, system_event_t *event) {
 
         case SYSTEM_EVENT_STA_GOT_IP:
             ESP_LOGI(TAG, "********************************************");
-            ESP_LOGI(TAG, "* We are now connected to AP")
+            ESP_LOGI(TAG, "* We are now connected to AP");
             ESP_LOGI(TAG, "* - Our IP address is: " IPSTR, IP2STR(&event->event_info.got_ip.ip_info.ip));
             ESP_LOGI(TAG, "********************************************");
             t_open();
             xTaskCreate(&receiver, "wifi_receiver", 4096, NULL, EOS_PRIORITY_WIFI, &receiver_task);
             // xTaskCreatePinnedToCore(&receiver, "wifi_receiver", 4096, NULL, EOS_PRIORITY_WIFI, &receiver_task, 1);
-            eos_fe310_send(EOS_FE310_CMD_CONNECT, NULL, 0);
+            eos_fe310_send(EOS_FE310_CMD_WIFI_CONNECT, NULL, 0);
+            // eos_drv2605l_test();
             break;
 
         default: // Ignore the other event types
@@ -170,7 +161,7 @@ static esp_err_t esp32_wifi_event_handler(void *ctx, system_event_t *event) {
     return ESP_OK;
 }
 
-void eos_net_init(void) {
+void eos_wifi_init(void) {
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     wifi_config_t wifi_config;
 
@@ -183,13 +174,12 @@ void eos_net_init(void) {
     ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
     ESP_ERROR_CHECK( esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
     ESP_ERROR_CHECK( esp_wifi_start() );
-    eos_fe310_set_handler(EOS_FE310_CMD_CONNECT, fe310_connect_cmd_handler);
-    eos_fe310_set_handler(EOS_FE310_CMD_PKT, fe310_packet_cmd_handler);
 }
 
-void eos_net_connect(char *ssid, char *password) {
+void eos_wifi_connect(char *ssid, char *password) {
     wifi_config_t wifi_config;
     
+    ESP_LOGI(TAG, "CONNECTING....");
     memset(&wifi_config, 0, sizeof(wifi_config));
     strncpy((char *)wifi_config.sta.ssid, ssid, 31);
     strncpy((char *)wifi_config.sta.password, password, 63);
@@ -197,10 +187,10 @@ void eos_net_connect(char *ssid, char *password) {
     ESP_ERROR_CHECK( esp_wifi_connect() );
 }
 
-void eos_net_disconnect(void) {
+void eos_wifi_disconnect(void) {
     ESP_ERROR_CHECK( esp_wifi_disconnect() );
 }
 
-ssize_t eos_net_send(void *msg, size_t msg_size, EOSNetAddr *addr) {
+ssize_t eos_wifi_send(void *msg, size_t msg_size, EOSNetAddr *addr) {
     return t_send(msg, msg_size, addr);
 }

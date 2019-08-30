@@ -14,18 +14,21 @@
 #include <esp_log.h>
 #include <esp_err.h>
 #include <esp_heap_caps.h>
+#include <driver/gpio.h>
 #include <driver/spi_slave.h>
 
 #include "eos.h"
 #include "msgq.h"
 #include "transport.h"
+#include "modem.h"
+#include "pcm.h"
 #include "fe310.h"
 
 static EOSMsgQ send_q;
 static EOSMsgItem send_q_array[EOS_FE310_SIZE_Q];
 
-#define SPI_GPIO_RTS        16
-#define SPI_GPIO_CTS        17
+#define SPI_GPIO_RTS        22
+#define SPI_GPIO_CTS        21
 #define SPI_GPIO_MOSI       23
 #define SPI_GPIO_MISO       19
 #define SPI_GPIO_SCLK       18
@@ -43,7 +46,6 @@ static void bad_handler(unsigned char cmd, unsigned char *buffer, uint16_t len) 
 
 static void transceiver(void *pvParameters) {
     int repeat = 0;
-    esp_err_t ret;
     unsigned char cmd = 0;
     unsigned char *buffer;
     uint16_t len;
@@ -75,7 +77,7 @@ static void transceiver(void *pvParameters) {
         }
 
         memset(buf_recv, 0, EOS_FE310_SIZE_BUF);
-        ret = spi_slave_transmit(HSPI_HOST, &t, portMAX_DELAY);
+        spi_slave_transmit(HSPI_HOST, &t, portMAX_DELAY);
         repeat = 0;
         if (buf_recv[0] != 0) {
             cmd = (buf_recv[0] >> 3);
@@ -106,6 +108,31 @@ static void _post_setup_cb(spi_slave_transaction_t *trans) {
 // Called after transaction is sent/received. We use this to set the handshake line low.
 static void _post_trans_cb(spi_slave_transaction_t *trans) {
     WRITE_PERI_REG(GPIO_OUT_W1TC_REG, (1 << SPI_GPIO_CTS));
+}
+
+static void fe310_wifi_connect_handler(unsigned char cmd, unsigned char *buffer, uint16_t size) {
+    eos_wifi_connect((char *)buffer, (char *)(buffer+strlen((char *)buffer)+1));
+}
+
+static void fe310_wifi_pkt_handler(unsigned char cmd, unsigned char *buffer, uint16_t size) {
+    EOSNetAddr addr;
+    size_t addr_len = sizeof(addr.host) + sizeof(addr.port);
+    
+    memcpy(addr.host, buffer, sizeof(addr.host));
+    memcpy(&addr.port, buffer+sizeof(addr.host), sizeof(addr.port));
+    eos_wifi_send(buffer+addr_len, size-addr_len, &addr);
+}
+
+static void fe310_modem_data_handler(unsigned char cmd, unsigned char *buffer, uint16_t size) {
+    eos_modem_write(buffer, size);
+}
+
+static void fe310_modem_call_handler(unsigned char cmd, unsigned char *buffer, uint16_t size) {
+    eos_pcm_call();
+}
+
+static void fe310_set_handler(unsigned char cmd, eos_fe310_fptr_t handler) {
+    cmd_handler[cmd] = handler;
 }
 
 void eos_fe310_init(void) {
@@ -162,6 +189,11 @@ void eos_fe310_init(void) {
     xSemaphoreGive(mutex);
     xTaskCreate(&transceiver, "fe310_transceiver", 4096, NULL, EOS_PRIORITY_SPI, NULL);
     // xTaskCreatePinnedToCore(&transceiver, "fe310_transceiver", 4096, NULL, EOS_PRIORITY_SPI, NULL, 1);
+    
+    fe310_set_handler(EOS_FE310_CMD_WIFI_CONNECT, fe310_wifi_connect_handler);
+    fe310_set_handler(EOS_FE310_CMD_WIFI_PKT, fe310_wifi_pkt_handler);
+    fe310_set_handler(EOS_FE310_CMD_MODEM_DATA, fe310_modem_data_handler);
+    fe310_set_handler(EOS_FE310_CMD_MODEM_CALL, fe310_modem_call_handler);
 }
 
 int eos_fe310_send(unsigned char cmd, unsigned char *buffer, uint16_t len) {
@@ -173,7 +205,4 @@ int eos_fe310_send(unsigned char cmd, unsigned char *buffer, uint16_t len) {
     return rv;
 }
 
-void eos_fe310_set_handler(unsigned char cmd, eos_fe310_fptr_t handler) {
-    cmd_handler[cmd] = handler;
-}
 
