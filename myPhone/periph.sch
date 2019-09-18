@@ -45,25 +45,10 @@ Text GLabel 1400 5100 0    55   Input ~ 0
 SPI1.SS3
 Text GLabel 5700 5550 0    55   BiDi ~ 0
 FT813.GPIO3
-Text GLabel 9300 5550 0    55   Input ~ 0
+Text GLabel 9050 5550 0    55   Input ~ 0
 SPI1.SCK
-Text GLabel 9300 5750 0    55   Output ~ 0
+Text GLabel 9050 5750 0    55   Output ~ 0
 SPI1.MISO
-Text GLabel 9300 5250 0    55   Input ~ 0
-SPI1.MOSI
-Text GLabel 9300 5150 0    55   Input ~ 0
-SPI1.SS0
-$Comp
-L power:+3.3V #PWR098
-U 1 1 5C4FB85D
-P 9450 4600
-F 0 "#PWR098" H 9450 4450 50  0001 C CNN
-F 1 "+3.3V" H 9450 4740 50  0000 C CNN
-F 2 "" H 9450 4600 50  0001 C CNN
-F 3 "" H 9450 4600 50  0001 C CNN
-	1    9450 4600
-	-1   0    0    -1  
-$EndComp
 $Comp
 L power:GND #PWR099
 U 1 1 5C4FB90E
@@ -152,7 +137,6 @@ F 3 "" H 1150 1200 50  0001 C CNN
 	1    1150 1200
 	1    0    0    -1  
 $EndComp
-NoConn ~ 9750 5350
 NoConn ~ 9750 5850
 NoConn ~ 11450 6050
 NoConn ~ 6750 1200
@@ -366,17 +350,6 @@ F 3 "" H 4100 1450 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L Device:R R209
-U 1 1 5C6D9747
-P 9550 4900
-F 0 "R209" V 9630 4900 50  0000 C CNN
-F 1 "47K" V 9550 4900 50  0000 C CNN
-F 2 "Resistor_SMD:R_0603_1608Metric" V 9480 4900 50  0001 C CNN
-F 3 "" H 9550 4900 50  0001 C CNN
-	1    9550 4900
-	1    0    0    -1  
-$EndComp
-$Comp
 L power:+1V8 #PWR0112
 U 1 1 5C7053D3
 P 13700 3150
@@ -500,21 +473,11 @@ F 3 "" H 7250 6000 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
-	9300 5150 9550 5150
-Wire Wire Line
-	9300 5250 9750 5250
-Wire Wire Line
-	9300 5550 9750 5550
-Wire Wire Line
-	9300 5750 9750 5750
-Wire Wire Line
-	9450 5450 9750 5450
-Wire Wire Line
-	9450 4600 9450 4700
+	9050 5750 9750 5750
 Wire Wire Line
 	9750 5650 9650 5650
 Wire Wire Line
-	9650 5650 9650 5950
+	9650 5650 9650 5900
 Wire Wire Line
 	1600 950  1600 1000
 Wire Wire Line
@@ -642,14 +605,6 @@ Wire Wire Line
 	4100 1800 4100 2700
 Wire Wire Line
 	4100 1450 4100 1500
-Wire Wire Line
-	9550 4750 9550 4700
-Wire Wire Line
-	9550 4700 9450 4700
-Connection ~ 9450 4700
-Wire Wire Line
-	9550 5050 9550 5150
-Connection ~ 9550 5150
 Wire Wire Line
 	13500 3150 13500 3300
 Wire Wire Line
@@ -1914,10 +1869,6 @@ Wire Wire Line
 Wire Wire Line
 	9800 1500 9900 1500
 Wire Wire Line
-	9450 4700 9450 5450
-Wire Wire Line
-	9550 5150 9750 5150
-Wire Wire Line
 	13700 3300 13700 3400
 Wire Wire Line
 	13500 3300 13500 3400
@@ -2254,4 +2205,75 @@ Connection ~ 6350 800
 Wire Wire Line
 	6000 1300 6350 1300
 Connection ~ 6350 1300
+Wire Wire Line
+	9050 5550 9750 5550
+Wire Wire Line
+	9550 5250 9750 5250
+Connection ~ 9550 5250
+Wire Wire Line
+	9550 5150 9550 5250
+Wire Wire Line
+	9550 4800 9450 4800
+Wire Wire Line
+	9550 4850 9550 4800
+Wire Wire Line
+	9450 4700 9450 4800
+Wire Wire Line
+	9050 5350 9750 5350
+Wire Wire Line
+	9050 5250 9550 5250
+$Comp
+L Device:R R209
+U 1 1 5C6D9747
+P 9550 5000
+F 0 "R209" V 9630 5000 50  0000 C CNN
+F 1 "47K" V 9550 5000 50  0000 C CNN
+F 2 "Resistor_SMD:R_0603_1608Metric" V 9480 5000 50  0001 C CNN
+F 3 "" H 9550 5000 50  0001 C CNN
+	1    9550 5000
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:+3.3V #PWR098
+U 1 1 5C4FB85D
+P 9450 4700
+F 0 "#PWR098" H 9450 4550 50  0001 C CNN
+F 1 "+3.3V" H 9450 4840 50  0000 C CNN
+F 2 "" H 9450 4700 50  0001 C CNN
+F 3 "" H 9450 4700 50  0001 C CNN
+	1    9450 4700
+	-1   0    0    -1  
+$EndComp
+Text GLabel 9050 5250 0    55   Input ~ 0
+SPI1.SS0
+Text GLabel 9050 5350 0    55   Input ~ 0
+SPI1.MOSI
+Wire Wire Line
+	9750 5450 9450 5450
+Wire Wire Line
+	9450 5450 9450 4800
+Connection ~ 9450 4800
+NoConn ~ 9750 5150
+$Comp
+L Device:C C209
+U 1 1 5D9958BB
+P 9200 5000
+F 0 "C209" H 9200 5100 50  0000 L CNN
+F 1 "0.1uF" H 9200 4900 50  0000 L CNN
+F 2 "Capacitor_SMD:C_0603_1608Metric" H 9238 4850 50  0001 C CNN
+F 3 "~" H 9200 5000 50  0001 C CNN
+	1    9200 5000
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	9200 5150 9200 5900
+Wire Wire Line
+	9200 5900 9650 5900
+Connection ~ 9650 5900
+Wire Wire Line
+	9650 5900 9650 5950
+Wire Wire Line
+	9200 4850 9200 4800
+Wire Wire Line
+	9200 4800 9450 4800
 $EndSCHEMATC
