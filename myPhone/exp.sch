@@ -778,7 +778,7 @@ Text Label 12300 850  0    55   ~ 0
 VSYS12
 Wire Wire Line
 	12600 850  12300 850 
-Text GLabel 1300 1100 0    55   BiDi ~ 0
+Text GLabel 1300 1100 0    55   Output ~ 0
 ESP32.IO36
 Text GLabel 1300 1200 0    55   BiDi ~ 0
 ESP32.IO27

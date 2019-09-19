@@ -15,4 +15,5 @@
   (lib (name SODIMM-204)(type Legacy)(uri ${KIPRJMOD}/../library/SODIMM-204.lib)(options "")(descr ""))
   (lib (name ts3ddr)(type Legacy)(uri ${KIPRJMOD}/../library/ts3ddr.lib)(options "")(descr ""))
   (lib (name sn65)(type Legacy)(uri ${KIPRJMOD}/../library/sn65.lib)(options "")(descr ""))
+  (lib (name tmux)(type Legacy)(uri ${KIPRJMOD}/../library/tmux.lib)(options "")(descr ""))
 )

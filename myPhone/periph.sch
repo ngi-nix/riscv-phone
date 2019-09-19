@@ -38,7 +38,7 @@ SPI1.MISO
 Text GLabel 3800 6000 2    55   Input ~ 0
 SPI1.MOSI
 Text GLabel 4400 2000 2    55   BiDi ~ 0
-GPIO_21
+GPIO_20
 Text GLabel 4400 2300 2    55   BiDi ~ 0
 GPIO_22
 Text GLabel 1400 5100 0    55   Input ~ 0
@@ -321,10 +321,10 @@ F 3 "" H 9300 1100 50  0001 C CNN
 	1    9300 1100
 	1    0    0    -1  
 $EndComp
-Text GLabel 2100 2700 0    55   Output ~ 0
-ESP32.I2C0.SCL
+Text GLabel 2100 2700 0    55   Input ~ 0
+TMUX.I2C0.SCL
 Text GLabel 2100 2800 0    55   BiDi ~ 0
-ESP32.I2C0.SDA
+TMUX.I2C0.SDA
 Text GLabel 4400 3100 2    55   Output ~ 0
 WAKE
 $Comp
@@ -416,7 +416,7 @@ F 3 "" H 6350 1050 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 Text GLabel 2100 2200 0    55   Input ~ 0
-ESP32.BQ_INT
+ESP32.IO39
 $Comp
 L Device:Jumper_NC_Dual JP202
 U 1 1 5C769C25
@@ -683,9 +683,9 @@ Wire Wire Line
 Wire Wire Line
 	5900 5150 7100 5150
 Text GLabel 5700 5350 0    55   Input ~ 0
-ESP32.I2C0.SCL
+TMUX.I2C0.SCL
 Text GLabel 5700 5450 0    55   BiDi ~ 0
-ESP32.I2C0.SDA
+TMUX.I2C0.SDA
 Wire Wire Line
 	5700 5350 5950 5350
 Wire Wire Line
@@ -1164,9 +1164,9 @@ Wire Wire Line
 Text GLabel 1400 7650 0    55   BiDi ~ 0
 FT813.GPIO0
 Text GLabel 2900 10350 2    55   BiDi ~ 0
-ESP32.I2C0.SDA
+TMUX.I2C0.SDA
 Text GLabel 1350 10450 0    55   Input ~ 0
-ESP32.I2C0.SCL
+TMUX.I2C0.SCL
 Text GLabel 3400 8550 2    55   Input ~ 0
 SPI1.SCK
 Text GLabel 1400 8550 0    55   Output ~ 0
@@ -1693,7 +1693,7 @@ Text GLabel 2100 2900 0    55   BiDi ~ 0
 ESP32.IO27
 Wire Wire Line
 	2100 2900 2200 2900
-Text GLabel 2100 2100 0    55   BiDi ~ 0
+Text GLabel 2100 2100 0    55   Input ~ 0
 ESP32.IO36
 Wire Wire Line
 	2100 2100 2200 2100
