@@ -90,7 +90,7 @@ void eos_evtq_loop(void) {
             evtq_handler(cmd, buffer, len);
             clear_csr(mstatus, MSTATUS_MIE);
         } else {
-            asm volatile ("wfi");
+            // asm volatile ("wfi");
         }
         set_csr(mstatus, MSTATUS_MIE);
     }

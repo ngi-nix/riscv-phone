@@ -12,8 +12,8 @@
 #include "i2s_def.h"
 
 #define I2S_PWM_REG_CK      PWM0_REG
-#define I2S_PWM_REG_WS_SPK  PWM1_REG
-#define I2S_PWM_REG_WS_MIC  PWM2_REG
+#define I2S_PWM_REG_WS_MIC  PWM1_REG
+#define I2S_PWM_REG_WS_SPK  PWM2_REG
 
 #define EOS_ABUF_IDX_MASK(IDX, SIZE)  ((IDX) & ((SIZE) - 1))
 

@@ -10,7 +10,7 @@
 #define SPI_SIZE_CHUNK          4
 #define SPI_SIZE_WM             2
 
-#define SPI_PIN_RTS             21
+#define SPI_PIN_RTS             20
 #define SPI_PIN_CTS             22
 #define SPI_PIN_CS              10
 #define SPI_IDX_SS              3

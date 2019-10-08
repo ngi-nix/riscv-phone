@@ -2,16 +2,16 @@
 #define I2S_EVT_SPK             0x1
 #define I2S_MAX_HANDLER         2
 
-#define I2S_PIN_CK              1
-#define I2S_PIN_CK_SW           12
+#define I2S_PIN_CK              1       /* PWM 0.1 */
+#define I2S_PIN_CK_SW           21      /* PWM 1.2 */
 #define I2S_PIN_CK_SR           18
-#define I2S_PIN_WS_MIC          11
-#define I2S_PIN_WS_SPK          19
+#define I2S_PIN_WS_MIC          19      /* PWM 1.1 */
+#define I2S_PIN_WS_SPK          11      /* PWM 2.1 */
 #define I2S_PIN_SD_IN           13
-#define I2S_PIN_SD_OUT          20
+#define I2S_PIN_SD_OUT          12
 
-#define I2S_IRQ_WS_ID           (INT_PWM1_BASE + 0)
-#define I2S_IRQ_SD_ID           (INT_PWM1_BASE + 2)
+#define I2S_IRQ_WS_ID           (INT_PWM2_BASE + 0)
+#define I2S_IRQ_SD_ID           (INT_PWM2_BASE + 2)
 
 #define I2S_IRQ_WS_PRIORITY     6
 #define I2S_IRQ_SD_PRIORITY     7
