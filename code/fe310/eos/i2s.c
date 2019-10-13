@@ -77,14 +77,14 @@ static uint16_t _abuf_len(EOSABuf *buf) {
     return buf->idx_w - buf->idx_r;
 }
 
-static void audio_handler(unsigned char cmd, unsigned char *buffer, uint16_t len) {
-    cmd = cmd & ~EOS_EVT_MASK;
+static void audio_handler(unsigned char type, unsigned char *buffer, uint16_t len) {
+    type = type & ~EOS_EVT_MASK;
     
-    if (cmd < I2S_MAX_HANDLER) {
-        evt_handler[cmd](cmd, buffer, len);
-        _eos_i2s_evt_enable[cmd] = 1;
+    if (type < I2S_MAX_HANDLER) {
+        evt_handler[type](type, buffer, len);
+        _eos_i2s_evt_enable[type] = 1;
     } else {
-        eos_evtq_bad_handler(cmd, buffer, len);
+        eos_evtq_bad_handler(type, buffer, len);
     }
 }
 

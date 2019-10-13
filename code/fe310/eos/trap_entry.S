@@ -297,7 +297,7 @@ i2s_handler_sd_xchg:
   jal x20, evtq_push
   beqz x8, i2s_handler_sd_exit
   li x18, (EOS_EVT_AUDIO | I2S_EVT_MIC)
-  sb x18, MSGQ_ITEM_OFF_CMD(x8)
+  sb x18, MSGQ_ITEM_OFF_TYPE(x8)
 
 i2s_handler_sd_exit:
   # complete

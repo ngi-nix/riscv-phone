@@ -1,11 +1,15 @@
-#define EOS_NET_FLAG_BUF_FREE   0x1
-#define EOS_NET_FLAG_BUF_ACQ    0x2
+#define NET_SIZE_BUF            1500
+#define NET_SIZE_BUFQ           2
 
-#define EOS_NET_CMD_FLAG_ONEW   0x10
+#define NET_PIN_RTS             20
+#define NET_PIN_CTS             22
+#define NET_PIN_CS              10
+#define NET_IDX_SS              3
 
-#define EOS_NET_CMD_CONNECT     1
-#define EOS_NET_CMD_DISCONNECT  2
-#define EOS_NET_CMD_SCAN        3
-#define EOS_NET_CMD_PKT         4
+#define NET_FLAG_RDY            0x01
+#define NET_FLAG_RST            0x02
+#define NET_FLAG_RTS            0x04
+#define NET_FLAG_CTS            0x08
+#define NET_FLAG_INIT           0x10
+#define NET_FLAG_ONEW           0x20
 
-#define EOS_NET_MAX_CMD         8

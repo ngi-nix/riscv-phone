@@ -5,6 +5,6 @@
 #define MSGQ_OFF_ARRAY  4
 #define MSGQ_ITEM_SIZE  12
 
-#define MSGQ_ITEM_OFF_CMD   0
+#define MSGQ_ITEM_OFF_TYPE  0
 #define MSGQ_ITEM_OFF_BUF   4
 #define MSGQ_ITEM_OFF_SIZE  8

@@ -13,7 +13,12 @@ ecp_cts_t ecp_tm_abstime_ms(ecp_cts_t msec) {
     return now_ms + msec;
 }
 
-void ecp_tm_sleep_ms(ecp_cts_t msec) {}
+void ecp_tm_sleep_ms(ecp_cts_t msec) {
+    volatile uint64_t *mtime = (uint64_t *) (CLINT_CTRL_ADDR + CLINT_MTIME);
+    
+    uint64_t now_ms = *mtime * 1000 / RTC_FREQ;
+    while (*mtime * 1000 / RTC_FREQ < now_ms + msec);
+}
 
 void ecp_tm_timer_set(ecp_cts_t next) {
     uint32_t tick = next * (uint64_t)RTC_FREQ / 1000;

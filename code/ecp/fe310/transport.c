@@ -28,12 +28,12 @@ ssize_t ecp_tr_send(int *sock, ECPBuffer *packet, size_t msg_size, ECPNetAddr *a
     unsigned char *buf = NULL;
     size_t addr_len = sizeof(addr->host) + sizeof(addr->port);
     uint16_t buf_size = msg_size + addr_len;
-    unsigned char cmd = EOS_NET_CMD_PKT;
+    unsigned char type = EOS_NET_MTYPE_SOCK;
     int rv;
 
     flags |= _flags;
     if (flags & ECP_SEND_FLAG_MORE) {
-        cmd |= EOS_NET_CMD_FLAG_ONEW;
+        type |= EOS_NET_MTYPE_FLAG_ONEW;
     }
     if (flags & ECP_SEND_FLAG_REPLY) {
         if (packet && packet->buffer) {
@@ -47,7 +47,7 @@ ssize_t ecp_tr_send(int *sock, ECPBuffer *packet, size_t msg_size, ECPNetAddr *a
     if (buf == NULL) return ECP_ERR;
     memcpy(buf, addr->host, sizeof(addr->host));
     memcpy(buf+sizeof(addr->host), &addr->port, sizeof(addr->port));
-    rv = eos_net_send(cmd, buf, buf_size);
+    rv = eos_net_send(type, buf, buf_size);
     if (rv) return ECP_ERR_SEND;
     return msg_size;
 }
