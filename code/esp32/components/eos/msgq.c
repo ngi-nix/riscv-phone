@@ -4,7 +4,7 @@
 #include "eos.h"
 #include "msgq.h"
 
-#define EOS_MSGQ_IDX_MASK(IDX, SIZE)  ((IDX) & ((SIZE) - 1))
+#define EOS_MSGQ_IDX_MASK(IDX, SIZE)    ((IDX) & ((SIZE) - 1))
 
 void eos_msgq_init(EOSMsgQ *msgq, EOSMsgItem *array, uint8_t size) {
     msgq->idx_r = 0;
@@ -14,7 +14,7 @@ void eos_msgq_init(EOSMsgQ *msgq, EOSMsgItem *array, uint8_t size) {
 }
 
 int eos_msgq_push(EOSMsgQ *msgq, unsigned char cmd, unsigned char *buffer, uint16_t len) {
-    if (msgq->idx_w - msgq->idx_r == msgq->size) return EOS_ERR_Q_FULL;
+    if ((uint8_t)(msgq->idx_w - msgq->idx_r) == msgq->size) return EOS_ERR_Q_FULL;
 
     uint8_t idx = EOS_MSGQ_IDX_MASK(msgq->idx_w, msgq->size);
     msgq->array[idx].cmd = cmd;

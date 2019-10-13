@@ -266,8 +266,10 @@ i2s_handler_sd_xchg:
   lhu x18, I2S_ABUF_OFF_IDXR(x9)
   lhu x19, I2S_ABUF_OFF_IDXW(x9)
   lhu x20, I2S_ABUF_OFF_SIZE(x9)
+  li x21, 0xffff
 
   sub x18, x19, x18
+  and x18, x18, x21
   beq x18, x20, 0f
 
   addi x19, x19, 1

@@ -34,7 +34,7 @@ static void _abuf_init(EOSABuf *buf, uint8_t *array, uint16_t size) {
 }
 
 static int _abuf_push(EOSABuf *buf, uint8_t sample) {
-    if (buf->idx_w - buf->idx_r == buf->size) return EOS_ERR_Q_FULL;
+    if ((uint16_t)(buf->idx_w - buf->idx_r) == buf->size) return EOS_ERR_Q_FULL;
 
     buf->array[EOS_ABUF_IDX_MASK(buf->idx_w, buf->size)] = sample;
     buf->idx_w++;
@@ -66,7 +66,7 @@ static uint16_t _abuf_write(EOSABuf *buf, uint8_t *sample, uint16_t ssize) {
     uint16_t i;
 
     for (i=0; i<ssize; i++) {
-        if (buf->idx_w - buf->idx_r == buf->size) break;
+        if ((uint16_t)(buf->idx_w - buf->idx_r) == buf->size) break;
         buf->array[EOS_ABUF_IDX_MASK(buf->idx_w, buf->size)] = sample[i];
         buf->idx_w++;
     }
