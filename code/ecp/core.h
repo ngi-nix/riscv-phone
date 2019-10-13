@@ -101,12 +101,12 @@ typedef uint32_t ecp_ack_t;
 
 typedef uint32_t ecp_cts_t;
 #define ECP_CTS_HALF                ((ecp_cts_t)1 << (sizeof(ecp_cts_t) * 8 - 1))
-#define ECP_CTS_LT(a, b)            ((ecp_cts_t)((ecp_cts_t)(a) - (ecp_cts_t)(b)) > ECP_CTS_HALF)
+#define ECP_CTS_LT(a,b)             ((ecp_cts_t)((ecp_cts_t)(a) - (ecp_cts_t)(b)) > ECP_CTS_HALF)
 #define ECP_CTS_LTE(a,b)            ((ecp_cts_t)((ecp_cts_t)(b) - (ecp_cts_t)(a)) < ECP_CTS_HALF)
 
 typedef uint32_t ecp_pts_t;
 #define ECP_PTS_HALF                ((ecp_pts_t)1 << (sizeof(ecp_pts_t) * 8 - 1))
-#define ECP_PTS_LT(a, b)            ((ecp_pts_t)((ecp_pts_t)(a) - (ecp_pts_t)(b)) > ECP_PTS_HALF)
+#define ECP_PTS_LT(a,b)             ((ecp_pts_t)((ecp_pts_t)(a) - (ecp_pts_t)(b)) > ECP_PTS_HALF)
 #define ECP_PTS_LTE(a,b)            ((ecp_pts_t)((ecp_pts_t)(b) - (ecp_pts_t)(a)) < ECP_PTS_HALF)
 
 typedef uint32_t ecp_seq_t;
