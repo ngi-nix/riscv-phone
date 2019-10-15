@@ -54,7 +54,7 @@ void handle_m_time_interrupt(void) {
 
 void eos_timer_init(void) {
     int i;
-    volatile uint64_t *mtimecmp = (uint64_t *) (CLINT_CTRL_ADDR + CLINT_MTIMECMP);
+    uint64_t *mtimecmp = (uint64_t *) (CLINT_CTRL_ADDR + CLINT_MTIMECMP);
 
     clear_csr(mie, MIP_MTIP);
     *mtimecmp = 0;
@@ -65,16 +65,30 @@ void eos_timer_init(void) {
     eos_evtq_set_handler(EOS_EVT_TIMER, timer_handler_evt);
 }
 
-void eos_timer_set(uint32_t tick, unsigned char evt) {
+uint64_t eos_timer_get(unsigned char evt) {
+    uint64_t *mtimecmp = (uint64_t *) (CLINT_CTRL_ADDR + CLINT_MTIMECMP);
+    uint64_t ret = 0;
+
+    if (evt && (evt <= EOS_TIMER_MAX_ETYPE)) {
+        evt--;
+    } else if (evt == 0) {
+        evt = EOS_TIMER_MAX_ETYPE;
+    } else {
+        return 0;
+    }
+
+    clear_csr(mie, MIP_MTIP);
+    ret = timer_next[evt];
+    if (*mtimecmp != 0) set_csr(mie, MIP_MTIP);
+
+    return ret;
+}
+
+void eos_timer_set(uint64_t tick, unsigned char evt, unsigned char b) {
     int i;
-    volatile uint64_t *mtime = (uint64_t *) (CLINT_CTRL_ADDR + CLINT_MTIME);
     uint64_t *mtimecmp = (uint64_t *) (CLINT_CTRL_ADDR + CLINT_MTIMECMP);
     uint64_t next = 0;
-    uint64_t now;
     
-    clear_csr(mie, MIP_MTIP);
-
-    now = *mtime;
     if (evt && (evt <= EOS_TIMER_MAX_ETYPE)) {
         evt--;
     } else if (evt == 0) {
@@ -82,12 +96,15 @@ void eos_timer_set(uint32_t tick, unsigned char evt) {
     } else {
         return;
     }
-    if ((timer_next[evt] == 0) || (now + tick < timer_next[evt])) timer_next[evt] = now + tick;
-    for (i = 0; i <= EOS_TIMER_MAX_ETYPE; i++) {
-        next = next && timer_next[i] ? MIN(next, timer_next[i]) : (next ? next : timer_next[i]);
-    }
-    *mtimecmp = next;
 
+    clear_csr(mie, MIP_MTIP);
+    if (!b || (timer_next[evt] == 0) || (tick < timer_next[evt])) {
+        timer_next[evt] = tick;
+        for (i = 0; i <= EOS_TIMER_MAX_ETYPE; i++) {
+            next = next && timer_next[i] ? MIN(next, timer_next[i]) : (next ? next : timer_next[i]);
+        }
+        *mtimecmp = next;
+    }
     if (*mtimecmp != 0) set_csr(mie, MIP_MTIP);
 }
 
@@ -96,8 +113,6 @@ void eos_timer_clear(unsigned char evt) {
     uint64_t *mtimecmp = (uint64_t *) (CLINT_CTRL_ADDR + CLINT_MTIMECMP);
     uint64_t next = 0;
 
-    clear_csr(mie, MIP_MTIP);
-
     if (evt && (evt <= EOS_TIMER_MAX_ETYPE)) {
         evt--;
     } else if (evt == 0) {
@@ -105,20 +120,21 @@ void eos_timer_clear(unsigned char evt) {
     } else {
         return;
     }
-    timer_next[evt] = 0;
-    for (i = 0; i <= EOS_TIMER_MAX_ETYPE; i++) {
-        next = next && timer_next[i] ? MIN(next, timer_next[i]) : (next ? next : timer_next[i]);
-    }
-    *mtimecmp = next;
 
+    clear_csr(mie, MIP_MTIP);
+    if (timer_next[evt]) {
+        timer_next[evt] = 0;
+        for (i = 0; i <= EOS_TIMER_MAX_ETYPE; i++) {
+            next = next && timer_next[i] ? MIN(next, timer_next[i]) : (next ? next : timer_next[i]);
+        }
+        *mtimecmp = next;
+    }
     if (*mtimecmp != 0) set_csr(mie, MIP_MTIP);
 }
 
 void eos_timer_set_handler(unsigned char evt, eos_timer_fptr_t handler, uint8_t flags) {
     uint64_t *mtimecmp = (uint64_t *) (CLINT_CTRL_ADDR + CLINT_MTIMECMP);
 
-    clear_csr(mie, MIP_MTIP);
-    
     if (evt && (evt <= EOS_TIMER_MAX_ETYPE)) {
         evt--;
     } else if (evt == 0) {
@@ -126,8 +142,10 @@ void eos_timer_set_handler(unsigned char evt, eos_timer_fptr_t handler, uint8_t 
     } else {
         return;
     }
-    timer_handler[evt] = handler;
-    if (flags) eos_evtq_set_flags(EOS_EVT_TIMER | evt, flags);
 
+    clear_csr(mie, MIP_MTIP);
+    timer_handler[evt] = handler;
     if (*mtimecmp != 0) set_csr(mie, MIP_MTIP);
+
+    if ((evt != EOS_TIMER_MAX_ETYPE) && flags) eos_evtq_set_flags(EOS_EVT_TIMER | evt + 1, flags);
 }

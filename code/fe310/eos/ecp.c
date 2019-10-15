@@ -16,8 +16,9 @@ static ECPSocket *_sock = NULL;
 static void timer_handler(unsigned char type) {
     ecp_cts_t next = ecp_timer_exe(_sock);
     if (next) {
-        uint32_t tick = next * (uint64_t)RTC_FREQ / 1000;
-        eos_timer_set(tick, EOS_TIMER_ETYPE_ECP);
+        volatile uint64_t *mtime = (uint64_t *) (CLINT_CTRL_ADDR + CLINT_MTIME);
+        uint64_t tick = *mtime + next * (uint64_t)RTC_FREQ / 1000;
+        eos_timer_set(tick, EOS_TIMER_ETYPE_ECP, 0);
     }
 }
 

@@ -8,5 +8,7 @@
 typedef void (*eos_timer_fptr_t) (unsigned char);
 
 void eos_timer_init(void);
-void eos_timer_set(uint32_t tick, unsigned char evt);
+uint64_t eos_timer_get(unsigned char evt);
+void eos_timer_set(uint64_t tick, unsigned char evt, unsigned char b);
+void eos_timer_clear(unsigned char evt);
 void eos_timer_set_handler(unsigned char evt, eos_timer_fptr_t handler, uint8_t flags);
