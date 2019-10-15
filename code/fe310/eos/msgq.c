@@ -42,13 +42,13 @@ void eos_msgq_pop(EOSMsgQ *msgq, unsigned char *type, unsigned char **buffer, ui
     }
 }
 
-void eos_msgq_get(EOSMsgQ *msgq, unsigned char type, unsigned char *selector, uint16_t sel_len, unsigned char **buffer, uint16_t *len) {
+int eos_msgq_get(EOSMsgQ *msgq, unsigned char type, unsigned char *selector, uint16_t sel_len, unsigned char **buffer, uint16_t *len) {
     uint8_t i, j, idx;
     
     if (msgq->idx_r == msgq->idx_w) {
         *buffer = NULL;
         *len = 0;
-        return;
+        return 0;
     }
 
     idx = EOS_MSGQ_IDX_MASK(msgq->idx_r, msgq->size);
@@ -57,7 +57,7 @@ void eos_msgq_get(EOSMsgQ *msgq, unsigned char type, unsigned char *selector, ui
         *len = msgq->array[idx].len;
         if ((selector == NULL) || (sel_len == 0) || ((sel_len <= *len) && (memcmp(selector, *buffer, sel_len) == 0))) {
             msgq->idx_r++;
-            return;
+            return 1;
         }
     }
     for (i = msgq->idx_r + 1; EOS_MSGQ_IDX_LT(i, msgq->idx_w); i++) {
@@ -70,11 +70,12 @@ void eos_msgq_get(EOSMsgQ *msgq, unsigned char type, unsigned char *selector, ui
                     msgq->array[EOS_MSGQ_IDX_MASK(j - 1, msgq->size)] = msgq->array[EOS_MSGQ_IDX_MASK(j, msgq->size)];
                 }
                 msgq->idx_w--;
-                return;
+                return 1;
             }
         }
     }
     *buffer = NULL;
     *len = 0;
+    return 0;
 }
 
