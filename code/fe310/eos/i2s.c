@@ -22,9 +22,13 @@ EOSABuf _eos_i2s_spk_buf;
 uint32_t _eos_i2s_ck_period = 0;
 uint32_t _eos_i2s_mic_volume = 0;
 uint32_t _eos_i2s_spk_volume = 0;
-static eos_evt_fptr_t evt_handler[I2S_MAX_HANDLER];
-uint32_t _eos_i2s_evt_enable[I2S_MAX_HANDLER];
-uint32_t _eos_i2s_wm[I2S_MAX_HANDLER];
+uint32_t _eos_i2s_mic_wm;
+uint32_t _eos_i2s_spk_wm;
+uint32_t _eos_i2s_mic_evt_enable;
+uint32_t _eos_i2s_spk_evt_enable;
+
+static eos_evt_fptr_t spk_evt_handler;
+static eos_evt_fptr_t mic_evt_handler;
 
 static void _abuf_init(EOSABuf *buf, uint8_t *array, uint16_t size) {
     buf->idx_r = 0;
@@ -77,14 +81,23 @@ static uint16_t _abuf_len(EOSABuf *buf) {
     return buf->idx_w - buf->idx_r;
 }
 
-static void audio_handler(unsigned char type, unsigned char *buffer, uint16_t len) {
-    type = type & ~EOS_EVT_MASK;
-    
-    if (type < I2S_MAX_HANDLER) {
-        evt_handler[type](type, buffer, len);
-        _eos_i2s_evt_enable[type] = 1;
-    } else {
-        eos_evtq_bad_handler(type, buffer, len);
+static void i2s_handler_evt(unsigned char type, unsigned char *buffer, uint16_t len) {
+    switch(type & ~EOS_EVT_MASK) {
+        case I2S_ETYPE_MIC:
+            mic_evt_handler(type, buffer, len);
+            clear_csr(mstatus, MSTATUS_MIE);
+            _eos_i2s_mic_evt_enable = 1;
+            set_csr(mstatus, MSTATUS_MIE);
+            break;
+        case I2S_ETYPE_SPK:
+            spk_evt_handler(type, buffer, len);
+            clear_csr(mstatus, MSTATUS_MIE);
+            _eos_i2s_spk_evt_enable = 1;
+            set_csr(mstatus, MSTATUS_MIE);
+            break;
+        default:
+            eos_evtq_bad_handler(type, buffer, len);
+            break;
     }
 }
 
@@ -144,24 +157,22 @@ void eos_i2s_init(uint32_t sample_rate) {
     I2S_PWM_REG_WS_SPK(PWM_CMP1)    = (_eos_i2s_ck_period + 1) * 32;
     I2S_PWM_REG_WS_SPK(PWM_CMP2)    = (_eos_i2s_ck_period + 1) * 33;
 
-    _eos_i2s_evt_enable[I2S_EVT_MIC] = 0;
-    _eos_i2s_evt_enable[I2S_EVT_SPK] = 0;
-    evt_handler[I2S_EVT_MIC] = NULL;
-    evt_handler[I2S_EVT_SPK] = NULL;
+    _eos_i2s_mic_evt_enable = 0;
+    _eos_i2s_spk_evt_enable = 0;
+    mic_evt_handler = eos_evtq_bad_handler;
+    spk_evt_handler = eos_evtq_bad_handler;
     
     eos_intr_set(I2S_IRQ_WS_ID, 0, NULL);
     eos_intr_set(I2S_IRQ_SD_ID, 0, NULL);
-    for (i=0; i<I2S_MAX_HANDLER; i++) {
-        evt_handler[i] = eos_evtq_bad_handler;
-    }
-    eos_evtq_set_handler(EOS_EVT_AUDIO, audio_handler, EOS_EVT_FLAG_NET_BUF_ACQ);
+    eos_evtq_set_handler(EOS_EVT_AUDIO, i2s_handler_evt);
+    eos_evtq_set_flags(EOS_EVT_AUDIO | I2S_ETYPE_MIC, EOS_EVT_FLAG_NET_BUF_ACQ);
 }
 
 extern void _eos_set_pwm(void);
 
 void eos_i2s_start(void) {
-    _eos_i2s_evt_enable[I2S_EVT_MIC] = 1;
-    _eos_i2s_evt_enable[I2S_EVT_SPK] = 1;
+    _eos_i2s_mic_evt_enable = 1;
+    _eos_i2s_spk_evt_enable = 1;
     
     eos_intr_set_priority(I2S_IRQ_WS_ID, I2S_IRQ_WS_PRIORITY);
 
@@ -229,13 +240,13 @@ void eos_i2s_mic_init(uint8_t *mic_arr, uint16_t mic_arr_size) {
 
 void eos_i2s_mic_set_handler(eos_evt_fptr_t wm_handler) {
     clear_csr(mstatus, MSTATUS_MIE);
-    evt_handler[I2S_EVT_MIC] = wm_handler;
+    mic_evt_handler = wm_handler;
     set_csr(mstatus, MSTATUS_MIE);
 }
 
 void eos_i2s_mic_set_wm(uint16_t wm) {
     clear_csr(mstatus, MSTATUS_MIE);
-    _eos_i2s_wm[I2S_EVT_MIC] = wm;
+    _eos_i2s_mic_wm = wm;
     set_csr(mstatus, MSTATUS_MIE);
     
 }
@@ -281,13 +292,13 @@ void eos_i2s_spk_init(uint8_t *spk_arr, uint16_t spk_arr_size) {
 
 void eos_i2s_spk_set_handler(eos_evt_fptr_t wm_handler) {
     clear_csr(mstatus, MSTATUS_MIE);
-    evt_handler[I2S_EVT_SPK] = wm_handler;
+    spk_evt_handler = wm_handler;
     set_csr(mstatus, MSTATUS_MIE);
 }
 
 void eos_i2s_spk_set_wm(uint16_t wm) {
     clear_csr(mstatus, MSTATUS_MIE);
-    _eos_i2s_wm[I2S_EVT_SPK] = wm;
+    _eos_i2s_spk_wm = wm;
     set_csr(mstatus, MSTATUS_MIE);
 }
 

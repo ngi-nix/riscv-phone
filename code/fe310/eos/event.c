@@ -13,8 +13,8 @@ EOSMsgQ _eos_event_q;
 static EOSMsgItem event_q_array[EOS_EVT_SIZE_Q];
 
 static eos_evt_fptr_t evt_handler[EOS_EVT_MAX_EVT];
-static uint16_t evt_handler_wrapper_acq = 0;
-static uint16_t evt_handler_flags_buf_acq = 0;
+static uint16_t evt_handler_wrapper_acq[EOS_EVT_MAX_EVT];
+static uint16_t evt_handler_flags_buf_acq[EOS_EVT_MAX_EVT];
 
 void eos_evtq_init(void) {
     int i;
@@ -42,38 +42,48 @@ void eos_evtq_bad_handler(unsigned char type, unsigned char *buffer, uint16_t le
     write(1, "error\n", 6);
 }
 
-static void evtq_handler_wrapper(unsigned char type, unsigned char *buffer, uint16_t len, uint16_t *flags_acq, uint16_t flag, eos_evt_fptr_t f) {
-    int ok = eos_net_acquire(*flags_acq & flag);
+static void evtq_handler_wrapper(unsigned char type, unsigned char *buffer, uint16_t len) {
+    unsigned char idx = ((type & EOS_EVT_MASK) >> 4) - 1;
+    uint16_t flag = (uint16_t)1 << ((type & ~EOS_EVT_MASK) - 1);
+    int ok;
+    
+    ok = eos_net_acquire(evt_handler_wrapper_acq[idx] & flag);
     if (ok) {
-        f(type, buffer, len);
+        evt_handler[idx](type, buffer, len);
         eos_net_release();
-        *flags_acq &= ~flag;
+        evt_handler_wrapper_acq[idx] &= ~flag;
     } else {
-        *flags_acq |= flag;
+        evt_handler_wrapper_acq[idx] |= flag;
         eos_evtq_push(type, buffer, len);
     }
 }
 
 static void evtq_handler(unsigned char type, unsigned char *buffer, uint16_t len) {
-    if (((type & EOS_EVT_MASK) >> 4) > EOS_EVT_MAX_EVT) {
+    unsigned char idx = ((type & EOS_EVT_MASK) >> 4) - 1;
+    uint16_t flag = (uint16_t)1 << ((type & ~EOS_EVT_MASK) - 1);
+    
+    if (idx >= EOS_EVT_MAX_EVT) {
         eos_evtq_bad_handler(type, buffer, len);
+        return;
+    }
+    if (flag & evt_handler_flags_buf_acq[idx]) {
+        evtq_handler_wrapper(type, buffer, len);
     } else {
-        unsigned char idx = ((type & EOS_EVT_MASK) >> 4) - 1;
-        uint16_t flag = (uint16_t)1 << idx;
-        if (flag & evt_handler_flags_buf_acq) {
-            evtq_handler_wrapper(type, buffer, len, &evt_handler_wrapper_acq, flag, evt_handler[idx]);
-        } else {
-            evt_handler[idx](type, buffer, len);
-        }
+        evt_handler[idx](type, buffer, len);
     }
 }
 
-void eos_evtq_set_handler(unsigned char type, eos_evt_fptr_t handler, uint8_t flags) {
-    if (flags) {
-        uint16_t flag = (uint16_t)1 << (((type & EOS_EVT_MASK) >> 4) - 1);
-        if (flags & EOS_EVT_FLAG_NET_BUF_ACQ) evt_handler_flags_buf_acq |= flag;
-    }
-    evt_handler[((type & EOS_EVT_MASK) >> 4) - 1] = handler;
+void eos_evtq_set_handler(unsigned char type, eos_evt_fptr_t handler) {
+    unsigned char idx = ((type & EOS_EVT_MASK) >> 4) - 1;
+    
+    if (idx < EOS_EVT_MAX_EVT) evt_handler[idx] = handler;
+}
+
+void eos_evtq_set_flags(unsigned char type, uint8_t flags) {
+    unsigned char idx = ((type & EOS_EVT_MASK) >> 4) - 1;
+    uint16_t flag = type & ~EOS_EVT_MASK ? (uint16_t)1 << ((type & ~EOS_EVT_MASK) - 1) : 0xFFFF;
+
+    if ((idx < EOS_EVT_MAX_EVT) && (flags & EOS_EVT_FLAG_NET_BUF_ACQ)) evt_handler_flags_buf_acq[idx] |= flag;
 }
 
 void eos_evtq_loop(void) {

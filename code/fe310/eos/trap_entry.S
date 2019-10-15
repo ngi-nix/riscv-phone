@@ -75,25 +75,26 @@ evtq_push:
   la x9, _eos_event_q
   lbu x18, MSGQ_OFF_IDXR(x9)
   lbu x19, MSGQ_OFF_IDXW(x9)
-  lbu x8, MSGQ_OFF_SIZE(x9)
-
+  lbu x20, MSGQ_OFF_SIZE(x9)
+  
   sub x18, x19, x18
-  beq x18, x8, 0f
+  andi x18, x18, 0xff
+  beq x18, x20, 0f
 
-  addi x8, x8, -1
-  and x8, x8, x19
+  addi x20, x20, -1
+  and x20, x20, x19
   li x18, MSGQ_ITEM_SIZE
-  mul x8, x8, x18
-  lw x18, MSGQ_OFF_ARRAY(x9)
-  add x8, x8, x18
+  mul x20, x20, x18
+  lw x21, MSGQ_OFF_ARRAY(x9)
+  add x21, x21, x20
 
   addi x19, x19, 1
   sb x19, MSGQ_OFF_IDXW(x9)
-  jalr x0, x20
+  jalr x0, x22
 
 0:
-  mv x8, x0
-  jalr x0, x20
+  mv x20, x0
+  jalr x0, x21
 
 i2s_handler_sd:
   # exit if too early
@@ -111,18 +112,41 @@ i2s_handler_sd:
   la x9, _eos_i2s_spk_buf
   lhu x18, I2S_ABUF_OFF_IDXR(x9)
   lhu x19, I2S_ABUF_OFF_IDXW(x9)
-  beq x18, x19, i2s_handler_sd_xchg
-  lhu x19, I2S_ABUF_OFF_SIZE(x9)
+  lhu x20, I2S_ABUF_OFF_SIZE(x9)
 
-  addi x19, x19, -1
-  and x19, x19, x18
-  lw x8, I2S_ABUF_OFF_ARRAY(x9)
-  add x19, x19, x8
-  lbu x8, 0(x19)
+  beq x18, x19, i2s_handler_sd_xchg
+
+  addi x20, x20, -1
+  and x20, x20, x18
+  lw x21, I2S_ABUF_OFF_ARRAY(x9)
+  add x21, x21, x20
+  lbu x8, 0(x21)
 
   addi x18, x18, 1
   sh x18, I2S_ABUF_OFF_IDXR(x9)
+  
+  li x21, 0xffff
+  sub x18, x19, x18
+  and x18, x18, x21
+  
+  # check for push to event queue
+  la x9, _eos_i2s_spk_wm
+  lw x20, 0(x9)
+  beqz x20, i2s_decode
+  bgtu x18, x20, i2s_decode
 
+  la x9, _eos_i2s_spk_evt_enable
+  lw x18, 0(x9)
+  beqz x18, i2s_decode
+  sw x0, 0(x9)
+
+  # push to event queue
+  jal x22, evtq_push
+  beqz x21, i2s_decode
+  li x18, (EOS_EVT_AUDIO | I2S_ETYPE_SPK)
+  sb x18, MSGQ_ITEM_OFF_TYPE(x21)
+ 
+i2s_decode:
   # aLaw decode -> x8
   xori x8, x8, 0x55
   andi x9, x8, 0x80
@@ -231,6 +255,7 @@ i2s_handler_sd_xchg:
   and x9, x9, x20
   sw x9, GPIO_OUTPUT_EN(x18)
 
+i2s_encode:
   # aLaw encode -> x8
   li x18, 0x800
   li x19, 7
@@ -270,36 +295,35 @@ i2s_handler_sd_xchg:
 
   sub x18, x19, x18
   and x18, x18, x21
-  beq x18, x20, 0f
+  beq x18, x20, i2s_handler_sd_exit
+
+  addi x20, x20, -1
+  and x20, x20, x19
+  lw x21, I2S_ABUF_OFF_ARRAY(x9)
+  add x20, x21, x20
 
   addi x19, x19, 1
   sh x19, I2S_ABUF_OFF_IDXW(x9)
 
-  addi x20, x20, -1
-  and x20, x20, x19
-  lw x19, I2S_ABUF_OFF_ARRAY(x9)
-  add x20, x19, x20
-
   sb x8, 0(x20)
   addi x18, x18, 1
 
-0:
   # check for push to event queue
-  la x9, _eos_i2s_wm
+  la x9, _eos_i2s_mic_wm
   lw x20, 0(x9)
   beqz x20, i2s_handler_sd_exit
   bltu x18, x20, i2s_handler_sd_exit
 
-  la x9, _eos_i2s_evt_enable
+  la x9, _eos_i2s_mic_evt_enable
   lw x18, 0(x9)
   beqz x18, i2s_handler_sd_exit
   sw x0, 0(x9)
 
   # push to event queue
-  jal x20, evtq_push
-  beqz x8, i2s_handler_sd_exit
-  li x18, (EOS_EVT_AUDIO | I2S_EVT_MIC)
-  sb x18, MSGQ_ITEM_OFF_TYPE(x8)
+  jal x22, evtq_push
+  beqz x21, i2s_handler_sd_exit
+  li x18, (EOS_EVT_AUDIO | I2S_ETYPE_MIC)
+  sb x18, MSGQ_ITEM_OFF_TYPE(x21)
 
 i2s_handler_sd_exit:
   # complete

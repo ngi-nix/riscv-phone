@@ -1,6 +1,5 @@
-#define I2S_EVT_MIC             0x0
-#define I2S_EVT_SPK             0x1
-#define I2S_MAX_HANDLER         2
+#define I2S_ETYPE_MIC           1
+#define I2S_ETYPE_SPK           2
 
 #define I2S_PIN_CK              1       /* PWM 0.1 */
 #define I2S_PIN_CK_SW           21      /* PWM 1.2 */

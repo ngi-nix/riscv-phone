@@ -217,32 +217,38 @@ static void net_handler_rts(void) {
 }
 
 static void net_handler_evt(unsigned char type, unsigned char *buffer, uint16_t len) {
-    if ((type & ~EOS_EVT_MASK) > EOS_NET_MAX_MTYPE) {
+    unsigned char idx = (type & ~EOS_EVT_MASK) - 1;
+    uint16_t buf_free = ((uint16_t)1 << idx) & evt_handler_flags_buf_free;
+    uint16_t buf_acq = ((uint16_t)1 << idx) & evt_handler_flags_buf_acq;
+
+    if (idx >= EOS_NET_MAX_MTYPE) {
         eos_evtq_bad_handler(type, buffer, len);
-    } else {
-        unsigned char idx = (type & ~EOS_EVT_MASK) - 1;
-        uint16_t buf_free = ((uint16_t)1 << idx) & evt_handler_flags_buf_free;
-        uint16_t buf_acq = ((uint16_t)1 << idx) & evt_handler_flags_buf_acq;
-
-        if (buf_free) {
-            eos_net_free(buffer, buf_acq);
-            buffer = NULL;
-            len = 0;
-        }
-
-        evt_handler[idx](type, buffer, len);
-
-        if (buf_free && buf_acq) eos_net_release();
+        eos_net_free(buffer, 0);
+        return;
     }
+    if (buf_free) {
+        eos_net_free(buffer, buf_acq);
+        buffer = NULL;
+        len = 0;
+    }
+
+    evt_handler[idx](type, buffer, len);
+
+    if (buf_free && buf_acq) eos_net_release();
 }
 
-void eos_net_set_handler(unsigned char type, eos_evt_fptr_t handler, uint8_t flags) {
+void eos_net_set_handler(unsigned char mtype, eos_evt_fptr_t handler, uint8_t flags) {
+    if (mtype && (mtype <= EOS_NET_MAX_MTYPE)) {
+        mtype--;
+    } else {
+        return;
+    }
     if (flags) {
-        uint16_t flag = (uint16_t)1 << ((type & ~EOS_EVT_MASK) - 1);
+        uint16_t flag = (uint16_t)1 << mtype;
         if (flags & EOS_NET_FLAG_BUF_FREE) evt_handler_flags_buf_free |= flag;
         if (flags & EOS_NET_FLAG_BUF_ACQ) evt_handler_flags_buf_acq |= flag;
     }
-    evt_handler[(type & ~EOS_EVT_MASK) - 1] = handler;
+    evt_handler[mtype] = handler;
 }
 
 void eos_net_init(void) {
@@ -275,7 +281,7 @@ void eos_net_init(void) {
     for (i=0; i<EOS_NET_MAX_MTYPE; i++) {
         evt_handler[i] = eos_evtq_bad_handler;
     }
-    eos_evtq_set_handler(EOS_EVT_NET, net_handler_evt, 0);
+    eos_evtq_set_handler(EOS_EVT_NET, net_handler_evt);
 }
 
 void eos_net_start(uint32_t sckdiv) {

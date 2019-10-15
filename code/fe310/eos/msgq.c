@@ -1,4 +1,5 @@
 #include <stddef.h>
+#include <string.h>
 
 #include "eos.h"
 #include "msgq.h"
@@ -41,34 +42,36 @@ void eos_msgq_pop(EOSMsgQ *msgq, unsigned char *type, unsigned char **buffer, ui
     }
 }
 
-void eos_msgq_get(EOSMsgQ *msgq, unsigned char type, unsigned char **buffer, uint16_t *len) {
+void eos_msgq_get(EOSMsgQ *msgq, unsigned char type, unsigned char *selector, uint16_t sel_len, unsigned char **buffer, uint16_t *len) {
+    uint8_t i, j, idx;
+    
     if (msgq->idx_r == msgq->idx_w) {
         *buffer = NULL;
         *len = 0;
         return;
     }
-    
-    uint8_t idx = EOS_MSGQ_IDX_MASK(msgq->idx_r, msgq->size);
-    unsigned char _type = msgq->array[idx].type;
-    EOSMsgItem *tmp_item = &msgq->array[idx];
-    
-    *buffer = msgq->array[idx].buffer;
-    *len = msgq->array[idx].len;
-    if (_type == type) {
-        msgq->idx_r++;
-        return;
-    }
-    for (idx = msgq->idx_r + 1; EOS_MSGQ_IDX_LT(idx, msgq->idx_w); idx++) {
-        *tmp_item = msgq->array[EOS_MSGQ_IDX_MASK(idx, msgq->size)];
-        msgq->array[EOS_MSGQ_IDX_MASK(idx, msgq->size)].type = _type;
-        msgq->array[EOS_MSGQ_IDX_MASK(idx, msgq->size)].buffer = *buffer;
-        msgq->array[EOS_MSGQ_IDX_MASK(idx, msgq->size)].len = *len;
-        _type = tmp_item->type;
-        *buffer = tmp_item->buffer;
-        *len = tmp_item->len;
-        if (_type == type) {
+
+    idx = EOS_MSGQ_IDX_MASK(msgq->idx_r, msgq->size);
+    if (type == msgq->array[idx].type) {
+        *buffer = msgq->array[idx].buffer;
+        *len = msgq->array[idx].len;
+        if ((selector == NULL) || (sel_len == 0) || ((sel_len <= *len) && (memcmp(selector, *buffer, sel_len) == 0))) {
             msgq->idx_r++;
             return;
+        }
+    }
+    for (i = msgq->idx_r + 1; EOS_MSGQ_IDX_LT(i, msgq->idx_w); i++) {
+        idx = EOS_MSGQ_IDX_MASK(i, msgq->size);
+        if (type== msgq->array[idx].type) {
+            *buffer = msgq->array[idx].buffer;
+            *len = msgq->array[idx].len;
+            if ((selector == NULL) || (sel_len == 0) || ((sel_len <= *len) && (memcmp(selector, *buffer, sel_len) == 0))) {
+                for (j = i + 1; EOS_MSGQ_IDX_LT(j, msgq->idx_w); j++) {
+                    msgq->array[EOS_MSGQ_IDX_MASK(j - 1, msgq->size)] = msgq->array[EOS_MSGQ_IDX_MASK(j, msgq->size)];
+                }
+                msgq->idx_w--;
+                return;
+            }
         }
     }
     *buffer = NULL;

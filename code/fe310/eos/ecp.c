@@ -13,11 +13,11 @@
 
 static ECPSocket *_sock = NULL;
 
-static void timer_handler(unsigned char type, unsigned char *buffer, uint16_t len) {
+static void timer_handler(unsigned char type) {
     ecp_cts_t next = ecp_timer_exe(_sock);
     if (next) {
         uint32_t tick = next * (uint64_t)RTC_FREQ / 1000;
-        eos_timer_set(tick, 1);
+        eos_timer_set(tick, EOS_TIMER_ETYPE_ECP);
     }
 }
 
@@ -59,8 +59,8 @@ int ecp_init(ECPContext *ctx) {
     rv = ecp_ctx_create_vconn(ctx);
     if (rv) return rv;
     
+    eos_timer_set_handler(EOS_TIMER_ETYPE_ECP, timer_handler, EOS_EVT_FLAG_NET_BUF_ACQ);
     /* XXX */
-    eos_evtq_set_handler(EOS_EVT_TIMER, timer_handler, EOS_EVT_FLAG_NET_BUF_ACQ);
     // eos_net_set_handler(EOS_NET_DATA_PKT, packet_handler, 0);
     return ECP_OK;
 }
