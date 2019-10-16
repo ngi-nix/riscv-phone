@@ -370,8 +370,8 @@ i2s_handler_ws:
   # exit
   j trap_exit_data
 
-.global _eos_set_pwm
-_eos_set_pwm:
+.global _eos_i2s_start_pwm
+_eos_i2s_start_pwm:
   addi sp, sp, -8*REGBYTES
   STORE x8, 0*REGBYTES(sp)
   STORE x9, 1*REGBYTES(sp)

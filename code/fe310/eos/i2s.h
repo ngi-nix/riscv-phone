@@ -12,10 +12,9 @@ typedef struct EOSABuf {
 
 typedef void (*eos_i2s_fptr_t) (unsigned char);
 
-void eos_i2s_init(uint32_t sample_rate);
-void eos_i2s_start(void);
+void eos_i2s_init(void);
+void eos_i2s_start(uint32_t sample_rate, unsigned char fmt);
 void eos_i2s_stop(void);
-void eos_i2s_set_fmt(unsigned char fmt);
 void eos_i2s_mic_init(uint8_t *mic_arr, uint16_t mic_arr_size);
 void eos_i2s_mic_set_handler(eos_i2s_fptr_t wm_handler);
 void eos_i2s_mic_set_wm(uint16_t wm);
