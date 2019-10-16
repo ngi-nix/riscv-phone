@@ -19,7 +19,6 @@
 
 #define I2S_PWM_SCALE_CK        2
 #define I2S_PWM_SCALE_CK_MASK   0x0003
-#define I2S_ABUF_SIZE_CHUNK     16
 
 /* asm */
 #define I2S_ABUF_OFF_IDXR       0
