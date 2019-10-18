@@ -12,6 +12,7 @@
 #include "net.h"
 #include "spi.h"
 #include "spi_def.h"
+#include "irq_def.h"
 
 #define MIN(X, Y)               (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y)               (((X) > (Y)) ? (X) : (Y))
@@ -89,7 +90,7 @@ void eos_spi_init(void) {
     // There is no way here to change the CS polarity.
     // SPI1_REG(SPI_REG_CSDEF) = 0xFFFF;
 
-    eos_intr_set(INT_SPI1_BASE, 5, NULL);
+    eos_intr_set(INT_SPI1_BASE, IRQ_PRIORITY_SPI_XCHG, NULL);
     eos_evtq_set_handler(EOS_EVT_SPI, spi_handler_evt);
     eos_spi_dev_release();
 }

@@ -43,6 +43,7 @@
 
 #include "net_def.h"
 #include "spi_def.h"
+#include "irq_def.h"
 
 
   .section      .data.entry
@@ -359,7 +360,7 @@ i2s_handler_sd_exit:
 i2s_handler_ws:
   # enable sd irq
   li x18, PLIC_PRIORITY
-  li x19, I2S_IRQ_SD_PRIORITY
+  li x19, IRQ_PRIORITY_I2S_SD
   sw x19, 4*I2S_IRQ_SD_ID(x18)
 
   # complete

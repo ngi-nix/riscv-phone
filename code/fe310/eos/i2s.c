@@ -10,6 +10,7 @@
 
 #include "i2s.h"
 #include "i2s_def.h"
+#include "irq_def.h"
 
 #define I2S_PWM_REG_CK      PWM0_REG
 #define I2S_PWM_REG_WS_MIC  PWM1_REG
@@ -169,7 +170,7 @@ void eos_i2s_start(uint32_t sample_rate, unsigned char fmt) {
     _eos_i2s_mic_evt_enable = 1;
     _eos_i2s_spk_evt_enable = 1;
 
-    eos_intr_set_priority(I2S_IRQ_WS_ID, I2S_IRQ_WS_PRIORITY);
+    eos_intr_set_priority(I2S_IRQ_WS_ID, IRQ_PRIORITY_I2S_WS);
     eos_intr_set_priority(I2S_IRQ_SD_ID, 0);
     eos_intr_enable(I2S_IRQ_WS_ID);
     eos_intr_enable(I2S_IRQ_SD_ID);

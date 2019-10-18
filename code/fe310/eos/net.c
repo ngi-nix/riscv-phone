@@ -14,6 +14,7 @@
 
 #include "net.h"
 #include "net_def.h"
+#include "irq_def.h"
 
 #define MIN(X, Y)               (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y)               (((X) > (Y)) ? (X) : (Y))
@@ -247,14 +248,14 @@ void eos_net_init(void) {
     GPIO_REG(GPIO_PULLUP_EN) |=  (1 << NET_PIN_CTS);
     GPIO_REG(GPIO_INPUT_EN)  |=  (1 << NET_PIN_CTS);
     GPIO_REG(GPIO_RISE_IE)   |=  (1 << NET_PIN_CTS);
-    eos_intr_set(INT_GPIO_BASE + NET_PIN_CTS, 4, net_handler_cts);
+    eos_intr_set(INT_GPIO_BASE + NET_PIN_CTS, IRQ_PRIORITY_NET_CTS, net_handler_cts);
 
     GPIO_REG(GPIO_OUTPUT_EN) &= ~(1 << NET_PIN_RTS);
     GPIO_REG(GPIO_PULLUP_EN) |=  (1 << NET_PIN_RTS);
     GPIO_REG(GPIO_INPUT_EN)  |=  (1 << NET_PIN_RTS);
     GPIO_REG(GPIO_RISE_IE)   |=  (1 << NET_PIN_RTS);
     GPIO_REG(GPIO_FALL_IE)   |=  (1 << NET_PIN_RTS);
-    eos_intr_set(INT_GPIO_BASE + NET_PIN_RTS, 4, net_handler_rts);
+    eos_intr_set(INT_GPIO_BASE + NET_PIN_RTS, IRQ_PRIORITY_NET_RTS, net_handler_rts);
 
     net_bufq_init();
     eos_msgq_init(&net_send_q, net_sndq_array, NET_SIZE_BUFQ);
