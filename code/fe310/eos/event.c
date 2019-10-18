@@ -1,5 +1,5 @@
+#include <stdlib.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <unistd.h>
 
 #include "encoding.h"
@@ -20,7 +20,7 @@ static volatile char evt_busy = 0;
 
 void eos_evtq_init(void) {
     int i;
-    
+
     for (i=0; i<EOS_EVT_MAX_EVT; i++) {
         evt_handler[i] = eos_evtq_bad_handler;
     }
@@ -48,7 +48,7 @@ static void evtq_handler_wrapper(unsigned char type, unsigned char *buffer, uint
     unsigned char idx = ((type & EOS_EVT_MASK) >> 4) - 1;
     uint16_t flag = (uint16_t)1 << ((type & ~EOS_EVT_MASK) - 1);
     int ok;
-    
+
     ok = eos_net_acquire(evt_handler_wrapper_acq[idx] & flag);
     if (ok) {
         evt_handler[idx](type, buffer, len);
@@ -63,7 +63,7 @@ static void evtq_handler_wrapper(unsigned char type, unsigned char *buffer, uint
 static void evtq_handler(unsigned char type, unsigned char *buffer, uint16_t len) {
     unsigned char idx = ((type & EOS_EVT_MASK) >> 4) - 1;
     uint16_t flag = (uint16_t)1 << ((type & ~EOS_EVT_MASK) - 1);
-    
+
     if (idx >= EOS_EVT_MAX_EVT) {
         eos_evtq_bad_handler(type, buffer, len);
         return;
@@ -77,7 +77,7 @@ static void evtq_handler(unsigned char type, unsigned char *buffer, uint16_t len
 
 void eos_evtq_set_handler(unsigned char type, eos_evt_fptr_t handler) {
     unsigned char idx = ((type & EOS_EVT_MASK) >> 4) - 1;
-    
+
     if (idx < EOS_EVT_MAX_EVT) evt_handler[idx] = handler;
 }
 

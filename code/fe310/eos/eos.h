@@ -3,5 +3,3 @@
 #define EOS_ERR_Q_EMPTY         -11
 
 void eos_init(void);
-void eos_start(void);
-

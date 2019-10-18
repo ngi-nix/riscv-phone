@@ -56,6 +56,10 @@ void eos_intr_set(uint8_t int_num, uint8_t priority, eos_intr_fptr_t handler) {
     PLIC_enable_interrupt(&plic, int_num);
 }
 
+void eos_intr_set_handler(uint8_t int_num, eos_intr_fptr_t handler) {
+    ext_interrupt_handler[int_num] = handler;
+}
+
 void eos_intr_set_priority(uint8_t int_num, uint8_t priority) {
     PLIC_set_priority(&plic, int_num, priority);
 }

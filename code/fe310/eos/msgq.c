@@ -1,4 +1,5 @@
-#include <stddef.h>
+#include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 
 #include "eos.h"
@@ -44,7 +45,7 @@ void eos_msgq_pop(EOSMsgQ *msgq, unsigned char *type, unsigned char **buffer, ui
 
 int eos_msgq_get(EOSMsgQ *msgq, unsigned char type, unsigned char *selector, uint16_t sel_len, unsigned char **buffer, uint16_t *len) {
     uint8_t i, j, idx;
-    
+
     if (msgq->idx_r == msgq->idx_w) {
         *buffer = NULL;
         *len = 0;

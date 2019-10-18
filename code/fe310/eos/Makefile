@@ -6,8 +6,8 @@ CC = $(FE310_HOME)/work/build/riscv-gnu-toolchain/riscv64-unknown-elf/prefix/bin
 AR = $(FE310_HOME)/work/build/riscv-gnu-toolchain/riscv64-unknown-elf/prefix/bin/riscv64-unknown-elf-ar
 
 CFLAGS = $(CFLAGS_PL) -I../..
- 
-obj = trap_entry.o eos.o msgq.o event.o interrupt.o timer.o i2s.o net.o ecp.o
+
+obj = trap_entry.o eos.o msgq.o event.o interrupt.o timer.o i2s.o spi.o net.o ecp.o
 
 
 %.o: %.c %.h

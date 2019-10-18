@@ -1,6 +1,7 @@
-#include <stddef.h>
-#include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
+#include <stdio.h>
 
 #include "encoding.h"
 #include "platform.h"
@@ -25,12 +26,12 @@ static void timer_handler(unsigned char type) {
 static void packet_handler(unsigned char type, unsigned char *buffer, uint16_t len) {
     ECPNetAddr addr;
     size_t addr_len = sizeof(addr.host) + sizeof(addr.port);
-    
+
     ECP2Buffer bufs;
     ECPBuffer packet;
     ECPBuffer payload;
     unsigned char pld_buf[ECP_MAX_PLD];
-    
+
     bufs.packet = &packet;
     bufs.payload = &payload;
 
@@ -56,10 +57,10 @@ static void packet_handler(unsigned char type, unsigned char *buffer, uint16_t l
 
 int ecp_init(ECPContext *ctx) {
     int rv;
-    
+
     rv = ecp_ctx_create_vconn(ctx);
     if (rv) return rv;
-    
+
     eos_timer_set_handler(EOS_TIMER_ETYPE_ECP, timer_handler, EOS_EVT_FLAG_NET_BUF_ACQ);
     /* XXX */
     // eos_net_set_handler(EOS_NET_DATA_PKT, packet_handler, 0);

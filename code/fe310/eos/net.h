@@ -16,8 +16,10 @@
 
 #define EOS_NET_MAX_MTYPE           8
 
+void eos_net_xchg_done(void);
+
 void eos_net_init(void);
-void eos_net_start(uint32_t sckdiv);
+void eos_net_start(void);
 void eos_net_stop(void);
 void eos_net_set_handler(unsigned char type, eos_evt_fptr_t handler, uint8_t flags);
 int eos_net_acquire(unsigned char reserved);

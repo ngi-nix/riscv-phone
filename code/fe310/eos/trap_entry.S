@@ -404,8 +404,8 @@ _eos_i2s_start_pwm:
 
   ret
 
-.global eos_flash_set
-eos_flash_set:
+.global _eos_flash_set
+_eos_flash_set:
   li a3, SPI0_CTRL_ADDR
   sw x0, SPI_REG_FCTRL(a3)
   sw a0, SPI_REG_SCKDIV(a3)

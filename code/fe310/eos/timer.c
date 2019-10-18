@@ -1,5 +1,5 @@
-#include <stddef.h>
-#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
 
 #include "encoding.h"
 #include "platform.h"
@@ -88,7 +88,7 @@ void eos_timer_set(uint64_t tick, unsigned char evt, unsigned char b) {
     int i;
     uint64_t *mtimecmp = (uint64_t *) (CLINT_CTRL_ADDR + CLINT_MTIMECMP);
     uint64_t next = 0;
-    
+
     if (evt && (evt <= EOS_TIMER_MAX_ETYPE)) {
         evt--;
     } else if (evt == 0) {

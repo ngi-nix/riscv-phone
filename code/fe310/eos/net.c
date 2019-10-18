@@ -1,8 +1,5 @@
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <stdint.h>
-#include <unistd.h>
 
 #include "encoding.h"
 #include "platform.h"
@@ -10,8 +7,11 @@
 #include "eos.h"
 #include "msgq.h"
 #include "interrupt.h"
+#include "event.h"
 
 #include "spi.h"
+#include "spi_def.h"
+
 #include "net.h"
 #include "net_def.h"
 
@@ -31,23 +31,33 @@ static EOSMsgItem net_sndq_array[NET_SIZE_BUFQ];
 static EOSNetBufQ net_buf_q;
 static unsigned char net_bufq_array[NET_SIZE_BUFQ][NET_SIZE_BUF];
 
-extern EOSMsgQ _eos_event_q;
-
-uint32_t _eos_spi_state_len = 0;
-uint32_t _eos_spi_state_len_tx = 0;
-uint32_t _eos_spi_state_len_rx = 0;
-uint32_t _eos_spi_state_idx_tx = 0;
-uint32_t _eos_spi_state_idx_rx = 0;
-unsigned char *_eos_spi_state_buf = NULL;
-
 static uint8_t net_state_flags = 0;
 static unsigned char net_state_type = 0;
+static uint32_t net_state_len_tx = 0;
+static uint32_t net_state_len_rx = 0;
+
 static uint8_t net_state_next_cnt = 0;
 static unsigned char *net_state_next_buf = NULL;
 
 static eos_evt_fptr_t evt_handler[EOS_NET_MAX_MTYPE];
 static uint16_t evt_handler_flags_buf_free = 0;
 static uint16_t evt_handler_flags_buf_acq = 0;
+
+extern EOSMsgQ _eos_event_q;
+extern uint32_t _eos_spi_state_len;
+extern uint32_t _eos_spi_state_idx_tx;
+extern uint32_t _eos_spi_state_idx_rx;
+extern unsigned char *_eos_spi_state_buf;
+
+static void net_bufq_init(void) {
+    int i;
+
+    net_buf_q.idx_r = 0;
+    net_buf_q.idx_w = NET_SIZE_BUFQ;
+    for (i=0; i<NET_SIZE_BUFQ; i++) {
+        net_buf_q.array[i] = net_bufq_array[i];
+    }
+}
 
 static int net_bufq_push(unsigned char *buffer) {
     net_buf_q.array[NET_BUFQ_IDX_MASK(net_buf_q.idx_w++)] = buffer;
@@ -80,12 +90,11 @@ static void net_xchg_start(unsigned char type, unsigned char *buffer, uint16_t l
     if (type & EOS_NET_MTYPE_FLAG_ONEW) net_state_flags |= NET_FLAG_ONEW;
 
     net_state_type = type;
+    net_state_len_tx = len;
+    net_state_len_rx = 0;
+
     _eos_spi_state_buf = buffer;
-    _eos_spi_state_len_tx = len;
-    _eos_spi_state_len_rx = 0;
-    _eos_spi_state_idx_tx = 0;
-    _eos_spi_state_idx_rx = 0;
-    
+
     // before starting a transaction, set SPI peripheral to desired mode
     SPI1_REG(SPI_REG_CSMODE) = SPI_CSMODE_HOLD;
 
@@ -94,6 +103,55 @@ static void net_xchg_start(unsigned char type, unsigned char *buffer, uint16_t l
 
     SPI1_REG(SPI_REG_RXCTRL) = SPI_RXWM(1);
     SPI1_REG(SPI_REG_IE) = SPI_IP_RXWM;
+}
+
+static void net_xchg_handler(void) {
+    volatile uint32_t r1, r2;
+
+    if (net_state_flags & NET_FLAG_RST) {
+        net_state_flags &= ~NET_FLAG_RST;
+
+        r1 = SPI1_REG(SPI_REG_RXFIFO);
+        SPI1_REG(SPI_REG_CSMODE) = SPI_CSMODE_AUTO;
+        SPI1_REG(SPI_REG_IE) = 0x0;
+
+        return;
+    } else if (net_state_flags & NET_FLAG_INIT) {
+        net_state_flags &= ~NET_FLAG_INIT;
+        SPI1_REG(SPI_REG_TXCTRL) = SPI_TXWM(SPI_SIZE_WM);
+        SPI1_REG(SPI_REG_IE) = SPI_IP_TXWM;
+
+        r1 = SPI1_REG(SPI_REG_RXFIFO);
+        r2 = SPI1_REG(SPI_REG_RXFIFO);
+
+        if (net_state_type & EOS_NET_MTYPE_FLAG_ONEW) {
+            r1 = 0;
+            r2 = 0;
+        }
+
+        net_state_type = ((r1 & 0xFF) >> 3);
+        net_state_len_rx = ((r1 & 0x07) << 8);
+        net_state_len_rx |= (r2 & 0xFF);
+        _eos_spi_state_len = MAX(net_state_len_tx, net_state_len_rx);
+        _eos_spi_state_idx_tx = 0;
+        _eos_spi_state_idx_rx = 0;
+
+        // Work around esp32 bug
+        if (_eos_spi_state_len < 6) {
+            _eos_spi_state_len = 6;
+        } else if ((_eos_spi_state_len + 2) % 4 != 0) {
+            _eos_spi_state_len = ((_eos_spi_state_len + 2)/4 + 1) * 4 - 2;
+        }
+
+        if (_eos_spi_state_len > NET_SIZE_BUF) {
+            SPI1_REG(SPI_REG_CSMODE) = SPI_CSMODE_AUTO;
+            SPI1_REG(SPI_REG_IE) = 0x0;
+        }
+
+        return;
+    }
+
+    eos_spi_xchg_handler();
 }
 
 static int net_xchg_next(unsigned char *_buffer) {
@@ -114,102 +172,33 @@ static int net_xchg_next(unsigned char *_buffer) {
     return 1;
 }
 
-static void net_handler_xchg(void) {
-    volatile uint32_t r1, r2;
-    int i;
-    
-    if (net_state_flags & NET_FLAG_RST) {
-        net_state_flags &= ~NET_FLAG_RST;
-
-        r1 = SPI1_REG(SPI_REG_RXFIFO);
-        SPI1_REG(SPI_REG_CSMODE) = SPI_CSMODE_AUTO;
-        SPI1_REG(SPI_REG_IE) = 0x0;
-
-        return;
-    } else if (net_state_flags & NET_FLAG_INIT) {
-        net_state_flags &= ~NET_FLAG_INIT;
-        SPI1_REG(SPI_REG_TXCTRL) = SPI_TXWM(SPI_SIZE_WM);
-        SPI1_REG(SPI_REG_IE) = SPI_IP_TXWM;
-
-        r1 = SPI1_REG(SPI_REG_RXFIFO);
-        r2 = SPI1_REG(SPI_REG_RXFIFO);
-    
-        if (net_state_type & EOS_NET_MTYPE_FLAG_ONEW) {
-            r1 = 0;
-            r2 = 0;
-        }
-
-        net_state_type = ((r1 & 0xFF) >> 3);
-        _eos_spi_state_len_rx = ((r1 & 0x07) << 8);
-        _eos_spi_state_len_rx |= (r2 & 0xFF);
-        _eos_spi_state_len = MAX(_eos_spi_state_len_tx, _eos_spi_state_len_rx);
-
-        // Work around esp32 bug
-        if (_eos_spi_state_len < 6) {
-            _eos_spi_state_len = 6;
-        } else if ((_eos_spi_state_len + 2) % 4 != 0) {
-            _eos_spi_state_len = ((_eos_spi_state_len + 2)/4 + 1) * 4 - 2;
-        }
-
-        if (_eos_spi_state_len > NET_SIZE_BUF) {
-            SPI1_REG(SPI_REG_CSMODE) = SPI_CSMODE_AUTO;
-            SPI1_REG(SPI_REG_IE) = 0x0;
-        }
-
-        return;
-    }
-
-    uint16_t sz_chunk = MIN(_eos_spi_state_len - _eos_spi_state_idx_tx, SPI_SIZE_CHUNK);
-    for (i=0; i<sz_chunk; i++) {
-        volatile uint32_t x = SPI1_REG(SPI_REG_TXFIFO);
-        if (x & SPI_TXFIFO_FULL) break;
-        SPI1_REG(SPI_REG_TXFIFO) = _eos_spi_state_buf[_eos_spi_state_idx_tx+i];
-    }
-    _eos_spi_state_idx_tx += i;
-    
-    for (i=0; i<_eos_spi_state_idx_tx - _eos_spi_state_idx_rx; i++) {
-        volatile uint32_t x = SPI1_REG(SPI_REG_RXFIFO);
-        if (x & SPI_RXFIFO_EMPTY) break;
-        _eos_spi_state_buf[_eos_spi_state_idx_rx+i] = x & 0xFF;
-    }
-    _eos_spi_state_idx_rx += i;
-
-    if (_eos_spi_state_idx_rx == _eos_spi_state_len) {
-        SPI1_REG(SPI_REG_CSMODE) = SPI_CSMODE_AUTO;
-        SPI1_REG(SPI_REG_IE) = 0x0;
-        if (net_state_type) {
-            int r = eos_msgq_push(&_eos_event_q, EOS_EVT_NET | net_state_type, _eos_spi_state_buf, _eos_spi_state_len_rx);
-            if (r) net_bufq_push(_eos_spi_state_buf);
-        } else if (((net_state_flags & NET_FLAG_ONEW) || net_state_next_cnt) && (net_state_next_buf == NULL)) {
-            net_state_next_buf = _eos_spi_state_buf;
-            net_state_flags &= ~NET_FLAG_ONEW;
-        } else {
-            net_bufq_push(_eos_spi_state_buf);
-        }
-    } else if (_eos_spi_state_idx_tx == _eos_spi_state_len) {
-        SPI1_REG(SPI_REG_RXCTRL) = SPI_RXWM(MIN(_eos_spi_state_len - _eos_spi_state_idx_rx - 1, SPI_SIZE_WM - 1));
-        SPI1_REG(SPI_REG_IE) = SPI_IP_RXWM;
+void eos_net_xchg_done(void) {
+    if (net_state_type) {
+        int r = eos_msgq_push(&_eos_event_q, EOS_EVT_NET | net_state_type, _eos_spi_state_buf, net_state_len_rx);
+        if (r) net_bufq_push(_eos_spi_state_buf);
+    } else if (((net_state_flags & NET_FLAG_ONEW) || net_state_next_cnt) && (net_state_next_buf == NULL)) {
+        net_state_next_buf = _eos_spi_state_buf;
+        net_state_flags &= ~NET_FLAG_ONEW;
+    } else {
+        net_bufq_push(_eos_spi_state_buf);
     }
 }
 
 static void net_handler_cts(void) {
-    GPIO_REG(GPIO_RISE_IP) = (0x1 << NET_PIN_CTS);
+    GPIO_REG(GPIO_RISE_IP) = (1 << NET_PIN_CTS);
     net_state_flags |= NET_FLAG_CTS;
 
-    if (net_state_flags & NET_FLAG_RDY) {
+    if (net_state_flags & NET_FLAG_RUN) {
         net_xchg_next(NULL);
-    } else {
-        uint32_t iof_mask = ((uint32_t)1 << NET_PIN_CS);
-        GPIO_REG(GPIO_IOF_EN) &= ~iof_mask;
     }
 }
 
 static void net_handler_rts(void) {
-    uint32_t rts_offset = (0x1 << NET_PIN_RTS);
+    uint32_t rts_offset = (1 << NET_PIN_RTS);
     if (GPIO_REG(GPIO_RISE_IP) & rts_offset) {
         GPIO_REG(GPIO_RISE_IP) = rts_offset;
         net_state_flags |= NET_FLAG_RTS;
-        if ((net_state_flags & NET_FLAG_RDY) && (net_state_flags & NET_FLAG_CTS)) net_xchg_reset();
+        if ((net_state_flags & NET_FLAG_RUN) && (net_state_flags & NET_FLAG_CTS)) net_xchg_reset();
     } else if (GPIO_REG(GPIO_FALL_IP) & rts_offset) {
         GPIO_REG(GPIO_FALL_IP) = rts_offset;
         net_state_flags &= ~NET_FLAG_RTS;
@@ -253,76 +242,45 @@ void eos_net_set_handler(unsigned char mtype, eos_evt_fptr_t handler, uint8_t fl
 
 void eos_net_init(void) {
     int i;
-    
-    net_buf_q.idx_r = 0;
-    net_buf_q.idx_w = 0;
-    for (i=0; i<NET_SIZE_BUFQ; i++) {
-        net_bufq_push(net_bufq_array[i]);
-    }
 
-    eos_msgq_init(&net_send_q, net_sndq_array, NET_SIZE_BUFQ);
-    GPIO_REG(GPIO_IOF_SEL) &= ~SPI_IOF_MASK;
-    GPIO_REG(GPIO_IOF_EN) |= SPI_IOF_MASK;
-    eos_intr_set(INT_SPI1_BASE, 5, net_handler_xchg);
-
-    GPIO_REG(GPIO_OUTPUT_EN) &= ~(0x1 << NET_PIN_CTS);
-    GPIO_REG(GPIO_PULLUP_EN) |= (0x1 << NET_PIN_CTS);
-    GPIO_REG(GPIO_INPUT_EN) |= (0x1 << NET_PIN_CTS);
-    GPIO_REG(GPIO_RISE_IE) |= (0x1 << NET_PIN_CTS);
+    GPIO_REG(GPIO_OUTPUT_EN) &= ~(1 << NET_PIN_CTS);
+    GPIO_REG(GPIO_PULLUP_EN) |=  (1 << NET_PIN_CTS);
+    GPIO_REG(GPIO_INPUT_EN)  |=  (1 << NET_PIN_CTS);
+    GPIO_REG(GPIO_RISE_IE)   |=  (1 << NET_PIN_CTS);
     eos_intr_set(INT_GPIO_BASE + NET_PIN_CTS, 4, net_handler_cts);
-    
-    GPIO_REG(GPIO_OUTPUT_EN) &= ~(0x1 << NET_PIN_RTS);
-    GPIO_REG(GPIO_PULLUP_EN) |= (0x1 << NET_PIN_RTS);
-    GPIO_REG(GPIO_INPUT_EN) |= (0x1 << NET_PIN_RTS);
-    GPIO_REG(GPIO_RISE_IE) |= (0x1 << NET_PIN_RTS);
-    GPIO_REG(GPIO_FALL_IE) |= (0x1 << NET_PIN_RTS);
+
+    GPIO_REG(GPIO_OUTPUT_EN) &= ~(1 << NET_PIN_RTS);
+    GPIO_REG(GPIO_PULLUP_EN) |=  (1 << NET_PIN_RTS);
+    GPIO_REG(GPIO_INPUT_EN)  |=  (1 << NET_PIN_RTS);
+    GPIO_REG(GPIO_RISE_IE)   |=  (1 << NET_PIN_RTS);
+    GPIO_REG(GPIO_FALL_IE)   |=  (1 << NET_PIN_RTS);
     eos_intr_set(INT_GPIO_BASE + NET_PIN_RTS, 4, net_handler_rts);
 
+    net_bufq_init();
+    eos_msgq_init(&net_send_q, net_sndq_array, NET_SIZE_BUFQ);
     for (i=0; i<EOS_NET_MAX_MTYPE; i++) {
         evt_handler[i] = eos_evtq_bad_handler;
     }
     eos_evtq_set_handler(EOS_EVT_NET, net_handler_evt);
 }
 
-void eos_net_start(uint32_t sckdiv) {
-    uint32_t iof_mask = ((uint32_t)1 << NET_PIN_CS);
+void eos_net_start(void) {
+    eos_intr_set_handler(INT_SPI1_BASE, net_xchg_handler);
+    SPI1_REG(SPI_REG_SCKDIV) = SPI_DIV_NET;
+    SPI1_REG(SPI_REG_CSID) = SPI_CS_IDX_NET;
 
-    GPIO_REG(GPIO_IOF_SEL) &= ~iof_mask;
-    GPIO_REG(GPIO_IOF_EN) |= iof_mask;
-
-    SPI1_REG(SPI_REG_SCKDIV) = sckdiv;
-    SPI1_REG(SPI_REG_SCKMODE) = SPI_MODE0;
-    SPI1_REG(SPI_REG_FMT) = SPI_FMT_PROTO(SPI_PROTO_S) |
-      SPI_FMT_ENDIAN(SPI_ENDIAN_MSB) |
-      SPI_FMT_DIR(SPI_DIR_RX) |
-      SPI_FMT_LEN(8);
-
-    // enable CS pin for selected channel/pin
-    SPI1_REG(SPI_REG_CSID) = NET_IDX_SS;
-    
-    // There is no way here to change the CS polarity.
-    // SPI1_REG(SPI_REG_CSDEF) = 0xFFFF;
-    
     clear_csr(mstatus, MSTATUS_MIE);
-    net_state_flags |= NET_FLAG_RDY;
+    net_state_flags |= NET_FLAG_RUN;
     if (net_state_flags & NET_FLAG_CTS) net_xchg_next(NULL);
     set_csr(mstatus, MSTATUS_MIE);
 }
 
 void eos_net_stop(void) {
     volatile uint8_t done = 0;
-    
-    clear_csr(mstatus, MSTATUS_MIE);
-    net_state_flags &= ~NET_FLAG_RDY;
-    if (net_state_flags & NET_FLAG_CTS) {
-        uint32_t iof_mask = ((uint32_t)1 << NET_PIN_CS);
-        GPIO_REG(GPIO_IOF_EN) &= ~iof_mask;
-        done = 1;
-    }
-    set_csr(mstatus, MSTATUS_MIE);
-    
+
     while (!done) {
         clear_csr(mstatus, MSTATUS_MIE);
+        net_state_flags &= ~NET_FLAG_RUN;
         done = net_state_flags & NET_FLAG_CTS;
         if (!done) asm volatile ("wfi");
         set_csr(mstatus, MSTATUS_MIE);
@@ -331,7 +289,7 @@ void eos_net_stop(void) {
 
 int eos_net_acquire(unsigned char reserved) {
     int ret = 0;
-    
+
     if (reserved) {
         while (!ret) {
             clear_csr(mstatus, MSTATUS_MIE);
@@ -362,7 +320,7 @@ int eos_net_release(void) {
         if (!rv) net_state_next_buf = NULL;
     }
     set_csr(mstatus, MSTATUS_MIE);
-    
+
     return rv;
 }
 
@@ -379,7 +337,7 @@ unsigned char *eos_net_alloc(void) {
         }
         set_csr(mstatus, MSTATUS_MIE);
     }
-    
+
     return ret;
 }
 
@@ -391,7 +349,7 @@ int eos_net_free(unsigned char *buffer, unsigned char more) {
     if ((more || net_state_next_cnt) && (net_state_next_buf == NULL)) {
         net_state_next_buf = buffer;
     } else {
-        if ((net_state_flags & NET_FLAG_RDY) && (net_state_flags & NET_FLAG_CTS)) do_release = net_xchg_next(buffer);
+        if ((net_state_flags & NET_FLAG_RUN) && (net_state_flags & NET_FLAG_CTS)) do_release = net_xchg_next(buffer);
         if (do_release) rv = net_bufq_push(buffer);
     }
     set_csr(mstatus, MSTATUS_MIE);
@@ -403,10 +361,10 @@ int eos_net_send(unsigned char type, unsigned char *buffer, uint16_t len) {
     int rv = EOS_OK;
 
     clear_csr(mstatus, MSTATUS_MIE);
-    if ((net_state_flags & NET_FLAG_RDY) && (net_state_flags & NET_FLAG_CTS)) {
+    if ((net_state_flags & NET_FLAG_RUN) && (net_state_flags & NET_FLAG_CTS)) {
         net_xchg_start(type, buffer, len);
     } else {
-        rv = eos_msgq_push(&net_send_q, EOS_EVT_NET | type, buffer, len);
+        rv = eos_msgq_push(&net_send_q, type, buffer, len);
     }
     set_csr(mstatus, MSTATUS_MIE);
 
