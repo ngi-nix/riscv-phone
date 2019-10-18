@@ -14,4 +14,5 @@ void eos_init(void) {
     eos_net_init();
     eos_spi_init();
     eos_i2s_init();
+    eos_net_start();
 }

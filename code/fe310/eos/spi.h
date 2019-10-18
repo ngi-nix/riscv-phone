@@ -16,7 +16,6 @@ void eos_spi_dev_release(void);
 
 void eos_spi_xchg(unsigned char *buffer, uint16_t len, uint8_t flags);
 void eos_spi_xchg_handler(void);
-void eos_spi_xchg_wait(void);
 
 uint8_t eos_spi_xchg8(uint8_t data, uint8_t flags);
 uint16_t eos_spi_xchg16(uint16_t data, uint8_t flags);

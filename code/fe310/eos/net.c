@@ -270,10 +270,8 @@ void eos_net_start(void) {
     SPI1_REG(SPI_REG_SCKDIV) = SPI_DIV_NET;
     SPI1_REG(SPI_REG_CSID) = SPI_CS_IDX_NET;
 
-    clear_csr(mstatus, MSTATUS_MIE);
     net_state_flags |= NET_FLAG_RUN;
     if (net_state_flags & NET_FLAG_CTS) net_xchg_next(NULL);
-    set_csr(mstatus, MSTATUS_MIE);
 }
 
 void eos_net_stop(void) {
