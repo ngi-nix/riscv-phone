@@ -92,7 +92,7 @@ void eos_evtq_set_busy(char busy) {
     evt_busy = busy;
 }
 
-void eos_evtq_wait(unsigned char type, unsigned char *selector, uint16_t sel_len, unsigned char **buffer, uint16_t *len) {
+void eos_evtq_get(unsigned char type, unsigned char *selector, uint16_t sel_len, unsigned char **buffer, uint16_t *len) {
     int rv = 0;
 
     while(!rv) {

@@ -1,5 +1,3 @@
-#include <ecp/core.h>
-#include <ecp/vconn/vconn.h>
+struct ECPContext;
 
-int ecp_init(ECPContext *ctx);
-void ecp_sock_set(ECPSocket *s);
+int ecp_init(struct ECPContext *ctx);
