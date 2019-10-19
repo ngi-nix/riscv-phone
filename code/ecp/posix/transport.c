@@ -107,7 +107,7 @@ ssize_t ecp_tr_recv(ECPSocket *sock, ECPBuffer *packet, ECPNetAddr *addr, int ti
     return ECP_ERR_TIMEOUT;
 }
 
-void ecp_tr_buf_free(ECP2Buffer *b, unsigned char flags) {}
-void ecp_tr_buf_flag_set(ECP2Buffer *b, unsigned char flags) {}
-void ecp_tr_buf_flag_clear(ECP2Buffer *b, unsigned char flags) {}
+void ecp_tr_release(ECPBuffer *packet, unsigned char more) {}
+void ecp_tr_flag_set(unsigned char flags) {}
+void ecp_tr_flag_clear(unsigned char flags) {}
 

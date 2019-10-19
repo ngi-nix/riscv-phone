@@ -1215,7 +1215,7 @@ ssize_t ecp_unpack(ECPSocket *sock, ECPNetAddr *addr, ECPConnection *parent, ECP
         (payload[2] << 8)  | \
         (payload[3]);
 
-    if ((payload[ECP_SIZE_PLD_HDR] & ECP_MTYPE_MASK) < ECP_MAX_MTYPE_SYS) ecp_tr_buf_free(bufs, ECP_SEND_FLAG_MORE);
+    if ((payload[ECP_SIZE_PLD_HDR] & ECP_MTYPE_MASK) < ECP_MAX_MTYPE_SYS) ecp_tr_release(bufs->packet, 1);
     if (conn == NULL) {
         if (payload[ECP_SIZE_PLD_HDR] == ECP_MTYPE_OPEN_REQ) {
             is_new = 1;

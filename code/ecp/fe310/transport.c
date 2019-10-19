@@ -94,19 +94,19 @@ ssize_t ecp_tr_recv(ECPSocket *sock, ECPBuffer *packet, ECPNetAddr *addr, int ti
     return ECP_ERR;
 }
 
-void ecp_tr_buf_free(ECP2Buffer *b, unsigned char flags) {
-    if (b && b->packet && b->packet->buffer) {
-        eos_net_free(b->packet->buffer-EOS_SOCK_SIZE_UDP_HDR, flags & ECP_SEND_FLAG_MORE);
-        b->packet->buffer = NULL;
+void ecp_tr_release(ECPBuffer *packet, unsigned char more) {
+    if (packet && packet->buffer) {
+        eos_net_free(packet->buffer-EOS_SOCK_SIZE_UDP_HDR, more);
+        packet->buffer = NULL;
+    } else if (!more) {
+        eos_net_release();
     }
 }
 
-void ecp_tr_buf_flag_set(ECP2Buffer *b, unsigned char flags) {
+void ecp_tr_flag_set(unsigned char flags) {
     _flags |= flags;
-    if (flags & ECP_SEND_FLAG_MORE) ecp_tr_buf_free(b, flags);
 }
 
-void ecp_tr_buf_flag_clear(ECP2Buffer *b, unsigned char flags) {
+void ecp_tr_flag_clear(unsigned char flags) {
     _flags &= ~flags;
-    if (flags & ECP_SEND_FLAG_MORE) eos_net_release();
 }
