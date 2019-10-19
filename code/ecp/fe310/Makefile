@@ -1,5 +1,5 @@
 include ../Makefile.platform
-CFLAGS=$(CFLAGS_PL) $(PIC) -I.. -I../../fe310
+CFLAGS=$(CFLAGS_PL) $(PIC) -I..
 
 obj_tr = transport.o
 obj_tm = time.o
@@ -9,7 +9,7 @@ obj_tm = time.o
 	$(CC) $(CFLAGS) -c $<
 
 all: libecptr.a libecptm.a
-	
+
 libecptr.a: $(obj_tr)
 	$(AR) rcs libecptr.a $(obj_tr)
 

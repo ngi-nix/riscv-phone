@@ -10,7 +10,7 @@
 
 int ecp_dhkey_generate(ECPContext *ctx, ECPDHKey *key) {
     int rv;
-    
+
     if (ctx->rng == NULL) return ECP_ERR_RNG;
 
     rv = ecp_cr_dh_mkpair(&key->public, &key->private, ctx->rng);
@@ -20,9 +20,9 @@ int ecp_dhkey_generate(ECPContext *ctx, ECPDHKey *key) {
     return ECP_OK;
 }
 
-int ecp_node_init(ECPContext *ctx, ECPNode *node, ecp_dh_public_t *public, void *addr) {
+int ecp_node_init(ECPNode *node, ecp_dh_public_t *public, void *addr) {
     int rv = ECP_OK;
-    
+
     memset(node, 0, sizeof(ECPNode));
 
     if (public) memcpy(&node->public, public, sizeof(node->public));
@@ -35,10 +35,15 @@ int ecp_node_init(ECPContext *ctx, ECPNode *node, ecp_dh_public_t *public, void 
 
 int ecp_ctx_create(ECPContext *ctx) {
     int rv;
-    
+
     if (ctx == NULL) return ECP_ERR;
 
     memset(ctx, 0, sizeof(ECPContext));
+
+    rv = ecp_tr_init(ctx);
+    if (rv) return rv;
+    rv = ecp_tm_init(ctx);
+    if (rv) return rv;
 
     return ECP_OK;
 }
@@ -49,7 +54,7 @@ int ecp_ctx_destroy(ECPContext *ctx) {
 
 static int ctable_create(ECPSockCTable *conn, ECPContext *ctx) {
     int rv = ECP_OK;
-    
+
     memset(conn, 0, sizeof(ECPSockCTable));
 
 #ifdef ECP_WITH_HTABLE
@@ -66,7 +71,7 @@ static int ctable_create(ECPSockCTable *conn, ECPContext *ctx) {
         return ECP_ERR;
     }
 #endif
-    
+
     return ECP_OK;
 }
 
@@ -86,7 +91,7 @@ static int ctable_insert(ECPConnection *conn) {
 #ifdef ECP_WITH_HTABLE
     with_htable = 1;
 #endif
-    
+
     if (with_htable) {
 #ifdef ECP_WITH_HTABLE
         int i, rv = ECP_OK;
@@ -126,7 +131,7 @@ static int ctable_insert(ECPConnection *conn) {
 static void ctable_remove(ECPConnection *conn) {
     int i, with_htable = 0;
     ECPSocket *sock = conn->sock;
-    
+
 #ifdef ECP_WITH_HTABLE
     with_htable = 1;
 #endif
@@ -157,7 +162,7 @@ static void ctable_remove(ECPConnection *conn) {
 static ECPConnection *ctable_search(ECPSocket *sock, unsigned char c_idx, unsigned char *c_public, ECPNetAddr *addr) {
     int i, with_htable = 0;
     ECPConnection *conn = NULL;
-    
+
 #ifdef ECP_WITH_HTABLE
     with_htable = 1;
 #endif
@@ -193,8 +198,8 @@ static ECPConnection *ctable_search(ECPSocket *sock, unsigned char c_idx, unsign
 }
 
 int ecp_sock_create(ECPSocket *sock, ECPContext *ctx, ECPDHKey *key) {
-    int rv = ECP_OK; 
-    
+    int rv = ECP_OK;
+
     if (sock == NULL) return ECP_ERR;
     if (ctx == NULL) return ECP_ERR;
 
@@ -207,15 +212,15 @@ int ecp_sock_create(ECPSocket *sock, ECPContext *ctx, ECPDHKey *key) {
 
     rv = ecp_dhkey_generate(sock->ctx, &sock->key[sock->key_curr]);
     if (!rv) rv = ctable_create(&sock->conn, sock->ctx);
-    
+
     if (rv) return rv;
-    
+
     rv = ecp_timer_create(&sock->timer);
     if (rv) {
         ctable_destroy(&sock->conn, sock->ctx);
         return rv;
     }
-    
+
 #ifdef ECP_WITH_PTHREAD
     rv = pthread_mutex_init(&sock->mutex, NULL);
     if (rv) {
@@ -237,11 +242,11 @@ void ecp_sock_destroy(ECPSocket *sock) {
 }
 
 int ecp_sock_open(ECPSocket *sock, void *myaddr) {
-    return ecp_tr_open(&sock->sock, myaddr);
+    return ecp_tr_open(sock, myaddr);
 }
 
 void ecp_sock_close(ECPSocket *sock) {
-    ecp_tr_close(&sock->sock);
+    ecp_tr_close(sock);
 }
 
 int ecp_sock_dhkey_get_curr(ECPSocket *sock, unsigned char *idx, unsigned char *public) {
@@ -259,7 +264,7 @@ int ecp_sock_dhkey_get_curr(ECPSocket *sock, unsigned char *idx, unsigned char *
 #endif
 
     if (_idx == ECP_ECDH_IDX_INV) return ECP_ERR_ECDH_IDX;
-    
+
     if (idx) *idx = _idx;
     return ECP_OK;
 }
@@ -301,7 +306,7 @@ static int conn_dhkey_new_pair(ECPConnection *conn, ECPDHKey *key) {
         ecp_ht_remove(sock->conn.htable, ecp_cr_dh_pub_get_buf(&conn->key[conn->key_curr].public));
     }
 #endif
-    
+
     conn->key[conn->key_curr] = *key;
     conn->key_idx_map[conn->key_curr] = ECP_ECDH_IDX_INV;
 
@@ -311,19 +316,19 @@ static int conn_dhkey_new_pair(ECPConnection *conn, ECPDHKey *key) {
         if (rv) return rv;
     }
 #endif
-    
+
     return ECP_OK;
 }
 
 static void conn_dhkey_del_pair(ECPConnection *conn, unsigned char idx) {
     ECPSocket *sock = conn->sock;
-    
+
 #ifdef ECP_WITH_HTABLE
     if (conn->out && ecp_conn_is_reg(conn) && conn->key[idx].valid) {
         ecp_ht_remove(sock->conn.htable, ecp_cr_dh_pub_get_buf(&conn->key[idx].public));
     }
 #endif
-    
+
     memset(&conn->key[idx], 0, sizeof(conn->key[idx]));
     conn->key_idx_map[idx] = ECP_ECDH_IDX_INV;
 }
@@ -332,7 +337,7 @@ static int conn_dhkey_new_pub_local(ECPConnection *conn, unsigned char idx) {
     // Remote obtained our key
     unsigned char new = conn->key_idx_curr == ECP_ECDH_IDX_INV ? 0 : (conn->key_idx_curr+1) % ECP_MAX_NODE_KEY;
     int i;
-    
+
     if (idx >= ECP_MAX_SOCK_KEY) return ECP_ERR_ECDH_IDX;
 
     if (conn->key_idx[new] != ECP_ECDH_IDX_INV) conn->key_idx_map[conn->key_idx[new]] = ECP_ECDH_IDX_INV;
@@ -362,7 +367,7 @@ static int conn_dhkey_new_pub_remote(ECPConnection *conn, unsigned char idx, uns
         ecp_ht_remove(sock->conn.htable, ecp_cr_dh_pub_get_buf(&remote->key[new].public));
     }
 #endif
-        
+
     if (remote->key[new].idx != ECP_ECDH_IDX_INV) remote->key_idx_map[remote->key[new].idx] = ECP_ECDH_IDX_INV;
     remote->key_idx_map[idx] = new;
     ecp_cr_dh_pub_from_buf(&remote->key[new].public, public);
@@ -375,7 +380,7 @@ static int conn_dhkey_new_pub_remote(ECPConnection *conn, unsigned char idx, uns
         if (rv) return rv;
     }
 #endif
-    
+
     for (i=0; i<ECP_MAX_NODE_KEY; i++) {
         conn->shared[i][new].valid = 0;
     }
@@ -386,13 +391,13 @@ static int conn_shsec_get(ECPConnection *conn, unsigned char s_idx, unsigned cha
     if (s_idx == ECP_ECDH_IDX_PERMA) {
         ECPDHKey *priv = NULL;
         ecp_dh_public_t *public_p = NULL;
-        
+
         if (conn->out) {
             public_p = &conn->node.public;
             priv = conn_dhkey_get(conn, c_idx);
         } else {
             ECPDHRKey *pub = NULL;
-            
+
             if (c_idx >= ECP_MAX_SOCK_KEY) return ECP_ERR_ECDH_IDX;
             if (conn->remote.key_idx_map[c_idx] == ECP_ECDH_IDX_INV) return ECP_ERR_ECDH_IDX_REMOTE;
 
@@ -428,7 +433,7 @@ static int conn_shsec_get(ECPConnection *conn, unsigned char s_idx, unsigned cha
 
         memcpy(shsec, &shared->secret, sizeof(shared->secret));
     }
-    
+
     return ECP_OK;
 }
 
@@ -436,7 +441,7 @@ static int conn_shsec_set(ECPConnection *conn, unsigned char s_idx, unsigned cha
     unsigned char l_idx = conn->out ? c_idx : s_idx;
     unsigned char r_idx = conn->out ? s_idx : c_idx;
     ECPDHShared *shared = NULL;
-    
+
     if ((l_idx >= ECP_MAX_SOCK_KEY) || (r_idx >= ECP_MAX_SOCK_KEY)) return ECP_ERR_ECDH_IDX;
 
     if (conn->key_idx_map[l_idx] == ECP_ECDH_IDX_INV) return ECP_ERR_ECDH_IDX_LOCAL;
@@ -445,20 +450,20 @@ static int conn_shsec_set(ECPConnection *conn, unsigned char s_idx, unsigned cha
     shared = &conn->shared[conn->key_idx_map[l_idx]][conn->remote.key_idx_map[r_idx]];
     memcpy(&shared->secret, shsec, sizeof(shared->secret));
     shared->valid = 1;
-    
+
     return ECP_OK;
 }
 
 int ecp_conn_create(ECPConnection *conn, ECPSocket *sock, unsigned char ctype) {
     int i, rv = ECP_OK;
-    
+
     if (conn == NULL) return ECP_ERR;
     if (sock == NULL) return ECP_ERR;
 
     memset(conn, 0, sizeof(ECPConnection));
 
     if (ctype >= ECP_MAX_CTYPE) return ECP_ERR_MAX_CTYPE;
-        
+
     conn->type = ctype;
     conn->key_curr = ECP_ECDH_IDX_INV;
     conn->key_idx_curr = ECP_ECDH_IDX_INV;
@@ -512,7 +517,7 @@ void ecp_conn_unregister(ECPConnection *conn) {
     if (ecp_conn_is_reg(conn)) {
         ctable_remove(conn);
         conn->flags &= ~ECP_CONN_FLAG_REG;
-    } 
+    }
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_unlock(&conn->mutex);
     pthread_mutex_unlock(&sock->conn.mutex);
@@ -545,7 +550,7 @@ int ecp_conn_init(ECPConnection *conn, ECPNode *node) {
     rv = ecp_dhkey_generate(ctx, &key);
     if (!rv) rv = ctx->rng(conn->nonce, ECP_AEAD_SIZE_NONCE);
     if (!rv) rv = ctx->rng(&conn->seq_out, sizeof(conn->seq_out));
-    
+
     if (!rv) rv = conn_dhkey_new_pair(conn, &key);
     if (!rv) rv = conn_dhkey_new_pub_local(conn, conn->key_curr);
     if (!rv) rv = ecp_conn_register(conn);
@@ -555,7 +560,7 @@ int ecp_conn_init(ECPConnection *conn, ECPNode *node) {
 int ecp_conn_open(ECPConnection *conn, ECPNode *node) {
     int rv = ecp_conn_init(conn, node);
     if (rv) return rv;
-    
+
     ssize_t _rv = ecp_timer_send(conn, _conn_send_kget, ECP_MTYPE_KGET_REP, 3, 500);
     if (_rv < 0) {
         ecp_conn_unregister(conn);
@@ -568,7 +573,7 @@ int ecp_conn_open(ECPConnection *conn, ECPNode *node) {
 int ecp_conn_close(ECPConnection *conn, ecp_cts_t timeout) {
     ECPSocket *sock = conn->sock;
     int refcount = 0;
-    
+
     ecp_conn_unregister(conn);
     ecp_timer_remove(conn);
 
@@ -576,7 +581,7 @@ int ecp_conn_close(ECPConnection *conn, ecp_cts_t timeout) {
     pthread_mutex_lock(&conn->mutex);
     refcount = conn->refcount;
     pthread_mutex_unlock(&conn->mutex);
-    
+
     if (timeout && refcount) {
         ecp_tm_sleep_ms(timeout);
         pthread_mutex_lock(&conn->mutex);
@@ -605,7 +610,7 @@ int ecp_conn_close(ECPConnection *conn, ecp_cts_t timeout) {
         ecp_conn_destroy(conn);
         if (sock->ctx->conn_free) sock->ctx->conn_free(conn);
     }
-    
+
     return ECP_OK;
 }
 
@@ -666,7 +671,7 @@ static ssize_t _conn_send_open(ECPConnection *conn, ECPTimerItem *ti) {
     unsigned char pkt_buf[ECP_SIZE_PKT_BUF(1, ECP_MTYPE_OPEN_REQ, conn)];
     unsigned char pld_buf[ECP_SIZE_PLD_BUF(1, ECP_MTYPE_OPEN_REQ, conn)];
     unsigned char *buf = ecp_pld_get_buf(pld_buf, ECP_MTYPE_OPEN_REQ);
-    
+
     packet.buffer = pkt_buf;
     packet.size = ECP_SIZE_PKT_BUF(1, ECP_MTYPE_OPEN_REQ, conn);
     payload.buffer = pld_buf;
@@ -674,7 +679,7 @@ static ssize_t _conn_send_open(ECPConnection *conn, ECPTimerItem *ti) {
 
     ecp_pld_set_type(pld_buf, ECP_MTYPE_OPEN_REQ);
     buf[0] = conn->type;
-    
+
     return ecp_pld_send_wtimer(conn, &packet, &payload, ECP_SIZE_PLD(1, ECP_MTYPE_OPEN_REQ), 0, ti);
 }
 
@@ -688,9 +693,9 @@ int ecp_conn_handle_new(ECPSocket *sock, ECPConnection *parent, unsigned char *p
     unsigned char ctype = 0;
     ecp_conn_create_t *handle_create = NULL;
     ecp_conn_destroy_t *handle_destroy = NULL;
-    
+
     if (payload_size < 1) return ECP_ERR;
-    
+
     ctype = payload[0];
 
     conn = sock->ctx->conn_alloc ? sock->ctx->conn_alloc(ctype) : NULL;
@@ -702,13 +707,13 @@ int ecp_conn_handle_new(ECPSocket *sock, ECPConnection *parent, unsigned char *p
         if (sock->ctx->conn_free) sock->ctx->conn_free(conn);
         return rv;
     }
-    
+
     conn->refcount = 1;
     conn->parent = parent;
     conn->pcount = parent ? parent->pcount+1 : 0;
     handle_create = conn->sock->ctx->handler[conn->type] ? conn->sock->ctx->handler[conn->type]->conn_create : NULL;
     handle_destroy = conn->sock->ctx->handler[conn->type] ? conn->sock->ctx->handler[conn->type]->conn_destroy : NULL;
-    
+
     if (handle_create) rv = handle_create(conn, payload+1, payload_size-1);
     if (rv) {
         ecp_conn_destroy(conn);
@@ -779,7 +784,7 @@ ssize_t ecp_conn_handle_open(ECPConnection *conn, ecp_seq_t seq, unsigned char m
         ctype = msg[0];
         ecp_pld_set_type(pld_buf, ECP_MTYPE_OPEN_REP);
         ssize_t _rv = ecp_pld_send(conn, &packet, &payload, ECP_SIZE_PLD(0, ECP_MTYPE_OPEN_REP), 0);
-        
+
         return 1;
     }
     return ECP_ERR;
@@ -788,9 +793,9 @@ ssize_t ecp_conn_handle_open(ECPConnection *conn, ecp_seq_t seq, unsigned char m
 ssize_t ecp_conn_handle_kget(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size, ECP2Buffer *b) {
     if (mtype & ECP_MTYPE_FLAG_REP) {
         ECPContext *ctx = conn->sock->ctx;
-        
+
         if (!conn->out) return ECP_ERR;
-        
+
 #ifdef ECP_WITH_PTHREAD
         pthread_mutex_lock(&conn->mutex);
 #endif
@@ -816,7 +821,7 @@ ssize_t ecp_conn_handle_kget(ECPConnection *conn, ecp_seq_t seq, unsigned char m
             }
         }
         if (rv) return rv;
-        
+
         return ECP_ECDH_SIZE_KEY+1;
     } else {
         if (conn->out) return ECP_ERR;
@@ -837,7 +842,7 @@ ssize_t ecp_conn_handle_kget(ECPConnection *conn, ecp_seq_t seq, unsigned char m
         int rv = ecp_conn_dhkey_get_curr(conn, buf, buf+1);
         if (rv) return rv;
         ssize_t _rv = ecp_pld_send(conn, &packet, &payload, ECP_SIZE_PLD(ECP_ECDH_SIZE_KEY+1, ECP_MTYPE_KGET_REP), 0);
-        
+
         return 0;
     }
     return ECP_ERR;
@@ -879,7 +884,7 @@ ssize_t ecp_conn_handle_exec(ECPConnection *conn, ecp_seq_t seq, unsigned char m
     if (size < 0) return size;
     if (b == NULL) return ECP_ERR;
     if (b->packet->buffer == NULL) return ECP_ERR;
-    
+
     memcpy(b->packet->buffer, msg, size);
     return ecp_pkt_handle(conn->sock, NULL, conn, b, size);
 }
@@ -889,7 +894,7 @@ ssize_t ecp_conn_handle_exec(ECPConnection *conn, ecp_seq_t seq, unsigned char m
 ssize_t ecp_conn_handle_exec(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size, ECP2Buffer *b) {
     if (size < 0) return size;
     if (b == NULL) return ECP_ERR;
-    
+
     ECP2Buffer b2;
     ECPBuffer packet;
     ECPBuffer payload;
@@ -902,7 +907,7 @@ ssize_t ecp_conn_handle_exec(ECPConnection *conn, ecp_seq_t seq, unsigned char m
     packet.size = b->payload->size - (msg - b->payload->buffer);
     payload.buffer = pld_buf;
     payload.size = ECP_MAX_PLD;
-    
+
     return ecp_pkt_handle(conn->sock, NULL, conn, &b2, size);
 }
 */
@@ -932,7 +937,7 @@ int ecp_conn_dhkey_new(ECPConnection *conn) {
     ECPDHKey new_key;
     int rv;
     ssize_t _rv;
-    
+
     rv = ecp_dhkey_generate(sock->ctx, &new_key);
     if (rv) return rv;
 
@@ -947,17 +952,17 @@ int ecp_conn_dhkey_new(ECPConnection *conn) {
 #endif
 
     if (rv) return rv;
-    
+
     _rv = ecp_timer_send(conn, _conn_send_kput, ECP_MTYPE_KPUT_REP, 3, 500);
     if (_rv < 0) return _rv;
-        
+
     return ECP_OK;
 }
 
 int ecp_conn_dhkey_new_pub(ECPConnection *conn, unsigned char idx, unsigned char *public) {
     ECPSocket *sock = conn->sock;
     int rv;
-    
+
     if (conn == NULL) return ECP_ERR;
     if (public == NULL) return ECP_ERR;
 
@@ -989,7 +994,7 @@ int ecp_conn_dhkey_get_curr(ECPConnection *conn, unsigned char *idx, unsigned ch
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_unlock(&conn->mutex);
 #endif
-    
+
     if (_idx == ECP_ECDH_IDX_INV) return ecp_sock_dhkey_get_curr(sock, idx, public);
 
     if (idx) *idx = _idx;
@@ -1000,7 +1005,7 @@ ssize_t ecp_pkt_pack(ECPContext *ctx, unsigned char *packet, size_t pkt_size, un
     ssize_t rv;
 
     if (pkt_size < ECP_SIZE_PKT_HDR) return ECP_ERR;
-    
+
     // ECP_SIZE_PROTO
     packet[0] = 0;
     packet[1] = 0;
@@ -1024,10 +1029,10 @@ ssize_t ecp_pkt_pack(ECPContext *ctx, unsigned char *packet, size_t pkt_size, un
 
 ssize_t ecp_pkt_pack_raw(ECPSocket *sock, ECPConnection *parent, unsigned char *packet, size_t pkt_size, unsigned char s_idx, unsigned char c_idx, ecp_dh_public_t *public, ecp_aead_key_t *shsec, unsigned char *nonce, ecp_seq_t seq, unsigned char *payload, size_t pld_size, ECPNetAddr *addr) {
     ECPContext *ctx = sock->ctx;
-    
+
     return ecp_pkt_pack(ctx, packet, pkt_size, s_idx, c_idx, public, shsec, nonce, seq, payload, pld_size);
 }
-    
+
 ssize_t ecp_conn_pack(ECPConnection *conn, unsigned char *packet, size_t pkt_size, unsigned char s_idx, unsigned char c_idx, unsigned char *payload, size_t pld_size, ECPSeqItem *si, ECPNetAddr *addr) {
     ecp_aead_key_t shsec;
     ecp_dh_public_t public;
@@ -1076,7 +1081,7 @@ ssize_t ecp_conn_pack(ECPConnection *conn, unsigned char *packet, size_t pkt_siz
 #ifdef ECP_WITH_RBUF
             if (conn->rbuf.send) rv = ecp_rbuf_pkt_prep(conn->rbuf.send, si, ecp_pld_get_type(payload));
 #endif
-                
+
             if (!rv && !si->seq_w) conn->seq_out = _seq;
         } else {
             _seq = conn->seq_out + 1;
@@ -1088,12 +1093,12 @@ ssize_t ecp_conn_pack(ECPConnection *conn, unsigned char *packet, size_t pkt_siz
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_unlock(&conn->mutex);
 #endif
-    
+
     if (rv) return rv;
-    
+
     ssize_t _rv = ecp_pkt_pack(conn->sock->ctx, packet, pkt_size, s_idx, c_idx, &public, &shsec, nonce, _seq, payload, pld_size);
     if (_rv < 0) return _rv;
-    
+
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&conn->mutex);
 #endif
@@ -1140,7 +1145,7 @@ ssize_t ecp_unpack(ECPSocket *sock, ECPNetAddr *addr, ECPConnection *parent, ECP
     ecp_seq_t seq_c, seq_p, seq_n;
     ecp_ack_t seq_map;
     ssize_t dec_size;
-    
+
     *_conn = NULL;
     *_seq = 0;
 
@@ -1239,15 +1244,15 @@ ssize_t ecp_unpack(ECPSocket *sock, ECPNetAddr *addr, ECPConnection *parent, ECP
         } else {
             return ECP_ERR_CONN_NOT_FOUND;
         }
-    } 
-    
+    }
+
     if (conn == NULL) return dec_size;
-    
+
     if (is_open) {
 #ifdef ECP_WITH_RBUF
         if (conn->rbuf.recv || (payload[ECP_SIZE_PLD_HDR] == ECP_MTYPE_RBACK) || (payload[ECP_SIZE_PLD_HDR] == ECP_MTYPE_RBFLUSH)) seq_check = 0;
 #endif
-        
+
         if (seq_check) {
             if (ECP_SEQ_LTE(seq_p, seq_c)) {
                 ecp_seq_t seq_offset = seq_c - seq_p;
@@ -1361,7 +1366,7 @@ ssize_t ecp_pkt_handle(ECPSocket *sock, ECPNetAddr *addr, ECPConnection *parent,
 }
 
 ssize_t ecp_pkt_send(ECPSocket *sock, ECPNetAddr *addr, ECPBuffer *packet, size_t pkt_size, unsigned char flags) {
-    ssize_t rv = ecp_tr_send(&sock->sock, packet, pkt_size, addr, flags);
+    ssize_t rv = ecp_tr_send(sock, packet, pkt_size, addr, flags);
     if (rv < 0) return rv;
     if (rv < ECP_MIN_PKT) return ECP_ERR_SEND;
 
@@ -1392,7 +1397,7 @@ unsigned char ecp_msg_get_type(unsigned char *msg) {
 
 unsigned char *ecp_msg_get_content(unsigned char *msg, size_t msg_size) {
     size_t offset = 1 + ECP_SIZE_MT_FLAG(msg[0]);
-    
+
     if (msg_size < offset) return NULL;
     return msg + offset;
 }
@@ -1400,7 +1405,7 @@ unsigned char *ecp_msg_get_content(unsigned char *msg, size_t msg_size) {
 int ecp_msg_get_frag(unsigned char *msg, size_t msg_size, unsigned char *frag_cnt, unsigned char *frag_tot) {
     if (!(msg[0] & ECP_MTYPE_FLAG_FRAG)) return ECP_ERR;
     if (msg_size < 3) return ECP_ERR;
-    
+
     *frag_cnt = msg[1];
     *frag_tot = msg[2];
 
@@ -1453,11 +1458,11 @@ int ecp_msg_defrag(ECPFragIter *iter, ecp_seq_t seq, unsigned char *msg_in, size
             if (iter->frag_cnt != frag_cnt) return ECP_ERR_ITER;
         }
         if ((1 + ECP_SIZE_MT_FLAG(mtype) + iter->frag_size * frag_tot) > iter->buf_size) return ECP_ERR_SIZE;
-        
+
         buf_offset = 1 + ECP_SIZE_MT_FLAG(mtype) + iter->frag_size * frag_cnt;
         memcpy(iter->buffer + buf_offset, content, content_size);
         iter->frag_cnt++;
-        
+
         if (iter->frag_cnt == frag_tot) {
             *msg_out = iter->buffer;
             *msg_out_size = buf_offset + content_size;
@@ -1479,7 +1484,7 @@ ssize_t ecp_msg_handle(ECPConnection *conn, ecp_seq_t seq, unsigned char *msg, s
     unsigned char mtype = 0;
     unsigned char *content = NULL;
     size_t rem_size = msg_size;
-    
+
     while (rem_size) {
         mtype = ecp_msg_get_type(msg);
         if ((mtype & ECP_MTYPE_MASK) >= ECP_MAX_MTYPE) return ECP_ERR_MAX_MTYPE;
@@ -1497,7 +1502,7 @@ ssize_t ecp_msg_handle(ECPConnection *conn, ecp_seq_t seq, unsigned char *msg, s
         content = ecp_msg_get_content(msg, rem_size);
         if (content == NULL) return ECP_ERR_MIN_MSG;
         rem_size -= content - msg;
-        
+
         handler = conn->sock->ctx->handler[conn->type] ? conn->sock->ctx->handler[conn->type]->msg[mtype & ECP_MTYPE_MASK] : NULL;
         if (handler) {
             rv = handler(conn, seq, mtype, content, rem_size, bufs);
@@ -1558,7 +1563,7 @@ static ssize_t pld_send(ECPConnection *conn, ECPBuffer *packet, unsigned char s_
 #ifdef ECP_WITH_RBUF
     if (conn->rbuf.send) return ecp_rbuf_pkt_send(conn->rbuf.send, conn->sock, &addr, packet, rv, flags, ti, si);
 #endif
-    
+
     if (ti) {
         int _rv = ecp_timer_push(ti);
         if (_rv) return _rv;
@@ -1596,7 +1601,7 @@ ssize_t ecp_pld_send_raw(ECPSocket *sock, ECPConnection *parent, ECPNetAddr *add
 
     rv = ecp_pack_raw(sock, parent, packet, s_idx, c_idx, public, shsec, nonce, seq, payload, pld_size, &_addr);
     if (rv < 0) return rv;
-    
+
     return ecp_pkt_send(sock, parent ? &_addr : addr, packet, rv, flags);
 }
 
@@ -1614,7 +1619,7 @@ ssize_t ecp_send(ECPConnection *conn, unsigned char mtype, unsigned char *conten
     packet.size = ECP_MAX_PKT;
     payload.buffer = pld_buf;
     payload.size = ECP_MAX_PLD;
-    
+
     if (content_size + ECP_SIZE_MT_FLAG(mtype) > size_max) {
         int i;
         int _rv = ECP_OK;
@@ -1624,24 +1629,24 @@ ssize_t ecp_send(ECPConnection *conn, unsigned char mtype, unsigned char *conten
 
         _rv = ecp_seq_item_init(&seq_item);
         if (_rv) return _rv;
-        
+
         mtype |= ECP_MTYPE_FLAG_FRAG;
         frag_size = size_max - ECP_SIZE_MT_FLAG(mtype);
         pkt_cnt = content_size / frag_size;
         frag_size_final = content_size - frag_size * pkt_cnt;
         if (frag_size_final) pkt_cnt++;
-        
+
 #ifdef ECP_WITH_PTHREAD
         pthread_mutex_lock(&conn->mutex);
 #endif
-        
+
         seq_start = conn->seq_out + 1;
         conn->seq_out += pkt_cnt;
-        
+
 #ifdef ECP_WITH_PTHREAD
         pthread_mutex_unlock(&conn->mutex);
 #endif
-        
+
         seq_item.seq_w = 1;
         for (i=0; i<pkt_cnt; i++) {
             if ((i == pkt_cnt - 1) && frag_size_final) frag_size = frag_size_final;
@@ -1685,56 +1690,56 @@ static char *_utoa(unsigned value, char *str, int base) {
   int i, j;
   unsigned remainder;
   char c;
-  
+
   /* Check base is supported. */
   if ((base < 2) || (base > 36))
-    { 
+    {
       str[0] = '\0';
       return NULL;
-    }  
-    
+    }
+
   /* Convert to string. Digits are in reverse order.  */
   i = 0;
-  do 
+  do
     {
       remainder = value % base;
       str[i++] = digits[remainder];
       value = value / base;
-    } while (value != 0);  
-  str[i] = '\0'; 
-  
+    } while (value != 0);
+  str[i] = '\0';
+
   /* Reverse string.  */
   for (j = 0, i--; j < i; j++, i--)
     {
       c = str[j];
       str[j] = str[i];
-      str[i] = c; 
-    }       
-  
+      str[i] = c;
+    }
+
   return str;
 }
 
 static char *_itoa(int value, char *str, int base) {
   unsigned uvalue;
   int i = 0;
-  
+
   /* Check base is supported. */
   if ((base < 2) || (base > 36))
-    { 
+    {
       str[0] = '\0';
       return NULL;
-    }  
-    
+    }
+
   /* Negative numbers are only supported for decimal.
-   * Cast to unsigned to avoid overflow for maximum negative value.  */ 
+   * Cast to unsigned to avoid overflow for maximum negative value.  */
   if ((base == 10) && (value < 0))
-    {              
+    {
       str[i++] = '-';
       uvalue = (unsigned)-value;
     }
   else
     uvalue = (unsigned)value;
-  
+
   _utoa(uvalue, &str[i], base);
   return str;
 }
@@ -1744,7 +1749,7 @@ static int recv_p(ECPSocket *sock, ECPNetAddr *addr, ECPBuffer *packet, size_t s
     ECP2Buffer bufs;
     ECPBuffer payload;
     unsigned char pld_buf[ECP_MAX_PLD];
-    
+
     bufs.packet = packet;
     bufs.payload = &payload;
 
@@ -1753,7 +1758,7 @@ static int recv_p(ECPSocket *sock, ECPNetAddr *addr, ECPBuffer *packet, size_t s
 
     ssize_t rv = ecp_pkt_handle(sock, addr, NULL, &bufs, size);
     if (rv < 0) return rv;
-    
+
     return ECP_OK;
 }
 
@@ -1769,7 +1774,7 @@ int ecp_receiver(ECPSocket *sock) {
         packet.buffer = pkt_buf;
         packet.size = ECP_MAX_PKT;
 
-        rv = ecp_tr_recv(&sock->sock, &packet, &addr, next ? next : sock->poll_timeout);
+        rv = ecp_tr_recv(sock, &packet, &addr, next ? next : sock->poll_timeout);
         if (rv > 0) {
             int _rv = recv_p(sock, &addr, &packet, rv);
 #ifdef ECP_DEBUG

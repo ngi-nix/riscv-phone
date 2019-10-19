@@ -9,7 +9,7 @@ obj_tm = time.o
 	$(CC) $(CFLAGS) -c $<
 
 all: libecptr.a libecptm.a
-	
+
 libecptr.a: $(obj_tr)
 	$(AR) rcs libecptr.a $(obj_tr)
 

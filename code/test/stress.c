@@ -42,7 +42,7 @@ int c_start = 0;
 
 int num_s = NUM_S, num_c = NUM_C;
 int msg_rate = MSG_RATE;
-    
+
 static void display(void) {
     int i, s = 0, r = 0;
 
@@ -81,12 +81,12 @@ void *sender(ECPConnection *c) {
     ECPBuffer payload;
     unsigned char pkt_buf[ECP_MAX_PKT];
     unsigned char pld_buf[ECP_MAX_PLD];
-    
+
     packet.buffer = pkt_buf;
     packet.size = ECP_MAX_PKT;
     payload.buffer = pld_buf;
     payload.size = ECP_MAX_PLD;
-    
+
     printf("OPEN:%d\n", idx);
     while(1) {
         uint32_t rnd;
@@ -108,7 +108,7 @@ void *sender(ECPConnection *c) {
 ssize_t handle_open_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s, ECP2Buffer *b) {
     int idx = (int)(conn->conn_data);
     int rv = 0;
-    
+
     ecp_conn_handle_open(conn, sq, t, p, s, b);
     rv = pthread_create(&s_thd[idx], NULL, (void *(*)(void *))sender, (void *)conn);
     if (rv) {
@@ -126,7 +126,7 @@ ssize_t handle_msg_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigne
     ECPBuffer payload;
     unsigned char pkt_buf[ECP_MAX_PKT];
     unsigned char pld_buf[ECP_MAX_PLD];
-    
+
     packet.buffer = pkt_buf;
     packet.size = ECP_MAX_PKT;
     payload.buffer = pld_buf;
@@ -137,7 +137,7 @@ ssize_t handle_msg_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigne
         t_rcvd[idx]++;
         pthread_mutex_unlock(&t_mtx[idx]);
     }
-    
+
     // ecp_pld_set_type(payload, MTYPE_MSG);
     // ssize_t _rv = ecp_pld_send(c, &packet, &payload, ECP_SIZE_PLD(1000, 0));
     return s;
@@ -148,7 +148,7 @@ ssize_t handle_msg_s(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigne
     ECPBuffer payload;
     unsigned char pkt_buf[ECP_MAX_PKT];
     unsigned char pld_buf[ECP_MAX_PLD];
-    
+
     packet.buffer = pkt_buf;
     packet.size = ECP_MAX_PKT;
     payload.buffer = pld_buf;
@@ -164,7 +164,7 @@ int main(int argc, char *argv[]) {
     char addr[256];
     int rv;
     int i;
-    
+
     ECPConnHandler handler_c;
 
     ECPContext *ctx_c;
@@ -173,7 +173,7 @@ int main(int argc, char *argv[]) {
 
     ECPNode *node;
     ECPConnection *conn;
-    
+
     sock_s = malloc(num_s * sizeof(ECPSocket));
     ctx_c = malloc(num_c * sizeof(ECPContext));
     sock_c = malloc(num_c * sizeof(ECPSocket));
@@ -188,7 +188,7 @@ int main(int argc, char *argv[]) {
     t_rcvd = malloc(num_c * sizeof(int));
     memset(t_rcvd, 0, num_c * sizeof(int));
     memset(t_sent, 0, num_c * sizeof(int));
-    
+
     struct sigaction actINFO;
     memset(&actINFO, 0, sizeof(actINFO));
     actINFO.sa_handler = &catchINFO;
@@ -222,13 +222,13 @@ int main(int argc, char *argv[]) {
 
     handler_c.msg[ECP_MTYPE_OPEN] = handle_open_c;
     handler_c.msg[MTYPE_MSG] = handle_msg_c;
-    
+
     for (i=0; i<num_c; i++) {
         pthread_mutex_init(&t_mtx[i], NULL);
-        
+
         if (!rv) rv = ecp_init(&ctx_c[i]);
         ctx_c[i].handler[CTYPE_TEST] = &handler_c;
-        
+
         if (!rv) rv = ecp_dhkey_generate(&ctx_c[i], &key_perma_c[i]);
         if (!rv) rv = ecp_sock_create(&sock_c[i], &ctx_c[i], &key_perma_c[i]);
         if (!rv) rv = ecp_sock_open(&sock_c[i], NULL);
@@ -237,20 +237,20 @@ int main(int argc, char *argv[]) {
 
         strcpy(addr, "127.0.0.1:");
         sprintf(addr+strlen(addr), "%d", 3000 + (i % num_s));
-        if (!rv) rv = ecp_node_init(&ctx_c[i], &node[i], &key_perma_s.public, addr);
-        
+        if (!rv) rv = ecp_node_init(&node[i], &key_perma_s.public, addr);
+
         if (!rv) rv = ecp_conn_create(&conn[i], &sock_c[i], CTYPE_TEST);
         conn[i].conn_data = (void *)i;
-        
+
         if (!rv) rv = ecp_conn_open(&conn[i], &node[i]);
-        
+
         if (rv) {
             char msg[256];
             sprintf(msg, "CLIENT %d CREATE:%d\n", i, rv);
             perror(msg);
             exit(1);
         }
-        
+
     }
     while (1) sleep(1);
 }
