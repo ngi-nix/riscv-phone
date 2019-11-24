@@ -47,7 +47,7 @@
 
 
   .section      .data.entry
-  .align 2
+  .align 4
 
 .global eos_trap_entry
 eos_trap_entry:

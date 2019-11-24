@@ -99,9 +99,21 @@ void eos_evtq_get(unsigned char type, unsigned char *selector, uint16_t sel_len,
         clear_csr(mstatus, MSTATUS_MIE);
         rv = eos_msgq_get(&_eos_event_q, type, selector, sel_len, buffer, len);
         if (!rv) {
-            asm volatile ("wfi");
+            unsigned char _type;
+            unsigned char *_buffer;
+            uint16_t _len;
+
+            eos_msgq_pop(&_eos_event_q, &_type, &_buffer, &_len);
+            if (_type) {
+                set_csr(mstatus, MSTATUS_MIE);
+                evtq_handler(_type, _buffer, _len);
+            } else {
+                asm volatile ("wfi");
+                set_csr(mstatus, MSTATUS_MIE);
+            }
+        } else {
+            set_csr(mstatus, MSTATUS_MIE);
         }
-        set_csr(mstatus, MSTATUS_MIE);
     }
 }
 
@@ -117,11 +129,10 @@ void eos_evtq_loop(void) {
         if (type) {
             set_csr(mstatus, MSTATUS_MIE);
             evtq_handler(type, buffer, len);
-            clear_csr(mstatus, MSTATUS_MIE);
         } else {
             if (!evt_busy) asm volatile ("wfi");
+            set_csr(mstatus, MSTATUS_MIE);
         }
-        set_csr(mstatus, MSTATUS_MIE);
     }
 }
 

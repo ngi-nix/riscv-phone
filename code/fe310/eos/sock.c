@@ -13,6 +13,12 @@ static uint16_t sock_handler_flags_buf_free = 0;
 static uint16_t sock_handler_flags_buf_acq = 0;
 
 static void sock_handler_evt(unsigned char type, unsigned char *buffer, uint16_t len) {
+    if ((buffer == NULL) || (len < 2)) {
+        eos_evtq_bad_handler(type, buffer, len);
+        eos_net_free(buffer, 0);
+        return;
+    }
+
     if (buffer[0] == EOS_SOCK_MTYPE_PKT) {
         uint8_t sock = buffer[1];
         if (sock && (sock <= EOS_SOCK_MAX_SOCK)) {
@@ -59,6 +65,7 @@ int eos_sock_open_udp(void) {
     sock = buffer[1];
     eos_net_free(buffer, 1);
 
+    if (sock == 0) return EOS_ERR_NET;
     return sock;
 }
 

@@ -3,6 +3,7 @@
 
 #include "encoding.h"
 #include "platform.h"
+#include "prci_driver.h"
 
 #include "eos.h"
 #include "interrupt.h"
@@ -117,7 +118,10 @@ void eos_i2s_init(void) {
 }
 
 void eos_i2s_start(uint32_t sample_rate, unsigned char fmt) {
-    uint32_t ck_period = (get_cpu_freq() / (sample_rate * 64)) & ~I2S_PWM_SCALE_CK_MASK;;
+    // Ignore the first run (for icache reasons)
+    uint32_t cpu_freq = PRCI_measure_mcycle_freq(3000, RTC_FREQ);
+    cpu_freq = PRCI_measure_mcycle_freq(3000, RTC_FREQ);
+    uint32_t ck_period = (cpu_freq / (sample_rate * 64)) & ~I2S_PWM_SCALE_CK_MASK;;
 
     GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_CK);
     GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << I2S_PIN_CK);
