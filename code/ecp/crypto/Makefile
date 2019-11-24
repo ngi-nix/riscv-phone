@@ -19,7 +19,7 @@ all: $(obj)
 		(cd $$i && $(MAKE) && cd ..) || exit; \
 	done
 	$(AR) rcs libecpcr.a $(obj) $(obj_dep)
-	
+
 clean:
 	for i in $(subdirs) test; do \
 		(cd $$i && $(MAKE) clean && cd ..) || exit; \

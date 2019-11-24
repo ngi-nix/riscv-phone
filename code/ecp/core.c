@@ -1370,10 +1370,6 @@ ssize_t ecp_pkt_send(ECPSocket *sock, ECPNetAddr *addr, ECPBuffer *packet, size_
     if (rv < 0) return rv;
     if (rv < ECP_MIN_PKT) return ECP_ERR_SEND;
 
-    if (flags & ECP_SEND_FLAG_REPLY) {
-        packet->buffer = NULL;
-        packet->size = 0;
-    }
     return rv;
 }
 

@@ -108,7 +108,7 @@ ssize_t ecp_rbuf_handle_ack(ECPConnection *conn, ecp_seq_t seq, unsigned char mt
         (msg[6] << 8)  | \
         (msg[7]);
 
-    eos_tr_release(b->packet, 1);
+    ecp_tr_release(b->packet, 1);
     ecp_tr_flag_set(ECP_SEND_FLAG_MORE);
 
 #ifdef ECP_WITH_PTHREAD
@@ -203,7 +203,7 @@ ssize_t ecp_rbuf_handle_ack(ECPConnection *conn, ecp_seq_t seq, unsigned char mt
     }
 
     ecp_tr_flag_clear(ECP_SEND_FLAG_MORE);
-    eos_tr_release(b->packet, 0);
+    ecp_tr_release(b->packet, 0);
 
     if (rv) return rv;
     return rsize;

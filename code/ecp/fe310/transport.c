@@ -26,6 +26,11 @@ static void packet_handler(unsigned char *buffer, uint16_t len) {
     payload.buffer = pld_buf;
     payload.size = ECP_MAX_PLD;
 
+    if ((buffer == NULL) || (len < EOS_SOCK_SIZE_UDP_HDR)) {
+        eos_net_free(buffer, 0);
+        return;
+    }
+
     eos_sock_getfrom(buffer, &addr);
     ssize_t rv = ecp_pkt_handle(_ecp_tr_sock, &addr, NULL, &bufs, len-EOS_SOCK_SIZE_UDP_HDR);
 #ifdef ECP_DEBUG
