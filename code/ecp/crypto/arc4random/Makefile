@@ -1,5 +1,5 @@
 include ../../Makefile.platform
-CFLAGS=$(CFLAGS_PL) $(PIC)
+CFLAGS += $(PIC)
 
 obj = arc4random.o
 

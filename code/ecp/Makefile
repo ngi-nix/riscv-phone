@@ -1,5 +1,5 @@
 include Makefile.platform
-CFLAGS=$(CFLAGS_PL) $(PIC) -I.
+CFLAGS += $(PIC) -I.
 
 obj = core.o timer.o $(obj_rbuf)
 subdirs = crypto platform $(htable) $(vconn)

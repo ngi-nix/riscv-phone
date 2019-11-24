@@ -1,6 +1,5 @@
 include ../../Makefile.platform
-CFLAGS=$(CFLAGS_PL) -I.. -I../include
-LDFLAGS=$(LDFLAGS_PL)
+CFLAGS += -I.. -I../include
 
 dep=../e_chacha20poly1305.o ../curve25519/*.o ../chacha/*.o ../poly1305/*.o ../sha/*.o ../compat/*.o
 

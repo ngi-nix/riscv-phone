@@ -1,5 +1,5 @@
 include ../Makefile.platform
-CFLAGS=$(CFLAGS_PL) $(PIC) -I..
+CFLAGS += $(PIC) -I..
 
 obj = vconn.o
 
