@@ -16,8 +16,6 @@ static eos_evt_fptr_t evt_handler[EOS_EVT_MAX_EVT];
 static uint16_t evt_handler_wrapper_acq[EOS_EVT_MAX_EVT];
 static uint16_t evt_handler_flags_buf_acq[EOS_EVT_MAX_EVT];
 
-static volatile char evt_busy = 0;
-
 void eos_evtq_init(void) {
     int i;
 
@@ -88,10 +86,6 @@ void eos_evtq_set_flags(unsigned char type, uint8_t flags) {
     if ((idx < EOS_EVT_MAX_EVT) && (flags & EOS_EVT_FLAG_NET_BUF_ACQ)) evt_handler_flags_buf_acq[idx] |= flag;
 }
 
-void eos_evtq_set_busy(char busy) {
-    evt_busy = busy;
-}
-
 void eos_evtq_get(unsigned char type, unsigned char *selector, uint16_t sel_len, unsigned char **buffer, uint16_t *len) {
     int rv = 0;
 
@@ -130,7 +124,7 @@ void eos_evtq_loop(void) {
             set_csr(mstatus, MSTATUS_MIE);
             evtq_handler(type, buffer, len);
         } else {
-            if (!evt_busy) asm volatile ("wfi");
+            asm volatile ("wfi");
             set_csr(mstatus, MSTATUS_MIE);
         }
     }
