@@ -13,9 +13,7 @@ extern ECPSocket *_ecp_tr_sock;
 static void timer_handler(unsigned char type) {
     ecp_cts_t next = ecp_timer_exe(_ecp_tr_sock);
     if (next) {
-        volatile uint64_t *mtime = (uint64_t *) (CLINT_CTRL_ADDR + CLINT_MTIME);
-        uint64_t tick = *mtime + next * (uint64_t)RTC_FREQ / 1000;
-        eos_timer_set(tick, EOS_TIMER_ETYPE_ECP, 0);
+        eos_timer_set(next, EOS_TIMER_ETYPE_ECP, 0);
     }
 }
 
@@ -32,14 +30,9 @@ ecp_cts_t ecp_tm_abstime_ms(ecp_cts_t msec) {
 }
 
 void ecp_tm_sleep_ms(ecp_cts_t msec) {
-    volatile uint64_t *mtime = (uint64_t *) (CLINT_CTRL_ADDR + CLINT_MTIME);
-
-    uint64_t now_ms = *mtime * 1000 / RTC_FREQ;
-    while (*mtime * 1000 / RTC_FREQ < now_ms + msec);
+    eos_timer_sleep(msec);
 }
 
 void ecp_tm_timer_set(ecp_cts_t next) {
-    volatile uint64_t *mtime = (uint64_t *) (CLINT_CTRL_ADDR + CLINT_MTIME);
-    uint64_t tick = *mtime + next * (uint64_t)RTC_FREQ / 1000;
-    eos_timer_set(tick, EOS_TIMER_ETYPE_ECP, 1);
+    eos_timer_set(next, EOS_TIMER_ETYPE_ECP, 1);
 }
