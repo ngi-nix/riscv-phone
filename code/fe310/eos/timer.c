@@ -80,9 +80,11 @@ uint64_t eos_timer_get(unsigned char evt) {
     return ret;
 }
 
-void eos_timer_set(uint64_t tick, unsigned char evt, unsigned char b) {
+void eos_timer_set(uint32_t msec, unsigned char evt, unsigned char b) {
     int i;
+    volatile uint64_t *mtime = (uint64_t *) (CLINT_CTRL_ADDR + CLINT_MTIME);
     uint64_t *mtimecmp = (uint64_t *) (CLINT_CTRL_ADDR + CLINT_MTIMECMP);
+    uint64_t tick = *mtime + msec * (uint64_t)RTC_FREQ / 1000;
     uint64_t next = 0;
 
     if (evt && (evt <= EOS_TIMER_MAX_ETYPE)) {
@@ -144,4 +146,11 @@ void eos_timer_set_handler(unsigned char evt, eos_timer_fptr_t handler, uint8_t 
     if (*mtimecmp != 0) set_csr(mie, MIP_MTIP);
 
     if ((evt != EOS_TIMER_MAX_ETYPE) && flags) eos_evtq_set_flags(EOS_EVT_TIMER | evt + 1, flags);
+}
+
+void eos_timer_sleep(uint32_t msec) {
+    volatile uint64_t *mtime = (uint64_t *) (CLINT_CTRL_ADDR + CLINT_MTIME);
+
+    uint64_t now_ms = *mtime * 1000 / RTC_FREQ;
+    while (*mtime * 1000 / RTC_FREQ < now_ms + msec);
 }
