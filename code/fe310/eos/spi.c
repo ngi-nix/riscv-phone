@@ -21,9 +21,9 @@
 extern EOSMsgQ _eos_event_q;
 
 static uint8_t spi_dev;
-static uint8_t spi_dev_cs;
+static uint8_t spi_dev_cs_pin;
 static uint8_t spi_state_flags;
-static uint8_t spi_wait;
+static unsigned char spi_in_xchg;
 
 uint32_t _eos_spi_state_len = 0;
 uint32_t _eos_spi_state_idx_tx = 0;
@@ -42,15 +42,9 @@ static void spi_handler_evt(unsigned char type, unsigned char *buffer, uint16_t 
 }
 
 static void spi_flush(void) {
-    SPI1_REG(SPI_REG_RXCTRL) = SPI_TXWM(1);
+    SPI1_REG(SPI_REG_TXCTRL) = SPI_TXWM(1);
     while (!(SPI1_REG(SPI_REG_IP) & SPI_IP_TXWM));
     while (!(SPI1_REG(SPI_REG_RXFIFO) & SPI_RXFIFO_EMPTY));
-}
-
-static void spi_xchg_done(void) {
-    spi_state_flags &= ~SPI_FLAG_XCHG;
-    if (!(spi_state_flags & (EOS_SPI_FLAG_MORE | SPI_FLAG_CS))) eos_spi_cs_clear();
-    SPI1_REG(SPI_REG_IE) = 0x0;
 }
 
 static void spi_xchg_wait(void) {
@@ -62,11 +56,11 @@ static void spi_xchg_wait(void) {
         if (!done) asm volatile ("wfi");
         set_csr(mstatus, MSTATUS_MIE);
     }
-    spi_wait = 0;
+    spi_in_xchg = 0;
 }
 
 void eos_spi_init(void) {
-    GPIO_REG(GPIO_OUTPUT_VAL)   |=  (1 << spi_dev_cs);
+    GPIO_REG(GPIO_OUTPUT_VAL)   |=  (1 << SPI_CS_PIN_CAM);
     GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << SPI_CS_PIN_CAM);
     GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << SPI_CS_PIN_CAM);
     GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << SPI_CS_PIN_CAM);
@@ -103,7 +97,7 @@ void eos_spi_dev_acquire(unsigned char dev) {
             SPI1_REG(SPI_REG_CSID) = SPI_CS_IDX_CARD;
             break;
         case EOS_SPI_DEV_CAM:
-            spi_dev_cs = SPI_CS_PIN_CAM;
+            spi_dev_cs_pin = SPI_CS_PIN_CAM;
             SPI1_REG(SPI_REG_SCKDIV) = SPI_DIV_CAM;
             SPI1_REG(SPI_REG_CSMODE) = SPI_CSMODE_OFF;
             SPI1_REG(SPI_REG_CSID) = SPI_CS_IDX_NONE;
@@ -113,7 +107,7 @@ void eos_spi_dev_acquire(unsigned char dev) {
 }
 
 void eos_spi_dev_release(void) {
-    if (spi_wait) spi_xchg_wait();
+    if (spi_in_xchg) spi_xchg_wait();
     if (spi_state_flags & EOS_SPI_FLAG_TX) spi_flush();
     if (!(spi_state_flags & SPI_FLAG_CS)) eos_spi_cs_clear();
 
@@ -122,10 +116,10 @@ void eos_spi_dev_release(void) {
 }
 
 void eos_spi_xchg(unsigned char *buffer, uint16_t len, uint8_t flags) {
-    if (spi_wait) spi_xchg_wait();
+    if (spi_in_xchg) spi_xchg_wait();
     if (!(flags & EOS_SPI_FLAG_TX) && (spi_state_flags & EOS_SPI_FLAG_TX)) spi_flush();
 
-    spi_wait=1;
+    spi_in_xchg=1;
     spi_state_flags &= 0xF0;
     spi_state_flags |= (SPI_FLAG_XCHG | flags);
     _eos_spi_state_buf = buffer;
@@ -136,6 +130,12 @@ void eos_spi_xchg(unsigned char *buffer, uint16_t len, uint8_t flags) {
     if (spi_state_flags & SPI_FLAG_CS) eos_spi_cs_set();
     SPI1_REG(SPI_REG_TXCTRL) = SPI_TXWM(SPI_SIZE_WM);
     SPI1_REG(SPI_REG_IE) = SPI_IP_TXWM;
+}
+
+static void spi_xchg_done(void) {
+    spi_state_flags &= ~SPI_FLAG_XCHG;
+    if (!(spi_state_flags & (EOS_SPI_FLAG_MORE | SPI_FLAG_CS))) eos_spi_cs_clear();
+    SPI1_REG(SPI_REG_IE) = 0x0;
 }
 
 void eos_spi_xchg_handler(void) {
@@ -175,7 +175,7 @@ void eos_spi_xchg_handler(void) {
 void eos_spi_cs_set(void) {
 	/* cs low */
     if (SPI1_REG(SPI_REG_CSMODE) == SPI_CSMODE_OFF) {
-        GPIO_REG(GPIO_OUTPUT_VAL) &= ~(1 << spi_dev_cs);
+        GPIO_REG(GPIO_OUTPUT_VAL) &= ~(1 << spi_dev_cs_pin);
     } else {
         SPI1_REG(SPI_REG_CSMODE) = SPI_CSMODE_HOLD;
     }
@@ -185,7 +185,7 @@ void eos_spi_cs_set(void) {
 void eos_spi_cs_clear(void) {
 	/* cs high */
     if (SPI1_REG(SPI_REG_CSMODE) == SPI_CSMODE_OFF) {
-        GPIO_REG(GPIO_OUTPUT_VAL) |= (1 << spi_dev_cs);
+        GPIO_REG(GPIO_OUTPUT_VAL) |= (1 << spi_dev_cs_pin);
     } else {
         SPI1_REG(SPI_REG_CSMODE) = SPI_CSMODE_AUTO;
     }
@@ -196,12 +196,12 @@ uint8_t eos_spi_xchg8(uint8_t data, uint8_t flags) {
     volatile uint32_t x = 0;
     uint8_t rx = !(flags & EOS_SPI_FLAG_TX);
 
-    if (spi_wait) spi_xchg_wait();
+    if (spi_in_xchg) spi_xchg_wait();
     if (rx && (spi_state_flags & EOS_SPI_FLAG_TX)) spi_flush();
 
     spi_state_flags &= 0xF0;
     spi_state_flags |= flags;
-    if ((spi_state_flags & EOS_SPI_FLAG_AUTOCS) && (spi_state_flags & SPI_FLAG_CS)) eos_spi_cs_set();
+    if ((flags & EOS_SPI_FLAG_AUTOCS) && (spi_state_flags & SPI_FLAG_CS)) eos_spi_cs_set();
 
     while (SPI1_REG(SPI_REG_TXFIFO) & SPI_TXFIFO_FULL);
     SPI1_REG(SPI_REG_TXFIFO) = data;
@@ -210,7 +210,7 @@ uint8_t eos_spi_xchg8(uint8_t data, uint8_t flags) {
         while ((x = SPI1_REG(SPI_REG_RXFIFO)) & SPI_RXFIFO_EMPTY);
     }
 
-    if ((spi_state_flags & EOS_SPI_FLAG_AUTOCS) && !(spi_state_flags & EOS_SPI_FLAG_MORE)) eos_spi_cs_clear();
+    if ((flags & EOS_SPI_FLAG_AUTOCS) && !(flags & EOS_SPI_FLAG_MORE)) eos_spi_cs_clear();
 
     return x & 0xFF;
 }
@@ -220,12 +220,12 @@ uint16_t eos_spi_xchg16(uint16_t data, uint8_t flags) {
     uint8_t rx = !(flags & EOS_SPI_FLAG_TX);
     uint16_t r;
 
-    if (spi_wait) spi_xchg_wait();
+    if (spi_in_xchg) spi_xchg_wait();
     if (rx && (spi_state_flags & EOS_SPI_FLAG_TX)) spi_flush();
 
     spi_state_flags &= 0xF0;
     spi_state_flags |= flags;
-    if ((spi_state_flags & EOS_SPI_FLAG_AUTOCS) && (spi_state_flags & SPI_FLAG_CS)) eos_spi_cs_set();
+    if ((flags & EOS_SPI_FLAG_AUTOCS) && (spi_state_flags & SPI_FLAG_CS)) eos_spi_cs_set();
 
     while (SPI1_REG(SPI_REG_TXFIFO) & SPI_TXFIFO_FULL);
     SPI1_REG(SPI_REG_TXFIFO) = (data & 0xFF00) >> 8;
@@ -239,7 +239,7 @@ uint16_t eos_spi_xchg16(uint16_t data, uint8_t flags) {
         r |= x & 0xFF;
     }
 
-    if ((spi_state_flags & EOS_SPI_FLAG_AUTOCS) && !(spi_state_flags & EOS_SPI_FLAG_MORE)) eos_spi_cs_clear();
+    if ((flags & EOS_SPI_FLAG_AUTOCS) && !(flags & EOS_SPI_FLAG_MORE)) eos_spi_cs_clear();
 
     return x & 0xFF;
 }
@@ -249,12 +249,12 @@ uint32_t eos_spi_xchg32(uint32_t data, uint8_t flags) {
     uint8_t rx = !(flags & EOS_SPI_FLAG_TX);
     uint32_t r;
 
-    if (spi_wait) spi_xchg_wait();
+    if (spi_in_xchg) spi_xchg_wait();
     if (rx && (spi_state_flags & EOS_SPI_FLAG_TX)) spi_flush();
 
     spi_state_flags &= 0xF0;
     spi_state_flags |= flags;
-    if ((spi_state_flags & EOS_SPI_FLAG_AUTOCS) && (spi_state_flags & SPI_FLAG_CS)) eos_spi_cs_set();
+    if ((flags & EOS_SPI_FLAG_AUTOCS) && (spi_state_flags & SPI_FLAG_CS)) eos_spi_cs_set();
 
     while (SPI1_REG(SPI_REG_TXFIFO) & SPI_TXFIFO_FULL);
     SPI1_REG(SPI_REG_TXFIFO) = (data & 0xFF000000) >> 24;
@@ -276,7 +276,7 @@ uint32_t eos_spi_xchg32(uint32_t data, uint8_t flags) {
         r |=  x & 0xFF;
     }
 
-    if ((spi_state_flags & EOS_SPI_FLAG_AUTOCS) && !(spi_state_flags & EOS_SPI_FLAG_MORE)) eos_spi_cs_clear();
+    if ((flags & EOS_SPI_FLAG_AUTOCS) && !(flags & EOS_SPI_FLAG_MORE)) eos_spi_cs_clear();
 
     return r;
 }
