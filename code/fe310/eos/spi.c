@@ -136,6 +136,11 @@ static void spi_xchg_done(void) {
     spi_state_flags &= ~SPI_FLAG_XCHG;
     if (!(spi_state_flags & (EOS_SPI_FLAG_MORE | SPI_FLAG_CS))) eos_spi_cs_clear();
     SPI1_REG(SPI_REG_IE) = 0x0;
+    if (spi_dev == EOS_SPI_DEV_NET) {
+        eos_net_xchg_done();
+    } else {
+        eos_msgq_push(&_eos_event_q, EOS_EVT_SPI | spi_dev, _eos_spi_state_buf, _eos_spi_state_len);
+    }
 }
 
 void eos_spi_xchg_handler(void) {
@@ -156,19 +161,13 @@ void eos_spi_xchg_handler(void) {
     }
     _eos_spi_state_idx_rx += i;
 
-    if ((spi_state_flags & EOS_SPI_FLAG_TX) && _eos_spi_state_idx_tx == _eos_spi_state_len) {
-        spi_state_flags &= ~EOS_SPI_FLAG_TX;
-        spi_xchg_done();
-    } else if (_eos_spi_state_idx_rx == _eos_spi_state_len) {
-        spi_xchg_done();
-        if (spi_dev == EOS_SPI_DEV_NET) {
-            eos_net_xchg_done();
+    if (_eos_spi_state_idx_tx == _eos_spi_state_len) {
+        if ((_eos_spi_state_idx_rx == _eos_spi_state_len) || (spi_state_flags & EOS_SPI_FLAG_TX)) {
+            spi_xchg_done();
         } else {
-            eos_msgq_push(&_eos_event_q, EOS_EVT_SPI | spi_dev, _eos_spi_state_buf, _eos_spi_state_len);
+            SPI1_REG(SPI_REG_RXCTRL) = SPI_RXWM(MIN(_eos_spi_state_len - _eos_spi_state_idx_rx - 1, SPI_SIZE_WM - 1));
+            SPI1_REG(SPI_REG_IE) = SPI_IP_RXWM;
         }
-    } else if (_eos_spi_state_idx_tx == _eos_spi_state_len) {
-        SPI1_REG(SPI_REG_RXCTRL) = SPI_RXWM(MIN(_eos_spi_state_len - _eos_spi_state_idx_rx - 1, SPI_SIZE_WM - 1));
-        SPI1_REG(SPI_REG_IE) = SPI_IP_RXWM;
     }
 }
 

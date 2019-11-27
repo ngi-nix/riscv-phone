@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "event.h"
 
 #define EOS_SPI_DEV_NET     0
 #define EOS_SPI_DEV_DISP    1

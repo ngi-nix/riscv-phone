@@ -72,7 +72,7 @@ static unsigned char *net_bufq_pop(void) {
 
 static void net_xchg_reset(void) {
     net_state_flags &= ~NET_STATE_FLAG_CTS;
-    net_state_flags |= NET_STATE_FLAG_RST;
+    net_state_flags |= (NET_STATE_FLAG_RST | NET_STATE_FLAG_XCHG);
 
     // before starting a transaction, set SPI peripheral to desired mode
     SPI1_REG(SPI_REG_CSMODE) = SPI_CSMODE_HOLD;
@@ -85,7 +85,7 @@ static void net_xchg_reset(void) {
 
 static void net_xchg_start(unsigned char type, unsigned char *buffer, uint16_t len) {
     net_state_flags &= ~NET_STATE_FLAG_CTS;
-    net_state_flags |= NET_STATE_FLAG_INIT;
+    net_state_flags |= (NET_STATE_FLAG_INIT | NET_STATE_FLAG_XCHG);
 
     if (net_state_next_cnt && (net_state_next_buf == NULL)) type |= NET_MTYPE_FLAG_ONEW;
     if (type & NET_MTYPE_FLAG_ONEW) net_state_flags |= NET_STATE_FLAG_ONEW;
@@ -183,6 +183,7 @@ void eos_net_xchg_done(void) {
     } else {
         net_bufq_push(_eos_spi_state_buf);
     }
+    net_state_flags &= ~NET_STATE_FLAG_XCHG;
 }
 
 static void net_handler_cts(void) {
@@ -244,6 +245,13 @@ void eos_net_set_handler(unsigned char mtype, eos_evt_fptr_t handler, uint8_t fl
 void eos_net_init(void) {
     int i;
 
+    net_bufq_init();
+    eos_msgq_init(&net_send_q, net_sndq_array, NET_SIZE_BUFQ);
+    for (i=0; i<EOS_NET_MAX_MTYPE; i++) {
+        evt_handler[i] = eos_evtq_bad_handler;
+    }
+    eos_evtq_set_handler(EOS_EVT_NET, net_handler_evt);
+
     GPIO_REG(GPIO_OUTPUT_EN) &= ~(1 << NET_PIN_CTS);
     GPIO_REG(GPIO_PULLUP_EN) |=  (1 << NET_PIN_CTS);
     GPIO_REG(GPIO_INPUT_EN)  |=  (1 << NET_PIN_CTS);
@@ -256,13 +264,6 @@ void eos_net_init(void) {
     GPIO_REG(GPIO_RISE_IE)   |=  (1 << NET_PIN_RTS);
     GPIO_REG(GPIO_FALL_IE)   |=  (1 << NET_PIN_RTS);
     eos_intr_set(INT_GPIO_BASE + NET_PIN_RTS, IRQ_PRIORITY_NET_RTS, net_handler_rts);
-
-    net_bufq_init();
-    eos_msgq_init(&net_send_q, net_sndq_array, NET_SIZE_BUFQ);
-    for (i=0; i<EOS_NET_MAX_MTYPE; i++) {
-        evt_handler[i] = eos_evtq_bad_handler;
-    }
-    eos_evtq_set_handler(EOS_EVT_NET, net_handler_evt);
 }
 
 void eos_net_start(void) {
@@ -271,16 +272,20 @@ void eos_net_start(void) {
     SPI1_REG(SPI_REG_CSID) = SPI_CS_IDX_NET;
 
     net_state_flags |= NET_STATE_FLAG_RUN;
-    if (net_state_flags & NET_STATE_FLAG_CTS) net_xchg_next(NULL);
+    if (net_state_flags & NET_STATE_FLAG_CTS) {
+        clear_csr(mstatus, MSTATUS_MIE);
+        net_xchg_next(NULL);
+        set_csr(mstatus, MSTATUS_MIE);
+    }
 }
 
 void eos_net_stop(void) {
-    volatile uint8_t done = 0;
+    uint8_t done = 0;
 
     while (!done) {
         clear_csr(mstatus, MSTATUS_MIE);
         net_state_flags &= ~NET_STATE_FLAG_RUN;
-        done = net_state_flags & NET_STATE_FLAG_CTS;
+        done = !(net_state_flags & NET_STATE_FLAG_XCHG);
         if (!done) asm volatile ("wfi");
         set_csr(mstatus, MSTATUS_MIE);
     }
