@@ -113,6 +113,7 @@ i2s_handler_sd:
 
 i2s_abuf_pop:
   # pop from spk buf -> x8
+  mv x8, x0
   la x9, _eos_i2s_spk_buf
   lhu x18, I2S_ABUF_OFF_IDXR(x9)
   lhu x19, I2S_ABUF_OFF_IDXW(x9)
@@ -124,15 +125,17 @@ i2s_abuf_pop:
   and x20, x20, x18
   lw x21, I2S_ABUF_OFF_ARRAY(x9)
   add x21, x21, x20
+  bnez x23, 0f
   lbu x8, 0(x21)
   addi x18, x18, 1
-  beqz x23, 0f
-  slli x8, x8, 8
-  lbu x22, 1(x21)
-  or x8, x8, x22
-  addi x18, x18, 1
-
+  j 1f
 0:
+  lb x8, 0(x21)
+  lbu x20, 1(x21)
+  slli x8, x8, 8
+  or x8, x8, x20
+  addi x18, x18, 2
+1:
   sh x18, I2S_ABUF_OFF_IDXR(x9)
 
   li x21, 0xffff
@@ -156,9 +159,8 @@ i2s_abuf_pop:
   li x18, (EOS_EVT_AUDIO | I2S_ETYPE_SPK)
   sb x18, MSGQ_ITEM_OFF_TYPE(x21)
 
-  bnez x23, i2s_handler_sd_xchg
-
 i2s_decode:
+  bnez x23, i2s_handler_sd_xchg
   # aLaw decode -> x8
   xori x8, x8, 0x55
   andi x9, x8, 0x80
@@ -197,7 +199,6 @@ i2s_decode:
   mul x8, x8, x9
 
 i2s_handler_sd_xchg:
-  # slli x8, x8, 4
   # li x8, 0xAf0A
   # li x8, 0x50f5
   # read/write shift reg: x8 -> sr -> x8
@@ -269,9 +270,9 @@ i2s_handler_sd_xchg:
 
   la x9, _eos_i2s_fmt
   lw x23, 0(x9)
-  bnez x23, i2s_abuf_push
 
 i2s_encode:
+  bnez x23, i2s_abuf_push
   # aLaw encode -> x8
   li x18, 0x800
   li x19, 7
@@ -318,17 +319,18 @@ i2s_abuf_push:
   and x20, x20, x19
   lw x21, I2S_ABUF_OFF_ARRAY(x9)
   add x21, x21, x20
-  add x21, x21, x23
+  bnez x23, 0f
   sb x8, 0(x21)
   addi x19, x19, 1
   addi x18, x18, 1
-  beqz x23, 0f
-  srli x8, x8, 8
-  sb x8, -1(x21)
-  addi x19, x19, 1
-  addi x18, x18, 1
-
+  j 1f
 0:
+  sb x8, 1(x21)
+  srli x8, x8, 8
+  sb x8, 0(x21)
+  addi x19, x19, 2
+  addi x18, x18, 2
+1:
   sh x19, I2S_ABUF_OFF_IDXW(x9)
 
   # check for push to event queue
