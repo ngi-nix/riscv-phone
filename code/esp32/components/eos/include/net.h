@@ -1,19 +1,24 @@
 #include <stdint.h>
 
-#define EOS_FE310_CMD_FLAG_ONEW         0x10
+#define EOS_NET_MTYPE_SOCK          1
+#define EOS_NET_MTYPE_AUDIO         2
 
-#define EOS_FE310_CMD_WIFI_CONNECT      1
-#define EOS_FE310_CMD_WIFI_DISCONNECT   2
-#define EOS_FE310_CMD_WIFI_SCAN         3
-#define EOS_FE310_CMD_WIFI_PKT          4
-#define EOS_FE310_CMD_MODEM_DATA        5
-#define EOS_FE310_CMD_MODEM_CALL        6
+#define EOS_NET_MTYPE_WIFI          5
+#define EOS_NET_MTYPE_CELL          6
+#define EOS_NET_MTYPE_SIP           7
+#define EOS_NET_MTYPE_APP           8
 
-#define EOS_FE310_MAX_CMD               8
-#define EOS_FE310_SIZE_Q                64
-#define EOS_FE310_SIZE_BUF              2048
+#define EOS_NET_MAX_MTYPE           8
 
-typedef void (*eos_fe310_fptr_t) (unsigned char, unsigned char *, uint16_t);
+#define EOS_NET_MTYPE_FLAG_ONEW     0x10
 
-void eos_fe310_init(void);
-int eos_fe310_send(unsigned char cmd, unsigned char *buffer, uint16_t len);
+#define EOS_NET_SIZE_BUF            1500
+#define EOS_NET_SIZE_BUFQ           64
+
+#define EOS_NET_FLAG_BUF_FREE       0x01
+
+typedef void (*eos_net_fptr_t) (unsigned char, unsigned char *, uint16_t);
+
+void eos_net_init(void);
+int eos_net_send(unsigned char mtype, unsigned char *buffer, uint16_t len, uint8_t flags);
+void eos_net_set_handler(unsigned char mtype, eos_net_fptr_t handler);

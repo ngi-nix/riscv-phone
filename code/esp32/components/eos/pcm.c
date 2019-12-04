@@ -9,7 +9,6 @@
 
 #include "eos.h"
 #include "modem.h"
-#include "fe310.h"
 
 static i2s_dev_t* I2S[I2S_NUM_MAX] = {&I2S0, &I2S1};
 
@@ -44,7 +43,7 @@ static void i2s_event_task(void *pvParameters) {
                             data_first = (uint8_t *) malloc(BUF_SIZE);
                             memcpy(data_first, data, BUF_SIZE);
                         }
-                        
+
                     }
                     i2s_write(I2S_NUM_0, (const void *)data, BUF_SIZE, &size_out, 1000 / portTICK_RATE_MS);
                     break;
@@ -82,11 +81,11 @@ static void i2s_write_task(void *pvParameters) {
 
 void eos_pcm_init(void) {
     esp_err_t err;
-    
+
     i2s_config_t i2s_config = {
         .mode = I2S_MODE_SLAVE | I2S_MODE_TX | I2S_MODE_RX,
         .sample_rate = 32000,
-        .bits_per_sample = 32,                                              
+        .bits_per_sample = 32,
         .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
         .communication_format =  I2S_COMM_FORMAT_PCM | I2S_COMM_FORMAT_PCM_LONG,
         .dma_buf_count = 4,
@@ -95,7 +94,7 @@ void eos_pcm_init(void) {
         .fixed_mclk = 2048000 * 8,
         .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1
     };
-    
+
     i2s_pin_config_t pin_config = {
         .bck_io_num = 33,
         .ws_io_num = 4,
@@ -112,13 +111,13 @@ void eos_pcm_init(void) {
     i2s_start(I2S_NUM_0);
 
     // Create a task to handle i2s event from ISR
-    xTaskCreate(i2s_event_task, "i2s_event_task", 2048, NULL, EOS_PRIORITY_PCM, NULL);
-    // xTaskCreate(i2s_write_task, "i2s_write_task", 2048, NULL, EOS_PRIORITY_PCM, NULL);
+    xTaskCreate(i2s_event_task, "i2s_event_task", 2048, NULL, EOS_IRQ_PRIORITY_I2S, NULL);
+    // xTaskCreate(i2s_write_task, "i2s_write_task", 2048, NULL, EOS_IRQ_PRIORITY_I2S, NULL);
 }
 
 ssize_t eos_pcm_write(void *data, size_t size) {
     size_t size_out;
-    
+
     esp_err_t ret = i2s_write(I2S_NUM_0, (const void *)data, size, &size_out, portMAX_DELAY);
     if (ret != ESP_OK) return EOS_ERR;
     return size_out;

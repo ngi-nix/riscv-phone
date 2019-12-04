@@ -9,8 +9,6 @@
 // #include <freertos/heap_regions.h>
 
 #include <esp_system.h>
-#include <esp_event.h>
-#include <esp_event_loop.h>
 #include <esp_log.h>
 #include <esp_err.h>
 #include <esp_heap_caps.h>
@@ -19,13 +17,10 @@
 
 #include "eos.h"
 #include "msgq.h"
-#include "transport.h"
-#include "modem.h"
-#include "pcm.h"
-#include "fe310.h"
+#include "net.h"
 
-static EOSMsgQ send_q;
-static EOSMsgItem send_q_array[EOS_FE310_SIZE_Q];
+static EOSMsgQ net_send_q;
+static EOSMsgItem net_sndq_array[EOS_NET_SIZE_BUFQ];
 
 #define SPI_GPIO_RTS        22
 #define SPI_GPIO_CTS        21
@@ -38,35 +33,39 @@ static SemaphoreHandle_t mutex;
 
 static const char *TAG = "EOS";
 
-static eos_fe310_fptr_t cmd_handler[EOS_FE310_MAX_CMD];
+static eos_net_fptr_t mtype_handler[EOS_NET_MAX_MTYPE];
 
-static void bad_handler(unsigned char cmd, unsigned char *buffer, uint16_t len) {
-    ESP_LOGI(TAG, "FE310 RECV: bad handler: %d", cmd);
+static void bad_handler(unsigned char mtype, unsigned char *buffer, uint16_t len) {
+    ESP_LOGE(TAG, "NET RECV: bad handler: %d", mtype);
 }
 
-static void transceiver(void *pvParameters) {
+static void exchange(void *pvParameters) {
     int repeat = 0;
-    unsigned char cmd = 0;
+    unsigned char mtype = 0;
     unsigned char *buffer;
     uint16_t len;
-    unsigned char *buf_send = heap_caps_malloc(EOS_FE310_SIZE_BUF, MALLOC_CAP_DMA);
-    unsigned char *buf_recv = heap_caps_malloc(EOS_FE310_SIZE_BUF, MALLOC_CAP_DMA);
+    uint8_t flags;
+    unsigned char *buf_send = heap_caps_malloc(EOS_NET_SIZE_BUF, MALLOC_CAP_DMA);
+    unsigned char *buf_recv = heap_caps_malloc(EOS_NET_SIZE_BUF, MALLOC_CAP_DMA);
 
     spi_slave_transaction_t t;
     memset(&t, 0, sizeof(t));
 
-    t.length = EOS_FE310_SIZE_BUF*8;
+    t.length = EOS_NET_SIZE_BUF*8;
     t.tx_buffer = buf_send;
     t.rx_buffer = buf_recv;
     for (;;) {
         if (!repeat) {
             xSemaphoreTake(mutex, portMAX_DELAY);
 
-            eos_msgq_pop(&send_q, &cmd, &buffer, &len);
-            if (cmd) {
-                buf_send[0] = ((cmd << 3) | (len >> 8)) & 0xFF;
+            eos_msgq_pop(&net_send_q, &mtype, &buffer, &len, &flags);
+            if (mtype) {
+                buf_send[0] = ((mtype << 3) | (len >> 8)) & 0xFF;
                 buf_send[1] = len & 0xFF;
-                if (buffer) memcpy(buf_send + 2, buffer, len);
+                if (buffer) {
+                    memcpy(buf_send + 2, buffer, len);
+                    if (flags & EOS_NET_FLAG_BUF_FREE) free(buffer);
+                }
             } else {
                 WRITE_PERI_REG(GPIO_OUT_W1TC_REG, (1 << SPI_GPIO_RTS));
                 buf_send[0] = 0;
@@ -76,25 +75,25 @@ static void transceiver(void *pvParameters) {
             xSemaphoreGive(mutex);
         }
 
-        memset(buf_recv, 0, EOS_FE310_SIZE_BUF);
+        memset(buf_recv, 0, EOS_NET_SIZE_BUF);
         spi_slave_transmit(HSPI_HOST, &t, portMAX_DELAY);
         repeat = 0;
         if (buf_recv[0] != 0) {
-            cmd = (buf_recv[0] >> 3);
+            mtype = (buf_recv[0] >> 3);
             len = ((buf_recv[0] & 0x07) << 8);
             len |= buf_recv[1];
             buffer = buf_recv + 2;
-            if (cmd & EOS_FE310_CMD_FLAG_ONEW) {
-                cmd &= ~EOS_FE310_CMD_FLAG_ONEW;
+            if (mtype & EOS_NET_MTYPE_FLAG_ONEW) {
+                mtype &= ~EOS_NET_MTYPE_FLAG_ONEW;
                 if (buf_send[0]) repeat = 1;
             }
-            if (cmd < EOS_FE310_MAX_CMD) {
-                cmd_handler[cmd](cmd, buffer, len);
+            if (mtype <= EOS_NET_MAX_MTYPE) {
+                mtype_handler[mtype-1](mtype, buffer, len);
             } else {
-                bad_handler(cmd, buffer, len);
+                bad_handler(mtype, buffer, len);
             }
         } else {
-            // ESP_LOGI(TAG, "FE310 RECV NULL");
+            // ESP_LOGI(TAG, "NET RECV NULL");
         }
         // vTaskDelay(5000 / portTICK_PERIOD_MS);
     }
@@ -110,37 +109,12 @@ static void _post_trans_cb(spi_slave_transaction_t *trans) {
     WRITE_PERI_REG(GPIO_OUT_W1TC_REG, (1 << SPI_GPIO_CTS));
 }
 
-static void fe310_wifi_connect_handler(unsigned char cmd, unsigned char *buffer, uint16_t size) {
-    eos_wifi_connect((char *)buffer, (char *)(buffer+strlen((char *)buffer)+1));
-}
-
-static void fe310_wifi_pkt_handler(unsigned char cmd, unsigned char *buffer, uint16_t size) {
-    EOSNetAddr addr;
-    size_t addr_len = sizeof(addr.host) + sizeof(addr.port);
-    
-    memcpy(addr.host, buffer, sizeof(addr.host));
-    memcpy(&addr.port, buffer+sizeof(addr.host), sizeof(addr.port));
-    eos_wifi_send(buffer+addr_len, size-addr_len, &addr);
-}
-
-static void fe310_modem_data_handler(unsigned char cmd, unsigned char *buffer, uint16_t size) {
-    eos_modem_write(buffer, size);
-}
-
-static void fe310_modem_call_handler(unsigned char cmd, unsigned char *buffer, uint16_t size) {
-    eos_pcm_call();
-}
-
-static void fe310_set_handler(unsigned char cmd, eos_fe310_fptr_t handler) {
-    cmd_handler[cmd] = handler;
-}
-
-void eos_fe310_init(void) {
+void eos_net_init(void) {
     esp_err_t ret;
-    
+
     // Configuration for the handshake lines
     gpio_config_t io_conf;
-    
+
     io_conf.intr_type = GPIO_INTR_DISABLE;
     io_conf.mode = GPIO_MODE_OUTPUT;
     io_conf.pin_bit_mask = (1 << SPI_GPIO_CTS);
@@ -176,33 +150,30 @@ void eos_fe310_init(void) {
     gpio_set_pull_mode(SPI_GPIO_CS, GPIO_PULLUP_ONLY);
 
     int i;
-    for (i=0; i<EOS_FE310_MAX_CMD; i++) {
-        cmd_handler[i] = bad_handler;
+    for (i=0; i<EOS_NET_MAX_MTYPE; i++) {
+        mtype_handler[i] = bad_handler;
     }
-    
+
     //Initialize SPI slave interface
     ret=spi_slave_initialize(HSPI_HOST, &buscfg, &slvcfg, 1);
     assert(ret==ESP_OK);
 
-    eos_msgq_init(&send_q, send_q_array, EOS_FE310_SIZE_Q);
+    eos_msgq_init(&net_send_q, net_sndq_array, EOS_NET_SIZE_BUFQ);
     mutex = xSemaphoreCreateBinary();
     xSemaphoreGive(mutex);
-    xTaskCreate(&transceiver, "fe310_transceiver", 4096, NULL, EOS_PRIORITY_SPI, NULL);
-    // xTaskCreatePinnedToCore(&transceiver, "fe310_transceiver", 4096, NULL, EOS_PRIORITY_SPI, NULL, 1);
-    
-    fe310_set_handler(EOS_FE310_CMD_WIFI_CONNECT, fe310_wifi_connect_handler);
-    fe310_set_handler(EOS_FE310_CMD_WIFI_PKT, fe310_wifi_pkt_handler);
-    fe310_set_handler(EOS_FE310_CMD_MODEM_DATA, fe310_modem_data_handler);
-    fe310_set_handler(EOS_FE310_CMD_MODEM_CALL, fe310_modem_call_handler);
+    xTaskCreate(&exchange, "net_xchg", 4096, NULL, EOS_IRQ_PRIORITY_NET_XCHG, NULL);
 }
 
-int eos_fe310_send(unsigned char cmd, unsigned char *buffer, uint16_t len) {
+int eos_net_send(unsigned char mtype, unsigned char *buffer, uint16_t len, uint8_t flags) {
     xSemaphoreTake(mutex, portMAX_DELAY);
     WRITE_PERI_REG(GPIO_OUT_W1TS_REG, (1 << SPI_GPIO_RTS));
-    int rv = eos_msgq_push(&send_q, cmd, buffer, len);
+    int rv = eos_msgq_push(&net_send_q, mtype, buffer, len, flags);
     xSemaphoreGive(mutex);
-    
+
     return rv;
 }
 
+void eos_net_set_handler(unsigned char mtype, eos_net_fptr_t handler) {
+    mtype_handler[mtype-1] = handler;
+}
 

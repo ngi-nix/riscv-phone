@@ -1,3 +1,4 @@
+#include <sys/types.h>
 #include <stdint.h>
 
 void eos_pcm_init(void);
