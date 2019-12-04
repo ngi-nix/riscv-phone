@@ -81,7 +81,7 @@ void eos_spi_init(void) {
     eos_evtq_set_handler(EOS_EVT_SPI, spi_handler_evt);
 }
 
-void eos_spi_dev_acquire(unsigned char dev) {
+void eos_spi_dev_start(unsigned char dev) {
     eos_net_stop();
     spi_dev = dev;
     spi_state_flags = SPI_FLAG_CS;
@@ -106,7 +106,7 @@ void eos_spi_dev_acquire(unsigned char dev) {
     eos_intr_set_handler(INT_SPI1_BASE, eos_spi_xchg_handler);
 }
 
-void eos_spi_dev_release(void) {
+void eos_spi_dev_stop(void) {
     if (spi_in_xchg) spi_xchg_wait();
     if (spi_state_flags & EOS_SPI_FLAG_TX) spi_flush();
     if (!(spi_state_flags & SPI_FLAG_CS)) eos_spi_cs_clear();
@@ -133,12 +133,12 @@ void eos_spi_xchg(unsigned char *buffer, uint16_t len, uint8_t flags) {
 }
 
 static void spi_xchg_done(void) {
-    spi_state_flags &= ~SPI_FLAG_XCHG;
-    if (!(spi_state_flags & (EOS_SPI_FLAG_MORE | SPI_FLAG_CS))) eos_spi_cs_clear();
     SPI1_REG(SPI_REG_IE) = 0x0;
     if (spi_dev == EOS_SPI_DEV_NET) {
         eos_net_xchg_done();
     } else {
+        spi_state_flags &= ~SPI_FLAG_XCHG;
+        if (!(spi_state_flags & (EOS_SPI_FLAG_MORE | SPI_FLAG_CS))) eos_spi_cs_clear();
         eos_msgq_push(&_eos_event_q, EOS_EVT_SPI | spi_dev, _eos_spi_state_buf, _eos_spi_state_len);
     }
 }
@@ -217,7 +217,7 @@ uint8_t eos_spi_xchg8(uint8_t data, uint8_t flags) {
 uint16_t eos_spi_xchg16(uint16_t data, uint8_t flags) {
     volatile uint32_t x = 0;
     uint8_t rx = !(flags & EOS_SPI_FLAG_TX);
-    uint16_t r;
+    uint16_t r = 0;
 
     if (spi_in_xchg) spi_xchg_wait();
     if (rx && (spi_state_flags & EOS_SPI_FLAG_TX)) spi_flush();
@@ -226,27 +226,92 @@ uint16_t eos_spi_xchg16(uint16_t data, uint8_t flags) {
     spi_state_flags |= flags;
     if ((flags & EOS_SPI_FLAG_AUTOCS) && (spi_state_flags & SPI_FLAG_CS)) eos_spi_cs_set();
 
-    while (SPI1_REG(SPI_REG_TXFIFO) & SPI_TXFIFO_FULL);
-    SPI1_REG(SPI_REG_TXFIFO) = (data & 0xFF00) >> 8;
-    while (SPI1_REG(SPI_REG_TXFIFO) & SPI_TXFIFO_FULL);
-    SPI1_REG(SPI_REG_TXFIFO) = (data & 0x00FF);
+    if (flags & EOS_SPI_FLAG_BSWAP) {
+        while (SPI1_REG(SPI_REG_TXFIFO) & SPI_TXFIFO_FULL);
+        SPI1_REG(SPI_REG_TXFIFO) = (data & 0x00FF);
+        while (SPI1_REG(SPI_REG_TXFIFO) & SPI_TXFIFO_FULL);
+        SPI1_REG(SPI_REG_TXFIFO) = (data & 0xFF00) >> 8;
+    } else {
+        while (SPI1_REG(SPI_REG_TXFIFO) & SPI_TXFIFO_FULL);
+        SPI1_REG(SPI_REG_TXFIFO) = (data & 0xFF00) >> 8;
+        while (SPI1_REG(SPI_REG_TXFIFO) & SPI_TXFIFO_FULL);
+        SPI1_REG(SPI_REG_TXFIFO) = (data & 0x00FF);
+    }
 
     if (rx) {
-        while ((x = SPI1_REG(SPI_REG_RXFIFO)) & SPI_RXFIFO_EMPTY);
-        r = (x & 0xFF) << 8;
-        while ((x = SPI1_REG(SPI_REG_RXFIFO)) & SPI_RXFIFO_EMPTY);
-        r |= x & 0xFF;
+        if (flags & EOS_SPI_FLAG_BSWAP) {
+            while ((x = SPI1_REG(SPI_REG_RXFIFO)) & SPI_RXFIFO_EMPTY);
+            r |= (x & 0xFF);
+            while ((x = SPI1_REG(SPI_REG_RXFIFO)) & SPI_RXFIFO_EMPTY);
+            r |= (x & 0xFF) << 8;
+        } else {
+            while ((x = SPI1_REG(SPI_REG_RXFIFO)) & SPI_RXFIFO_EMPTY);
+            r |= (x & 0xFF) << 8;
+            while ((x = SPI1_REG(SPI_REG_RXFIFO)) & SPI_RXFIFO_EMPTY);
+            r |= (x & 0xFF);
+        }
     }
 
     if ((flags & EOS_SPI_FLAG_AUTOCS) && !(flags & EOS_SPI_FLAG_MORE)) eos_spi_cs_clear();
 
-    return x & 0xFF;
+    return r;
+}
+
+uint32_t eos_spi_xchg24(uint32_t data, uint8_t flags) {
+    volatile uint32_t x = 0;
+    uint8_t rx = !(flags & EOS_SPI_FLAG_TX);
+    uint32_t r = 0;
+
+    if (spi_in_xchg) spi_xchg_wait();
+    if (rx && (spi_state_flags & EOS_SPI_FLAG_TX)) spi_flush();
+
+    spi_state_flags &= 0xF0;
+    spi_state_flags |= flags;
+    if ((flags & EOS_SPI_FLAG_AUTOCS) && (spi_state_flags & SPI_FLAG_CS)) eos_spi_cs_set();
+
+    if (flags & EOS_SPI_FLAG_BSWAP) {
+        while (SPI1_REG(SPI_REG_TXFIFO) & SPI_TXFIFO_FULL);
+        SPI1_REG(SPI_REG_TXFIFO) = (data & 0x000000FF);
+        while (SPI1_REG(SPI_REG_TXFIFO) & SPI_TXFIFO_FULL);
+        SPI1_REG(SPI_REG_TXFIFO) = (data & 0x0000FF00) >> 8;
+        while (SPI1_REG(SPI_REG_TXFIFO) & SPI_TXFIFO_FULL);
+        SPI1_REG(SPI_REG_TXFIFO) = (data & 0x00FF0000) >> 16;
+    } else {
+        while (SPI1_REG(SPI_REG_TXFIFO) & SPI_TXFIFO_FULL);
+        SPI1_REG(SPI_REG_TXFIFO) = (data & 0x00FF0000) >> 16;
+        while (SPI1_REG(SPI_REG_TXFIFO) & SPI_TXFIFO_FULL);
+        SPI1_REG(SPI_REG_TXFIFO) = (data & 0x0000FF00) >> 8;
+        while (SPI1_REG(SPI_REG_TXFIFO) & SPI_TXFIFO_FULL);
+        SPI1_REG(SPI_REG_TXFIFO) = (data & 0x000000FF);
+    }
+
+    if (rx) {
+        if (flags & EOS_SPI_FLAG_BSWAP) {
+            while ((x = SPI1_REG(SPI_REG_RXFIFO)) & SPI_RXFIFO_EMPTY);
+            r |= (x & 0xFF);
+            while ((x = SPI1_REG(SPI_REG_RXFIFO)) & SPI_RXFIFO_EMPTY);
+            r |= (x & 0xFF) << 8;
+            while ((x = SPI1_REG(SPI_REG_RXFIFO)) & SPI_RXFIFO_EMPTY);
+            r |= (x & 0xFF) << 16;
+        } else {
+            while ((x = SPI1_REG(SPI_REG_RXFIFO)) & SPI_RXFIFO_EMPTY);
+            r |= (x & 0xFF) << 16;
+            while ((x = SPI1_REG(SPI_REG_RXFIFO)) & SPI_RXFIFO_EMPTY);
+            r |= (x & 0xFF) << 8;
+            while ((x = SPI1_REG(SPI_REG_RXFIFO)) & SPI_RXFIFO_EMPTY);
+            r |= (x & 0xFF);
+        }
+    }
+
+    if ((flags & EOS_SPI_FLAG_AUTOCS) && !(flags & EOS_SPI_FLAG_MORE)) eos_spi_cs_clear();
+
+    return r;
 }
 
 uint32_t eos_spi_xchg32(uint32_t data, uint8_t flags) {
     volatile uint32_t x = 0;
     uint8_t rx = !(flags & EOS_SPI_FLAG_TX);
-    uint32_t r;
+    uint32_t r = 0;
 
     if (spi_in_xchg) spi_xchg_wait();
     if (rx && (spi_state_flags & EOS_SPI_FLAG_TX)) spi_flush();
@@ -255,24 +320,46 @@ uint32_t eos_spi_xchg32(uint32_t data, uint8_t flags) {
     spi_state_flags |= flags;
     if ((flags & EOS_SPI_FLAG_AUTOCS) && (spi_state_flags & SPI_FLAG_CS)) eos_spi_cs_set();
 
-    while (SPI1_REG(SPI_REG_TXFIFO) & SPI_TXFIFO_FULL);
-    SPI1_REG(SPI_REG_TXFIFO) = (data & 0xFF000000) >> 24;
-    while (SPI1_REG(SPI_REG_TXFIFO) & SPI_TXFIFO_FULL);
-    SPI1_REG(SPI_REG_TXFIFO) = (data & 0x00FF0000) >> 16;
-    while (SPI1_REG(SPI_REG_TXFIFO) & SPI_TXFIFO_FULL);
-    SPI1_REG(SPI_REG_TXFIFO) = (data & 0x0000FF00) >> 8;
-    while (SPI1_REG(SPI_REG_TXFIFO) & SPI_TXFIFO_FULL);
-    SPI1_REG(SPI_REG_TXFIFO) = (data & 0x000000FF);
+    if (flags & EOS_SPI_FLAG_BSWAP) {
+        while (SPI1_REG(SPI_REG_TXFIFO) & SPI_TXFIFO_FULL);
+        SPI1_REG(SPI_REG_TXFIFO) = (data & 0x000000FF);
+        while (SPI1_REG(SPI_REG_TXFIFO) & SPI_TXFIFO_FULL);
+        SPI1_REG(SPI_REG_TXFIFO) = (data & 0x0000FF00) >> 8;
+        while (SPI1_REG(SPI_REG_TXFIFO) & SPI_TXFIFO_FULL);
+        SPI1_REG(SPI_REG_TXFIFO) = (data & 0x00FF0000) >> 16;
+        while (SPI1_REG(SPI_REG_TXFIFO) & SPI_TXFIFO_FULL);
+        SPI1_REG(SPI_REG_TXFIFO) = (data & 0xFF000000) >> 24;
+    } else {
+        while (SPI1_REG(SPI_REG_TXFIFO) & SPI_TXFIFO_FULL);
+        SPI1_REG(SPI_REG_TXFIFO) = (data & 0xFF000000) >> 24;
+        while (SPI1_REG(SPI_REG_TXFIFO) & SPI_TXFIFO_FULL);
+        SPI1_REG(SPI_REG_TXFIFO) = (data & 0x00FF0000) >> 16;
+        while (SPI1_REG(SPI_REG_TXFIFO) & SPI_TXFIFO_FULL);
+        SPI1_REG(SPI_REG_TXFIFO) = (data & 0x0000FF00) >> 8;
+        while (SPI1_REG(SPI_REG_TXFIFO) & SPI_TXFIFO_FULL);
+        SPI1_REG(SPI_REG_TXFIFO) = (data & 0x000000FF);
+    }
 
     if (rx) {
-        while ((x = SPI1_REG(SPI_REG_RXFIFO)) & SPI_RXFIFO_EMPTY);
-        r =  (x & 0xFF) << 24;
-        while ((x = SPI1_REG(SPI_REG_RXFIFO)) & SPI_RXFIFO_EMPTY);
-        r |= (x & 0xFF) << 16;
-        while ((x = SPI1_REG(SPI_REG_RXFIFO)) & SPI_RXFIFO_EMPTY);
-        r |= (x & 0xFF) << 8;
-        while ((x = SPI1_REG(SPI_REG_RXFIFO)) & SPI_RXFIFO_EMPTY);
-        r |=  x & 0xFF;
+        if (flags & EOS_SPI_FLAG_BSWAP) {
+            while ((x = SPI1_REG(SPI_REG_RXFIFO)) & SPI_RXFIFO_EMPTY);
+            r |= (x & 0xFF);
+            while ((x = SPI1_REG(SPI_REG_RXFIFO)) & SPI_RXFIFO_EMPTY);
+            r |= (x & 0xFF) << 8;
+            while ((x = SPI1_REG(SPI_REG_RXFIFO)) & SPI_RXFIFO_EMPTY);
+            r |= (x & 0xFF) << 16;
+            while ((x = SPI1_REG(SPI_REG_RXFIFO)) & SPI_RXFIFO_EMPTY);
+            r |= (x & 0xFF) << 24;
+        } else {
+            while ((x = SPI1_REG(SPI_REG_RXFIFO)) & SPI_RXFIFO_EMPTY);
+            r |= (x & 0xFF) << 24;
+            while ((x = SPI1_REG(SPI_REG_RXFIFO)) & SPI_RXFIFO_EMPTY);
+            r |= (x & 0xFF) << 16;
+            while ((x = SPI1_REG(SPI_REG_RXFIFO)) & SPI_RXFIFO_EMPTY);
+            r |= (x & 0xFF) << 8;
+            while ((x = SPI1_REG(SPI_REG_RXFIFO)) & SPI_RXFIFO_EMPTY);
+            r |= (x & 0xFF);
+        }
     }
 
     if ((flags & EOS_SPI_FLAG_AUTOCS) && !(flags & EOS_SPI_FLAG_MORE)) eos_spi_cs_clear();

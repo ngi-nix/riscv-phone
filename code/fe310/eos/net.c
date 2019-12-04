@@ -174,6 +174,7 @@ static int net_xchg_next(unsigned char *_buffer) {
 }
 
 void eos_net_xchg_done(void) {
+    SPI1_REG(SPI_REG_CSMODE) = SPI_CSMODE_AUTO;
     if (net_state_type) {
         int r = eos_msgq_push(&_eos_event_q, EOS_EVT_NET | net_state_type, _eos_spi_state_buf, net_state_len_rx);
         if (r) net_bufq_push(_eos_spi_state_buf);
@@ -282,6 +283,8 @@ void eos_net_start(void) {
 void eos_net_stop(void) {
     uint8_t done = 0;
 
+    if (!(net_state_flags & NET_STATE_FLAG_RUN)) return;
+
     while (!done) {
         clear_csr(mstatus, MSTATUS_MIE);
         net_state_flags &= ~NET_STATE_FLAG_RUN;
@@ -324,19 +327,18 @@ void eos_net_release(void) {
     set_csr(mstatus, MSTATUS_MIE);
 }
 
-unsigned char *eos_net_alloc(void) {
+unsigned char *eos_net_alloc(unsigned char acquired) {
     unsigned char *ret = NULL;
 
-    while (ret == NULL) {
-        clear_csr(mstatus, MSTATUS_MIE);
-        if (net_state_next_buf) {
-            ret = net_state_next_buf;
-            net_state_next_buf = NULL;
-        } else {
-            asm volatile ("wfi");
-        }
-        set_csr(mstatus, MSTATUS_MIE);
+    if (!acquired) {
+        unsigned char acq = eos_net_acquire(0);
+        if (!acq) eos_net_acquire(1);
     }
+
+    clear_csr(mstatus, MSTATUS_MIE);
+    ret = net_state_next_buf;
+    net_state_next_buf = NULL;
+    set_csr(mstatus, MSTATUS_MIE);
 
     return ret;
 }
