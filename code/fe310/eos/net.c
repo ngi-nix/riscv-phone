@@ -237,8 +237,8 @@ void eos_net_set_handler(unsigned char mtype, eos_evt_fptr_t handler, uint8_t fl
     }
     if (flags) {
         uint16_t flag = (uint16_t)1 << mtype;
-        if (flags & EOS_NET_FLAG_BUF_FREE) evt_handler_flags_buf_free |= flag;
-        if (flags & EOS_NET_FLAG_BUF_ACQ) evt_handler_flags_buf_acq |= flag;
+        if (flags & EOS_NET_FLAG_BFREE) evt_handler_flags_buf_free |= flag;
+        if (flags & EOS_NET_FLAG_BACQ) evt_handler_flags_buf_acq |= flag;
     }
     evt_handler[mtype] = handler;
 }
@@ -298,7 +298,7 @@ void eos_net_stop(void) {
     }
 }
 
-int eos_net_acquire(unsigned char reserved) {
+int _eos_net_acquire(unsigned char reserved) {
     int ret = 0;
 
     if (reserved) {
@@ -322,6 +322,11 @@ int eos_net_acquire(unsigned char reserved) {
     return ret;
 }
 
+void eos_net_acquire(void) {
+    unsigned char acq = _eos_net_acquire(0);
+    if (!acq) _eos_net_acquire(1);
+}
+
 void eos_net_release(void) {
     clear_csr(mstatus, MSTATUS_MIE);
     if (!net_state_next_cnt && net_state_next_buf) {
@@ -331,13 +336,8 @@ void eos_net_release(void) {
     set_csr(mstatus, MSTATUS_MIE);
 }
 
-unsigned char *eos_net_alloc(unsigned char acquired) {
+unsigned char *eos_net_alloc(void) {
     unsigned char *ret = NULL;
-
-    if (!acquired) {
-        unsigned char acq = eos_net_acquire(0);
-        if (!acq) eos_net_acquire(1);
-    }
 
     clear_csr(mstatus, MSTATUS_MIE);
     ret = net_state_next_buf;

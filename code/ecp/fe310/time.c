@@ -2,6 +2,7 @@
 #include <tr.h>
 
 #include <eos/eos.h>
+#include <eos/net.h>
 #include <eos/event.h>
 #include <eos/timer.h>
 
@@ -18,7 +19,7 @@ static void timer_handler(unsigned char type) {
 }
 
 int ecp_tm_init(ECPContext *ctx) {
-    eos_timer_set_handler(EOS_TIMER_ETYPE_ECP, timer_handler, EOS_EVT_FLAG_NET_BUF_ACQ);
+    eos_timer_set_handler(EOS_TIMER_ETYPE_ECP, timer_handler, EOS_NET_FLAG_BACQ);
     return ECP_OK;
 }
 

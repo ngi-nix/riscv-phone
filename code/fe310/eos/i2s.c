@@ -8,6 +8,7 @@
 #include "eos.h"
 #include "interrupt.h"
 #include "event.h"
+#include "net.h"
 
 #include "i2s.h"
 #include "i2s_def.h"
@@ -114,7 +115,7 @@ extern void _eos_i2s_start_pwm(void);
 
 void eos_i2s_init(void) {
     eos_evtq_set_handler(EOS_EVT_AUDIO, i2s_handler_evt);
-    eos_evtq_set_flags(EOS_EVT_AUDIO | I2S_ETYPE_MIC, EOS_EVT_FLAG_NET_BUF_ACQ);
+    eos_evtq_set_flags(EOS_EVT_AUDIO | I2S_ETYPE_MIC, EOS_NET_FLAG_BACQ);
 
     GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_CK);
     GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << I2S_PIN_CK);

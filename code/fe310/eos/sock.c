@@ -48,7 +48,7 @@ void eos_sock_init(void) {
 
 int eos_sock_open_udp(void) {
     unsigned char type = EOS_SOCK_MTYPE_OPEN_DGRAM;
-    unsigned char *buffer = eos_net_alloc(1);
+    unsigned char *buffer = eos_net_alloc();
     uint16_t buf_size;
     int rv, sock;
 
@@ -70,7 +70,7 @@ int eos_sock_open_udp(void) {
 }
 
 void eos_sock_close(int sock) {
-    unsigned char *buffer = eos_net_alloc(1);
+    unsigned char *buffer = eos_net_alloc();
     buffer[0] = EOS_SOCK_MTYPE_CLOSE;
     buffer[1] = sock;
     eos_net_send(EOS_NET_MTYPE_SOCK, buffer, 2, 1);
@@ -100,8 +100,8 @@ void eos_sock_set_handler(int sock, eos_sock_fptr_t handler, uint8_t flags) {
     }
     if (flags) {
         uint16_t flag = (uint16_t)1 << sock;
-        if (flags & EOS_NET_FLAG_BUF_FREE) sock_handler_flags_buf_free |= flag;
-        if (flags & EOS_NET_FLAG_BUF_ACQ) sock_handler_flags_buf_acq |= flag;
+        if (flags & EOS_NET_FLAG_BFREE) sock_handler_flags_buf_free |= flag;
+        if (flags & EOS_NET_FLAG_BACQ) sock_handler_flags_buf_acq |= flag;
     }
     sock_handler[sock] = handler;
 }

@@ -85,7 +85,7 @@ ssize_t ecp_tr_send(ECPSocket *sock, ECPBuffer *packet, size_t msg_size, ECPNetA
             buf = packet->buffer-EOS_SOCK_SIZE_UDP_HDR;
             packet->buffer = NULL;
         } else {
-            buf = eos_net_alloc(1);
+            buf = eos_net_alloc();
             memcpy(buf+EOS_SOCK_SIZE_UDP_HDR, packet->buffer, msg_size);
         }
     }

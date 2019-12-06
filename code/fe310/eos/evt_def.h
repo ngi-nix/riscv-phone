@@ -1,5 +1,3 @@
-#define EOS_EVT_FLAG_NET_BUF_ACQ    0x1
-
 #define EOS_EVT_TIMER               0x10
 #define EOS_EVT_AUDIO               0x20
 #define EOS_EVT_NET                 0x30

@@ -47,7 +47,7 @@ static void evtq_handler_wrapper(unsigned char type, unsigned char *buffer, uint
     uint16_t flag = (uint16_t)1 << ((type & ~EOS_EVT_MASK) - 1);
     int ok;
 
-    ok = eos_net_acquire(evt_handler_wrapper_acq[idx] & flag);
+    ok = _eos_net_acquire(evt_handler_wrapper_acq[idx] & flag);
     if (ok) {
         evt_handler[idx](type, buffer, len);
         eos_net_release();
@@ -83,7 +83,7 @@ void eos_evtq_set_flags(unsigned char type, uint8_t flags) {
     unsigned char idx = ((type & EOS_EVT_MASK) >> 4) - 1;
     uint16_t flag = type & ~EOS_EVT_MASK ? (uint16_t)1 << ((type & ~EOS_EVT_MASK) - 1) : 0xFFFF;
 
-    if ((idx < EOS_EVT_MAX_EVT) && (flags & EOS_EVT_FLAG_NET_BUF_ACQ)) evt_handler_flags_buf_acq[idx] |= flag;
+    if ((idx < EOS_EVT_MAX_EVT) && (flags & EOS_NET_FLAG_BACQ)) evt_handler_flags_buf_acq[idx] |= flag;
 }
 
 void eos_evtq_get(unsigned char type, unsigned char *selector, uint16_t sel_len, unsigned char **buffer, uint16_t *len) {

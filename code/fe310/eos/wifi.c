@@ -46,7 +46,7 @@ void eos_wifi_init(void) {
 void eos_wifi_connect(const char *ssid, const char *pass) {
     int ssid_len = strlen(ssid);
     int pass_len = strlen(pass);
-    unsigned char *buffer = eos_net_alloc(0);
+    unsigned char *buffer = eos_net_alloc();
 
     buffer[0] = EOS_WIFI_MTYPE_CONNECT;
     strcpy(buffer+1, ssid);
@@ -57,7 +57,7 @@ void eos_wifi_connect(const char *ssid, const char *pass) {
 }
 
 void eos_wifi_disconnect(void) {
-    unsigned char *buffer = eos_net_alloc(0);
+    unsigned char *buffer = eos_net_alloc();
     buffer[0] = EOS_WIFI_MTYPE_DISCONNECT;
     eos_net_send(EOS_NET_MTYPE_WIFI, buffer, 1, 0);
 }
@@ -69,8 +69,8 @@ void eos_wifi_set_handler(int mtype, eos_wifi_fptr_t handler, uint8_t flags) {
 
     if (flags) {
         uint16_t flag = (uint16_t)1 << mtype;
-        if (flags & EOS_NET_FLAG_BUF_FREE) wifi_handler_flags_buf_free |= flag;
-        if (flags & EOS_NET_FLAG_BUF_ACQ) wifi_handler_flags_buf_acq |= flag;
+        if (flags & EOS_NET_FLAG_BFREE) wifi_handler_flags_buf_free |= flag;
+        if (flags & EOS_NET_FLAG_BACQ) wifi_handler_flags_buf_acq |= flag;
     }
     wifi_handler[mtype] = handler;
 }
