@@ -60,10 +60,11 @@ static void spi_xchg_wait(void) {
 }
 
 void eos_spi_init(void) {
-    GPIO_REG(GPIO_OUTPUT_VAL)   |=  (1 << SPI_CS_PIN_CAM);
     GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << SPI_CS_PIN_CAM);
     GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << SPI_CS_PIN_CAM);
+    GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << SPI_CS_PIN_CAM);
     GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << SPI_CS_PIN_CAM);
+    GPIO_REG(GPIO_OUTPUT_VAL)   |=  (1 << SPI_CS_PIN_CAM);
 
     SPI1_REG(SPI_REG_SCKMODE) = SPI_MODE0;
     SPI1_REG(SPI_REG_FMT) = SPI_FMT_PROTO(SPI_PROTO_S) |

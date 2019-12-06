@@ -253,17 +253,21 @@ void eos_net_init(void) {
     }
     eos_evtq_set_handler(EOS_EVT_NET, net_handler_evt);
 
-    GPIO_REG(GPIO_OUTPUT_EN) &= ~(1 << NET_PIN_CTS);
-    GPIO_REG(GPIO_PULLUP_EN) |=  (1 << NET_PIN_CTS);
-    GPIO_REG(GPIO_INPUT_EN)  |=  (1 << NET_PIN_CTS);
-    GPIO_REG(GPIO_RISE_IE)   |=  (1 << NET_PIN_CTS);
+    GPIO_REG(GPIO_INPUT_EN)     |=  (1 << NET_PIN_CTS);
+    GPIO_REG(GPIO_OUTPUT_EN)    &= ~(1 << NET_PIN_CTS);
+    GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << NET_PIN_CTS);
+    GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << NET_PIN_CTS);
+
+    GPIO_REG(GPIO_RISE_IE)      |=  (1 << NET_PIN_CTS);
     eos_intr_set(INT_GPIO_BASE + NET_PIN_CTS, IRQ_PRIORITY_NET_CTS, net_handler_cts);
 
-    GPIO_REG(GPIO_OUTPUT_EN) &= ~(1 << NET_PIN_RTS);
-    GPIO_REG(GPIO_PULLUP_EN) |=  (1 << NET_PIN_RTS);
-    GPIO_REG(GPIO_INPUT_EN)  |=  (1 << NET_PIN_RTS);
-    GPIO_REG(GPIO_RISE_IE)   |=  (1 << NET_PIN_RTS);
-    GPIO_REG(GPIO_FALL_IE)   |=  (1 << NET_PIN_RTS);
+    GPIO_REG(GPIO_INPUT_EN)     |=  (1 << NET_PIN_RTS);
+    GPIO_REG(GPIO_OUTPUT_EN)    &= ~(1 << NET_PIN_RTS);
+    GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << NET_PIN_RTS);
+    GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << NET_PIN_RTS);
+
+    GPIO_REG(GPIO_RISE_IE)      |=  (1 << NET_PIN_RTS);
+    GPIO_REG(GPIO_FALL_IE)      |=  (1 << NET_PIN_RTS);
     eos_intr_set(INT_GPIO_BASE + NET_PIN_RTS, IRQ_PRIORITY_NET_RTS, net_handler_rts);
 }
 
