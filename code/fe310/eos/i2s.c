@@ -115,44 +115,55 @@ extern void _eos_i2s_start_pwm(void);
 void eos_i2s_init(void) {
     eos_evtq_set_handler(EOS_EVT_AUDIO, i2s_handler_evt);
     eos_evtq_set_flags(EOS_EVT_AUDIO | I2S_ETYPE_MIC, EOS_EVT_FLAG_NET_BUF_ACQ);
-}
-
-void eos_i2s_start(uint32_t sample_rate, unsigned char fmt) {
-    uint32_t ck_period = (PRCI_get_cpu_freq() / (sample_rate * 64)) & ~I2S_PWM_SCALE_CK_MASK;;
 
     GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_CK);
     GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << I2S_PIN_CK);
+    GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << I2S_PIN_CK);
     GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << I2S_PIN_CK);
 
     GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_CK_SW);
     GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << I2S_PIN_CK_SW);
+    GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << I2S_PIN_CK_SW);
     GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << I2S_PIN_CK_SW);
-
-    GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_CK_SR);
-    GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << I2S_PIN_CK_SR);
-    GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << I2S_PIN_CK_SR);
 
     GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_WS_MIC);
     GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << I2S_PIN_WS_MIC);
+    GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << I2S_PIN_WS_MIC);
     GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << I2S_PIN_WS_MIC);
 
     GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_WS_SPK);
     GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << I2S_PIN_WS_SPK);
+    GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << I2S_PIN_WS_SPK);
     GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << I2S_PIN_WS_SPK);
 
-    GPIO_REG(GPIO_INPUT_EN)     |=  (1 << I2S_PIN_SD_IN);
+    GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_CK_SR);
+    GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << I2S_PIN_CK_SR);
+    GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << I2S_PIN_CK_SR);
+    GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << I2S_PIN_CK_SR);
+
+    GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_SD_IN);
     GPIO_REG(GPIO_OUTPUT_EN)    &= ~(1 << I2S_PIN_SD_IN);
     GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << I2S_PIN_SD_IN);
+    GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << I2S_PIN_SD_IN);
 
     GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_SD_OUT);
     GPIO_REG(GPIO_OUTPUT_EN)    &= ~(1 << I2S_PIN_SD_OUT);
     GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << I2S_PIN_SD_OUT);
     GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << I2S_PIN_SD_OUT);
 
-    I2S_PWM_REG_CK(PWM_CMP0)    = ck_period >> I2S_PWM_SCALE_CK;
-    I2S_PWM_REG_CK(PWM_CMP1)    = I2S_PWM_REG_CK(PWM_CMP0) / 2;
-    I2S_PWM_REG_CK(PWM_CMP2)    = 0;
-    I2S_PWM_REG_CK(PWM_CMP3)    = 0;
+    GPIO_REG(GPIO_OUTPUT_VAL)   |=  (1 << I2S_PIN_CK_SW);
+    GPIO_REG(GPIO_OUTPUT_VAL)   &= ~((1 << I2S_PIN_CK) | (1 << I2S_PIN_CK_SR) | (1 << I2S_PIN_WS_MIC) | (1 << I2S_PIN_WS_SPK));
+}
+
+void eos_i2s_start(uint32_t sample_rate, unsigned char fmt) {
+    uint32_t ck_period = (PRCI_get_cpu_freq() / (sample_rate * 64)) & ~I2S_PWM_SCALE_CK_MASK;;
+
+    GPIO_REG(GPIO_INPUT_EN)     |= (1 << I2S_PIN_SD_IN);
+
+    I2S_PWM_REG_CK(PWM_CMP0)        = ck_period >> I2S_PWM_SCALE_CK;
+    I2S_PWM_REG_CK(PWM_CMP1)        = I2S_PWM_REG_CK(PWM_CMP0) / 2;
+    I2S_PWM_REG_CK(PWM_CMP2)        = 0;
+    I2S_PWM_REG_CK(PWM_CMP3)        = 0;
 
     I2S_PWM_REG_WS_MIC(PWM_CMP0)    = (ck_period + 1) * 64 - 1;
     I2S_PWM_REG_WS_MIC(PWM_CMP1)    = (ck_period + 1) * 32;
@@ -183,19 +194,19 @@ void eos_i2s_start(uint32_t sample_rate, unsigned char fmt) {
     I2S_PWM_REG_WS_SPK(PWM_CFG)     = PWM_CFG_ENALWAYS | PWM_CFG_ZEROCMP;
     */
 
-    GPIO_REG(GPIO_IOF_SEL)          |=  (1 << I2S_PIN_CK);
-    GPIO_REG(GPIO_IOF_EN)           |=  (1 << I2S_PIN_CK);
+    GPIO_REG(GPIO_OUTPUT_VAL)   |=  (1 << I2S_PIN_CK_SR);
 
-    GPIO_REG(GPIO_IOF_SEL)          |=  (1 << I2S_PIN_CK_SW);
-    GPIO_REG(GPIO_IOF_EN)           |=  (1 << I2S_PIN_CK_SW);
+    GPIO_REG(GPIO_IOF_SEL)      |=  (1 << I2S_PIN_CK);
+    GPIO_REG(GPIO_IOF_EN)       |=  (1 << I2S_PIN_CK);
 
-    GPIO_REG(GPIO_IOF_SEL)          |=  (1 << I2S_PIN_WS_MIC);
-    GPIO_REG(GPIO_IOF_EN)           |=  (1 << I2S_PIN_WS_MIC);
+    GPIO_REG(GPIO_IOF_SEL)      |=  (1 << I2S_PIN_CK_SW);
+    GPIO_REG(GPIO_IOF_EN)       |=  (1 << I2S_PIN_CK_SW);
 
-    GPIO_REG(GPIO_IOF_SEL)          |=  (1 << I2S_PIN_WS_SPK);
-    GPIO_REG(GPIO_IOF_EN)           |=  (1 << I2S_PIN_WS_SPK);
+    GPIO_REG(GPIO_IOF_SEL)      |=  (1 << I2S_PIN_WS_MIC);
+    GPIO_REG(GPIO_IOF_EN)       |=  (1 << I2S_PIN_WS_MIC);
 
-    GPIO_REG(GPIO_OUTPUT_VAL)       |=  (1 << I2S_PIN_CK_SR);
+    GPIO_REG(GPIO_IOF_SEL)      |=  (1 << I2S_PIN_WS_SPK);
+    GPIO_REG(GPIO_IOF_EN)       |=  (1 << I2S_PIN_WS_SPK);
 }
 
 void eos_i2s_stop(void) {
@@ -213,20 +224,22 @@ void eos_i2s_stop(void) {
     eos_intr_disable(I2S_IRQ_WS_ID);
     eos_intr_disable(I2S_IRQ_SD_ID);
 
-    GPIO_REG(GPIO_IOF_EN)           &= ~(1 << I2S_PIN_CK);
-    GPIO_REG(GPIO_IOF_SEL)          &= ~(1 << I2S_PIN_CK);
+    GPIO_REG(GPIO_IOF_EN)       &= ~(1 << I2S_PIN_CK);
+    GPIO_REG(GPIO_IOF_SEL)      &= ~(1 << I2S_PIN_CK);
 
-    GPIO_REG(GPIO_IOF_EN)           &= ~(1 << I2S_PIN_CK_SW);
-    GPIO_REG(GPIO_IOF_SEL)          &= ~(1 << I2S_PIN_CK_SW);
+    GPIO_REG(GPIO_IOF_EN)       &= ~(1 << I2S_PIN_CK_SW);
+    GPIO_REG(GPIO_IOF_SEL)      &= ~(1 << I2S_PIN_CK_SW);
 
-    GPIO_REG(GPIO_IOF_EN)           &= ~(1 << I2S_PIN_WS_MIC);
-    GPIO_REG(GPIO_IOF_SEL)          &= ~(1 << I2S_PIN_WS_MIC);
+    GPIO_REG(GPIO_IOF_EN)       &= ~(1 << I2S_PIN_WS_MIC);
+    GPIO_REG(GPIO_IOF_SEL)      &= ~(1 << I2S_PIN_WS_MIC);
 
-    GPIO_REG(GPIO_IOF_EN)           &= ~(1 << I2S_PIN_WS_SPK);
-    GPIO_REG(GPIO_IOF_SEL)          &= ~(1 << I2S_PIN_WS_SPK);
+    GPIO_REG(GPIO_IOF_EN)       &= ~(1 << I2S_PIN_WS_SPK);
+    GPIO_REG(GPIO_IOF_SEL)      &= ~(1 << I2S_PIN_WS_SPK);
 
-    GPIO_REG(GPIO_OUTPUT_VAL)       &= ~((1 << I2S_PIN_CK) | (1 << I2S_PIN_CK_SR) | (1 << I2S_PIN_WS_MIC) | (1 << I2S_PIN_WS_SPK));
-    GPIO_REG(GPIO_OUTPUT_VAL)       |= (1 << I2S_PIN_CK_SW);
+    GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_SD_IN);
+
+    GPIO_REG(GPIO_OUTPUT_VAL)   |=  (1 << I2S_PIN_CK_SW);
+    GPIO_REG(GPIO_OUTPUT_VAL)   &= ~((1 << I2S_PIN_CK) | (1 << I2S_PIN_CK_SR) | (1 << I2S_PIN_WS_MIC) | (1 << I2S_PIN_WS_SPK));
 }
 
 void eos_i2s_mic_init(uint8_t *mic_arr, uint16_t mic_arr_size) {
