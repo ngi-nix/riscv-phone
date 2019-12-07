@@ -5,3 +5,5 @@
 
 #define IRQ_PRIORITY_NET_CTS    4
 #define IRQ_PRIORITY_NET_RTS    4
+
+#define IRQ_PRIORITY_UART       1

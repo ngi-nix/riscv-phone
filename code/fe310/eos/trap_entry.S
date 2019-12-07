@@ -477,7 +477,7 @@ trap_entry_text:
   call _exit
 
 handle_timer:
-  call eos_timer_handle
+  call _eos_timer_handle
   j trap_exit_text
 
 handle_ext:

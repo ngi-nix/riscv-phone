@@ -20,7 +20,7 @@ void eos_msgq_init(EOSMsgQ *msgq, EOSMsgItem *array, uint8_t size) {
 }
 
 int eos_msgq_push(EOSMsgQ *msgq, unsigned char type, unsigned char *buffer, uint16_t len) {
-    if ((uint8_t)(msgq->idx_w - msgq->idx_r) == msgq->size) return EOS_ERR_Q_FULL;
+    if ((uint8_t)(msgq->idx_w - msgq->idx_r) == msgq->size) return EOS_ERR_FULL;
 
     uint8_t idx = EOS_MSGQ_IDX_MASK(msgq->idx_w, msgq->size);
     msgq->array[idx].type = type;

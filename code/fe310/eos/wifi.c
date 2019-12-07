@@ -8,9 +8,9 @@
 
 #include "wifi.h"
 
-static eos_wifi_fptr_t wifi_handler[EOS_WIFI_MAX_MTYPE];
-static uint16_t wifi_handler_flags_buf_free = 0;
-static uint16_t wifi_handler_flags_buf_acq = 0;
+static eos_evt_fptr_t evt_handler[EOS_WIFI_MAX_MTYPE];
+static uint16_t evt_handler_flags_buf_free = 0;
+static uint16_t evt_handler_flags_buf_acq = 0;
 
 static void wifi_handler_evt(unsigned char type, unsigned char *buffer, uint16_t len) {
     if ((buffer == NULL) || (len < 1)) {
@@ -26,21 +26,23 @@ static void wifi_handler_evt(unsigned char type, unsigned char *buffer, uint16_t
         return;
     }
 
-    uint16_t buf_free = ((uint16_t)1 << mtype) & wifi_handler_flags_buf_free;
-    uint16_t buf_acq = ((uint16_t)1 << mtype) & wifi_handler_flags_buf_acq;
-    if (buf_free) {
-        eos_net_free(buffer, buf_acq);
-        buffer = NULL;
-        len = 0;
-    }
-
-    wifi_handler[mtype](buffer, len);
-
-    if (buf_free && buf_acq) eos_net_release();
+    _eos_net_handle(type, buffer, len, mtype, evt_handler, &evt_handler_flags_buf_free, &evt_handler_flags_buf_acq);
 }
 
 void eos_wifi_init(void) {
+    int i;
+
+    for (i=0; i<EOS_WIFI_MAX_MTYPE; i++) {
+        evt_handler[i] = eos_evtq_bad_handler;
+    }
     eos_net_set_handler(EOS_NET_MTYPE_WIFI, wifi_handler_evt, 0);
+}
+
+void eos_wifi_set_handler(int mtype, eos_evt_fptr_t handler, uint8_t flags) {
+    if (mtype >= EOS_WIFI_MAX_MTYPE) {
+        return;
+    }
+    _eos_net_set_handler(mtype, handler, evt_handler, flags, &evt_handler_flags_buf_free, &evt_handler_flags_buf_acq);
 }
 
 void eos_wifi_connect(const char *ssid, const char *pass) {
@@ -60,17 +62,4 @@ void eos_wifi_disconnect(void) {
     unsigned char *buffer = eos_net_alloc();
     buffer[0] = EOS_WIFI_MTYPE_DISCONNECT;
     eos_net_send(EOS_NET_MTYPE_WIFI, buffer, 1, 0);
-}
-
-void eos_wifi_set_handler(int mtype, eos_wifi_fptr_t handler, uint8_t flags) {
-    if (mtype >= EOS_WIFI_MAX_MTYPE) {
-        return;
-    }
-
-    if (flags) {
-        uint16_t flag = (uint16_t)1 << mtype;
-        if (flags & EOS_NET_FLAG_BFREE) wifi_handler_flags_buf_free |= flag;
-        if (flags & EOS_NET_FLAG_BACQ) wifi_handler_flags_buf_acq |= flag;
-    }
-    wifi_handler[mtype] = handler;
 }

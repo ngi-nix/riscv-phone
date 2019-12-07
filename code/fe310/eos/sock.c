@@ -8,9 +8,9 @@
 
 #include "sock.h"
 
-static eos_sock_fptr_t sock_handler[EOS_SOCK_MAX_SOCK];
-static uint16_t sock_handler_flags_buf_free = 0;
-static uint16_t sock_handler_flags_buf_acq = 0;
+static eos_evt_fptr_t evt_handler[EOS_SOCK_MAX_SOCK];
+static uint16_t evt_handler_flags_buf_free = 0;
+static uint16_t evt_handler_flags_buf_acq = 0;
 
 static void sock_handler_evt(unsigned char type, unsigned char *buffer, uint16_t len) {
     if ((buffer == NULL) || (len < 2)) {
@@ -28,22 +28,26 @@ static void sock_handler_evt(unsigned char type, unsigned char *buffer, uint16_t
             eos_net_free(buffer, 0);
             return;
         }
-        uint16_t buf_free = ((uint16_t)1 << sock) & sock_handler_flags_buf_free;
-        uint16_t buf_acq = ((uint16_t)1 << sock) & sock_handler_flags_buf_acq;
-        if (buf_free) {
-            eos_net_free(buffer, buf_acq);
-            buffer = NULL;
-            len = 0;
-        }
-
-        sock_handler[sock](buffer, len);
-
-        if (buf_free && buf_acq) eos_net_release();
+        _eos_net_handle(type, buffer, len, sock, evt_handler, &evt_handler_flags_buf_free, &evt_handler_flags_buf_acq);
     }
 }
 
 void eos_sock_init(void) {
+    int i;
+
+    for (i=0; i<EOS_SOCK_MAX_SOCK; i++) {
+        evt_handler[i] = eos_evtq_bad_handler;
+    }
     eos_net_set_handler(EOS_NET_MTYPE_SOCK, sock_handler_evt, 0);
+}
+
+void eos_sock_set_handler(int sock, eos_evt_fptr_t handler, uint8_t flags) {
+    if (sock && (sock <= EOS_SOCK_MAX_SOCK)) {
+        sock--;
+    } else {
+        return;
+    }
+    _eos_net_set_handler(sock, handler, evt_handler, flags, &evt_handler_flags_buf_free, &evt_handler_flags_buf_acq);
 }
 
 int eos_sock_open_udp(void) {
@@ -92,16 +96,3 @@ void eos_sock_getfrom(unsigned char *buffer, EOSNetAddr *addr) {
 }
 
 
-void eos_sock_set_handler(int sock, eos_sock_fptr_t handler, uint8_t flags) {
-    if (sock && (sock <= EOS_SOCK_MAX_SOCK)) {
-        sock--;
-    } else {
-        return;
-    }
-    if (flags) {
-        uint16_t flag = (uint16_t)1 << sock;
-        if (flags & EOS_NET_FLAG_BFREE) sock_handler_flags_buf_free |= flag;
-        if (flags & EOS_NET_FLAG_BACQ) sock_handler_flags_buf_acq |= flag;
-    }
-    sock_handler[sock] = handler;
-}

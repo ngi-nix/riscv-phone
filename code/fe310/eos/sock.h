@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "event.h"
 
 #define EOS_SOCK_MTYPE_PKT          0
 #define EOS_SOCK_MTYPE_OPEN_DGRAM   1
@@ -15,11 +16,10 @@ typedef struct EOSNetAddr {
     uint16_t port;
 } EOSNetAddr;
 
-typedef void (*eos_sock_fptr_t) (unsigned char *, uint16_t);
-
 void eos_sock_init(void);
+void eos_sock_set_handler(int sock, eos_evt_fptr_t handler, uint8_t flags);
+
 int eos_sock_open_udp(void);
 void eos_sock_close(int sock);
 int eos_sock_sendto(int sock, unsigned char *buffer, uint16_t size, unsigned char more, EOSNetAddr *addr);
 void eos_sock_getfrom(unsigned char *buffer, EOSNetAddr *addr);
-void eos_sock_set_handler(int sock, eos_sock_fptr_t handler, uint8_t flags);

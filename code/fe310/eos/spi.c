@@ -18,8 +18,6 @@
 #define MAX(X, Y)               (((X) > (Y)) ? (X) : (Y))
 #define SPI_IOF_MASK            (((uint32_t)1 << IOF_SPI1_SCK) | ((uint32_t)1 << IOF_SPI1_MOSI) | ((uint32_t)1 << IOF_SPI1_MISO)) | ((uint32_t)1 << IOF_SPI1_SS0) | ((uint32_t)1 << IOF_SPI1_SS2) | ((uint32_t)1 << IOF_SPI1_SS3)
 
-extern EOSMsgQ _eos_event_q;
-
 static uint8_t spi_dev;
 static uint8_t spi_dev_cs_pin;
 static uint8_t spi_state_flags;
@@ -60,6 +58,14 @@ static void spi_xchg_wait(void) {
 }
 
 void eos_spi_init(void) {
+    int i;
+
+    for (i=0; i<EOS_SPI_MAX_DEV; i++) {
+        evt_handler[i] = eos_evtq_bad_handler;
+    }
+    eos_evtq_set_handler(EOS_EVT_SPI, spi_handler_evt);
+    eos_intr_set(INT_SPI1_BASE, IRQ_PRIORITY_SPI_XCHG, NULL);
+
     GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << SPI_CS_PIN_CAM);
     GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << SPI_CS_PIN_CAM);
     GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << SPI_CS_PIN_CAM);
@@ -77,9 +83,6 @@ void eos_spi_init(void) {
 
     // There is no way here to change the CS polarity.
     // SPI1_REG(SPI_REG_CSDEF) = 0xFFFF;
-
-    eos_intr_set(INT_SPI1_BASE, IRQ_PRIORITY_SPI_XCHG, NULL);
-    eos_evtq_set_handler(EOS_EVT_SPI, spi_handler_evt);
 }
 
 void eos_spi_dev_start(unsigned char dev) {
@@ -116,6 +119,17 @@ void eos_spi_dev_stop(void) {
     eos_net_start();
 }
 
+void eos_spi_set_handler(unsigned char dev, eos_evt_fptr_t handler, uint8_t flags) {
+    if (dev && (dev <= EOS_SPI_MAX_DEV)) {
+        dev--;
+    } else {
+        return;
+    }
+    evt_handler[dev] = handler;
+
+    if (flags) eos_evtq_set_flags(EOS_EVT_SPI | dev + 1, flags);
+}
+
 void eos_spi_xchg(unsigned char *buffer, uint16_t len, uint8_t flags) {
     if (spi_in_xchg) spi_xchg_wait();
     if (!(flags & EOS_SPI_FLAG_TX) && (spi_state_flags & EOS_SPI_FLAG_TX)) spi_flush();
@@ -140,7 +154,7 @@ static void spi_xchg_done(void) {
     } else {
         spi_state_flags &= ~SPI_FLAG_XCHG;
         if (!(spi_state_flags & (EOS_SPI_FLAG_MORE | SPI_FLAG_CS))) eos_spi_cs_clear();
-        eos_msgq_push(&_eos_event_q, EOS_EVT_SPI | spi_dev, _eos_spi_state_buf, _eos_spi_state_len);
+        eos_evtq_push_isr(EOS_EVT_SPI | spi_dev, _eos_spi_state_buf, _eos_spi_state_len);
     }
 }
 
@@ -366,13 +380,4 @@ uint32_t eos_spi_xchg32(uint32_t data, uint8_t flags) {
     if ((flags & EOS_SPI_FLAG_AUTOCS) && !(flags & EOS_SPI_FLAG_MORE)) eos_spi_cs_clear();
 
     return r;
-}
-
-void eos_spi_set_handler(unsigned char dev, eos_evt_fptr_t handler) {
-    if (dev && (dev <= EOS_SPI_MAX_DEV)) {
-        dev--;
-    } else {
-        return;
-    }
-    evt_handler[dev] = handler;
 }

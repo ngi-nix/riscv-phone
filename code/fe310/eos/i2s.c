@@ -33,8 +33,8 @@ uint32_t _eos_i2s_spk_wm = 0;
 uint32_t _eos_i2s_mic_evt_enable = 0;
 uint32_t _eos_i2s_spk_evt_enable = 0;
 
-static eos_i2s_fptr_t spk_evt_handler = NULL;
-static eos_i2s_fptr_t mic_evt_handler = NULL;
+static eos_i2s_fptr_t i2s_spk_handler = NULL;
+static eos_i2s_fptr_t i2s_mic_handler = NULL;
 
 static void _abuf_init(EOSABuf *buf, uint8_t *array, uint16_t size) {
     buf->idx_r = 0;
@@ -44,7 +44,7 @@ static void _abuf_init(EOSABuf *buf, uint8_t *array, uint16_t size) {
 }
 
 static int _abuf_push8(EOSABuf *buf, uint8_t sample) {
-    if ((uint16_t)(buf->idx_w - buf->idx_r) == buf->size) return EOS_ERR_Q_FULL;
+    if ((uint16_t)(buf->idx_w - buf->idx_r) == buf->size) return EOS_ERR_FULL;
 
     buf->array[EOS_ABUF_IDX_MASK(buf->idx_w, buf->size)] = sample;
     buf->idx_w++;
@@ -52,7 +52,7 @@ static int _abuf_push8(EOSABuf *buf, uint8_t sample) {
 }
 
 static int _abuf_push16(EOSABuf *buf, uint16_t sample) {
-    if ((uint16_t)(buf->idx_w - buf->idx_r) == buf->size) return EOS_ERR_Q_FULL;
+    if ((uint16_t)(buf->idx_w - buf->idx_r) == buf->size) return EOS_ERR_FULL;
 
     buf->array[EOS_ABUF_IDX_MASK(buf->idx_w, buf->size)] = sample >> 8;
     buf->array[EOS_ABUF_IDX_MASK(buf->idx_w + 1, buf->size)] = sample & 0xFF;
@@ -62,7 +62,7 @@ static int _abuf_push16(EOSABuf *buf, uint16_t sample) {
 
 static int _abuf_pop8(EOSABuf *buf, uint8_t *sample) {
     if (buf->idx_r == buf->idx_w) {
-        return EOS_ERR_Q_EMPTY;
+        return EOS_ERR_EMPTY;
     } else {
         *sample = buf->array[EOS_ABUF_IDX_MASK(buf->idx_r, buf->size)];
         buf->idx_r++;
@@ -72,7 +72,7 @@ static int _abuf_pop8(EOSABuf *buf, uint8_t *sample) {
 
 static int _abuf_pop16(EOSABuf *buf, uint16_t *sample) {
     if (buf->idx_r == buf->idx_w) {
-        return EOS_ERR_Q_EMPTY;
+        return EOS_ERR_EMPTY;
     } else {
         *sample = buf->array[EOS_ABUF_IDX_MASK(buf->idx_r, buf->size)] << 8;
         *sample |= buf->array[EOS_ABUF_IDX_MASK(buf->idx_r + 1, buf->size)];
@@ -94,13 +94,13 @@ static uint16_t _abuf_len(EOSABuf *buf) {
 static void i2s_handler_evt(unsigned char type, unsigned char *buffer, uint16_t len) {
     switch(type & ~EOS_EVT_MASK) {
         case I2S_ETYPE_MIC:
-            if (mic_evt_handler) mic_evt_handler(type);
+            if (i2s_mic_handler) i2s_mic_handler(type);
             clear_csr(mstatus, MSTATUS_MIE);
             _eos_i2s_mic_evt_enable = 1;
             set_csr(mstatus, MSTATUS_MIE);
             break;
         case I2S_ETYPE_SPK:
-            if (spk_evt_handler) spk_evt_handler(type);
+            if (i2s_spk_handler) i2s_spk_handler(type);
             clear_csr(mstatus, MSTATUS_MIE);
             _eos_i2s_spk_evt_enable = 1;
             set_csr(mstatus, MSTATUS_MIE);
@@ -115,7 +115,6 @@ extern void _eos_i2s_start_pwm(void);
 
 void eos_i2s_init(void) {
     eos_evtq_set_handler(EOS_EVT_AUDIO, i2s_handler_evt);
-    eos_evtq_set_flags(EOS_EVT_AUDIO | I2S_ETYPE_MIC, EOS_NET_FLAG_BACQ);
 
     GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_CK);
     GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << I2S_PIN_CK);
@@ -249,10 +248,12 @@ void eos_i2s_mic_init(uint8_t *mic_arr, uint16_t mic_arr_size) {
     set_csr(mstatus, MSTATUS_MIE);
 }
 
-void eos_i2s_mic_set_handler(eos_i2s_fptr_t wm_handler) {
+void eos_i2s_mic_set_handler(eos_i2s_fptr_t wm_handler, uint8_t flags) {
     clear_csr(mstatus, MSTATUS_MIE);
-    mic_evt_handler = wm_handler;
+    i2s_mic_handler = wm_handler;
     set_csr(mstatus, MSTATUS_MIE);
+
+    if (flags) eos_evtq_set_flags(EOS_EVT_AUDIO | I2S_ETYPE_MIC, flags);
 }
 
 void eos_i2s_mic_set_wm(uint16_t wm) {
@@ -308,10 +309,12 @@ void eos_i2s_spk_init(uint8_t *spk_arr, uint16_t spk_arr_size) {
     set_csr(mstatus, MSTATUS_MIE);
 }
 
-void eos_i2s_spk_set_handler(eos_i2s_fptr_t wm_handler) {
+void eos_i2s_spk_set_handler(eos_i2s_fptr_t wm_handler, uint8_t flags) {
     clear_csr(mstatus, MSTATUS_MIE);
-    spk_evt_handler = wm_handler;
+    i2s_spk_handler = wm_handler;
     set_csr(mstatus, MSTATUS_MIE);
+
+    if (flags) eos_evtq_set_flags(EOS_EVT_AUDIO | I2S_ETYPE_SPK, flags);
 }
 
 void eos_i2s_spk_set_wm(uint16_t wm) {

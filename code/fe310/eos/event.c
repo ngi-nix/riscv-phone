@@ -32,6 +32,10 @@ int eos_evtq_push(unsigned char type, unsigned char *buffer, uint16_t len) {
     return ret;
 }
 
+int eos_evtq_push_isr(unsigned char type, unsigned char *buffer, uint16_t len) {
+    return eos_msgq_push(&_eos_event_q, type, buffer, len);
+}
+
 void eos_evtq_pop(unsigned char *type, unsigned char **buffer, uint16_t *len) {
     clear_csr(mstatus, MSTATUS_MIE);
     eos_msgq_pop(&_eos_event_q, type, buffer, len);

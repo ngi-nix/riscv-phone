@@ -44,7 +44,6 @@ static eos_evt_fptr_t evt_handler[EOS_NET_MAX_MTYPE];
 static uint16_t evt_handler_flags_buf_free = 0;
 static uint16_t evt_handler_flags_buf_acq = 0;
 
-extern EOSMsgQ _eos_event_q;
 extern uint32_t _eos_spi_state_len;
 extern uint32_t _eos_spi_state_idx_tx;
 extern uint32_t _eos_spi_state_idx_rx;
@@ -106,7 +105,39 @@ static void net_xchg_start(unsigned char type, unsigned char *buffer, uint16_t l
     SPI1_REG(SPI_REG_IE) = SPI_IP_RXWM;
 }
 
-static void net_xchg_handler(void) {
+static int net_xchg_next(unsigned char *_buffer) {
+    unsigned char type;
+    unsigned char *buffer = NULL;
+    uint16_t len;
+
+    eos_msgq_pop(&net_send_q, &type, &buffer, &len);
+    if (type) {
+        net_xchg_start(type, buffer, len);
+    } else if (net_state_flags & NET_STATE_FLAG_RTS) {
+        if (_buffer == NULL) _buffer = net_bufq_pop();
+        if (_buffer) {
+            net_xchg_start(0, _buffer, 0);
+            return 0;
+        }
+    }
+    return 1;
+}
+
+void eos_net_xchg_done(void) {
+    SPI1_REG(SPI_REG_CSMODE) = SPI_CSMODE_AUTO;
+    if (net_state_type) {
+        int r = eos_evtq_push_isr(EOS_EVT_NET | net_state_type, _eos_spi_state_buf, net_state_len_rx);
+        if (r) net_bufq_push(_eos_spi_state_buf);
+    } else if (((net_state_flags & NET_STATE_FLAG_ONEW) || net_state_next_cnt) && (net_state_next_buf == NULL)) {
+        net_state_next_buf = _eos_spi_state_buf;
+        net_state_flags &= ~NET_STATE_FLAG_ONEW;
+    } else {
+        net_bufq_push(_eos_spi_state_buf);
+    }
+    net_state_flags &= ~NET_STATE_FLAG_XCHG;
+}
+
+static void net_handler_xchg(void) {
     volatile uint32_t r1, r2;
 
     if (net_state_flags & NET_STATE_FLAG_RST) {
@@ -155,38 +186,6 @@ static void net_xchg_handler(void) {
     eos_spi_xchg_handler();
 }
 
-static int net_xchg_next(unsigned char *_buffer) {
-    unsigned char type;
-    unsigned char *buffer = NULL;
-    uint16_t len;
-
-    eos_msgq_pop(&net_send_q, &type, &buffer, &len);
-    if (type) {
-        net_xchg_start(type, buffer, len);
-    } else if (net_state_flags & NET_STATE_FLAG_RTS) {
-        if (_buffer == NULL) _buffer = net_bufq_pop();
-        if (_buffer) {
-            net_xchg_start(0, _buffer, 0);
-            return 0;
-        }
-    }
-    return 1;
-}
-
-void eos_net_xchg_done(void) {
-    SPI1_REG(SPI_REG_CSMODE) = SPI_CSMODE_AUTO;
-    if (net_state_type) {
-        int r = eos_msgq_push(&_eos_event_q, EOS_EVT_NET | net_state_type, _eos_spi_state_buf, net_state_len_rx);
-        if (r) net_bufq_push(_eos_spi_state_buf);
-    } else if (((net_state_flags & NET_STATE_FLAG_ONEW) || net_state_next_cnt) && (net_state_next_buf == NULL)) {
-        net_state_next_buf = _eos_spi_state_buf;
-        net_state_flags &= ~NET_STATE_FLAG_ONEW;
-    } else {
-        net_bufq_push(_eos_spi_state_buf);
-    }
-    net_state_flags &= ~NET_STATE_FLAG_XCHG;
-}
-
 static void net_handler_cts(void) {
     GPIO_REG(GPIO_RISE_IP) = (1 << NET_PIN_CTS);
     net_state_flags |= NET_STATE_FLAG_CTS;
@@ -210,37 +209,13 @@ static void net_handler_rts(void) {
 
 static void net_handler_evt(unsigned char type, unsigned char *buffer, uint16_t len) {
     unsigned char idx = (type & ~EOS_EVT_MASK) - 1;
-    uint16_t buf_free = ((uint16_t)1 << idx) & evt_handler_flags_buf_free;
-    uint16_t buf_acq = ((uint16_t)1 << idx) & evt_handler_flags_buf_acq;
 
     if (idx >= EOS_NET_MAX_MTYPE) {
         eos_evtq_bad_handler(type, buffer, len);
         eos_net_free(buffer, 0);
         return;
     }
-    if (buf_free) {
-        eos_net_free(buffer, buf_acq);
-        buffer = NULL;
-        len = 0;
-    }
-
-    evt_handler[idx](type, buffer, len);
-
-    if (buf_free && buf_acq) eos_net_release();
-}
-
-void eos_net_set_handler(unsigned char mtype, eos_evt_fptr_t handler, uint8_t flags) {
-    if (mtype && (mtype <= EOS_NET_MAX_MTYPE)) {
-        mtype--;
-    } else {
-        return;
-    }
-    if (flags) {
-        uint16_t flag = (uint16_t)1 << mtype;
-        if (flags & EOS_NET_FLAG_BFREE) evt_handler_flags_buf_free |= flag;
-        if (flags & EOS_NET_FLAG_BACQ) evt_handler_flags_buf_acq |= flag;
-    }
-    evt_handler[mtype] = handler;
+    _eos_net_handle(type, buffer, len, idx, evt_handler, &evt_handler_flags_buf_free, &evt_handler_flags_buf_acq);
 }
 
 void eos_net_init(void) {
@@ -272,7 +247,7 @@ void eos_net_init(void) {
 }
 
 void eos_net_start(void) {
-    eos_intr_set_handler(INT_SPI1_BASE, net_xchg_handler);
+    eos_intr_set_handler(INT_SPI1_BASE, net_handler_xchg);
     SPI1_REG(SPI_REG_SCKDIV) = SPI_DIV_NET;
     SPI1_REG(SPI_REG_CSID) = SPI_CS_IDX_NET;
 
@@ -296,6 +271,39 @@ void eos_net_stop(void) {
         if (!done) asm volatile ("wfi");
         set_csr(mstatus, MSTATUS_MIE);
     }
+}
+
+void _eos_net_handle(unsigned char type, unsigned char *buffer, uint16_t len, unsigned char idx, eos_evt_fptr_t handlers[], uint16_t *flags_buf_free, uint16_t *flags_buf_acq) {
+    uint16_t buf_free = ((uint16_t)1 << idx) & *flags_buf_free;
+    uint16_t buf_acq = ((uint16_t)1 << idx) & *flags_buf_acq;
+
+    if (buf_free) {
+        eos_net_free(buffer, buf_acq);
+        buffer = NULL;
+        len = 0;
+    }
+
+    handlers[idx](type, buffer, len);
+
+    if (buf_free && buf_acq) eos_net_release();
+}
+
+void _eos_net_set_handler(unsigned char idx, eos_evt_fptr_t handler, eos_evt_fptr_t handlers[], uint16_t flags, uint16_t *flags_buf_free, uint16_t *flags_buf_acq) {
+    if (flags) {
+        uint16_t flag = (uint16_t)1 << idx;
+        if (flags & EOS_NET_FLAG_BFREE) *flags_buf_free |= flag;
+        if (flags & EOS_NET_FLAG_BACQ) *flags_buf_acq |= flag;
+    }
+    handlers[idx] = handler;
+}
+
+void eos_net_set_handler(unsigned char mtype, eos_evt_fptr_t handler, uint8_t flags) {
+    if (mtype && (mtype <= EOS_NET_MAX_MTYPE)) {
+        mtype--;
+    } else {
+        return;
+    }
+    _eos_net_set_handler(mtype, handler, evt_handler, flags, &evt_handler_flags_buf_free, &evt_handler_flags_buf_acq);
 }
 
 int _eos_net_acquire(unsigned char reserved) {
