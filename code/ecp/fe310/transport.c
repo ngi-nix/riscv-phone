@@ -10,7 +10,7 @@ static unsigned char _flags = 0;
 
 ECPSocket *_ecp_tr_sock = NULL;
 
-static void packet_handler(unsigned char *buffer, uint16_t len) {
+static void packet_handler(unsigned char type, unsigned char *buffer, uint16_t len) {
     ECPNetAddr addr;
 
     ECP2Buffer bufs;
