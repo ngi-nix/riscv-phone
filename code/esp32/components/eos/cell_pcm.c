@@ -8,11 +8,17 @@
 #include <esp_log.h>
 
 #include "eos.h"
-#include "modem.h"
+#include "net.h"
+#include "cell.h"
 
 static i2s_dev_t* I2S[I2S_NUM_MAX] = {&I2S0, &I2S1};
 
-#define BUF_SIZE    2048
+#define BUF_SIZE        2048
+
+#define PCM_GPIO_BCK    33
+#define PCM_GPIO_WS     4
+#define PCM_GPIO_DIN    34
+#define PCM_GPIO_DOUT   2
 
 static QueueHandle_t i2s_queue;
 
@@ -59,6 +65,7 @@ static void i2s_event_task(void *pvParameters) {
     vTaskDelete(NULL);
 }
 
+/*
 static void i2s_write_task(void *pvParameters) {
     uint8_t *data = (uint8_t *) malloc(BUF_SIZE);
     memset(data, 0x0, BUF_SIZE);
@@ -78,16 +85,15 @@ static void i2s_write_task(void *pvParameters) {
     free(data);
     vTaskDelete(NULL);
 }
+*/
 
 void eos_pcm_init(void) {
-    esp_err_t err;
-
     i2s_config_t i2s_config = {
         .mode = I2S_MODE_SLAVE | I2S_MODE_TX | I2S_MODE_RX,
         .sample_rate = 32000,
         .bits_per_sample = 32,
         .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
-        .communication_format =  I2S_COMM_FORMAT_PCM | I2S_COMM_FORMAT_PCM_LONG,
+        .communication_format = I2S_COMM_FORMAT_PCM | I2S_COMM_FORMAT_PCM_LONG,
         .dma_buf_count = 4,
         .dma_buf_len = 512,
         .use_apll = true,
@@ -96,15 +102,13 @@ void eos_pcm_init(void) {
     };
 
     i2s_pin_config_t pin_config = {
-        .bck_io_num = 33,
-        .ws_io_num = 4,
-        .data_out_num = 2,
-        .data_in_num = 34
+        .bck_io_num     = PCM_GPIO_BCK,
+        .ws_io_num      = PCM_GPIO_WS,
+        .data_in_num    = PCM_GPIO_DIN,
+        .data_out_num   = PCM_GPIO_DOUT
     };
-    err = i2s_driver_install(I2S_NUM_0, &i2s_config, 10, &i2s_queue);   //install and start i2s driver
-    printf("I2S ERR: %d\n", err);
-    err = i2s_set_pin(I2S_NUM_0, &pin_config);
-    printf("I2S ERR: %d\n", err);
+    i2s_driver_install(I2S_NUM_0, &i2s_config, 10, &i2s_queue);   //install and start i2s driver
+    i2s_set_pin(I2S_NUM_0, &pin_config);
     i2s_stop(I2S_NUM_0);
     I2S[I2S_NUM_0]->conf.tx_mono = 1;
     I2S[I2S_NUM_0]->conf.rx_mono = 1;
@@ -123,6 +127,7 @@ ssize_t eos_pcm_write(void *data, size_t size) {
     return size_out;
 }
 
+/*
 void eos_pcm_call(void) {
     const char *s = "ATD0631942317;\r";
 
@@ -131,4 +136,4 @@ void eos_pcm_call(void) {
     vTaskDelay(1000 / portTICK_RATE_MS);
     i2s_start(I2S_NUM_0);
 }
-
+*/

@@ -1,9 +1,9 @@
 #include "i2c.h"
-#include "modem.h"
-#include "pcm.h"
+#include "cell.h"
 #include "_net.h"
-#include "sock.h"
 #include "wifi.h"
+#include "sock.h"
+#include "bq25895.h"
 
 // Main application
 void app_main() {
@@ -13,7 +13,7 @@ void app_main() {
     eos_net_init();
     eos_wifi_init();
     eos_sock_init();
-    // eos_bq25895_set_ilim();
+    eos_bq25895_set_ilim();
 }
 
 

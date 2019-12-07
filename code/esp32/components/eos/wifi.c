@@ -17,9 +17,11 @@
 #include "net.h"
 #include "wifi.h"
 
-static const char *TAG = "EOS";
+static const char *TAG = "EOS WIFI";
 
 static esp_err_t wifi_event_handler(void *ctx, system_event_t *event) {
+    unsigned char *rbuf;
+
     switch(event->event_id) {
         case SYSTEM_EVENT_SCAN_DONE:
             break;
@@ -42,9 +44,9 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event) {
             ESP_LOGI(TAG, "* We are now connected to AP");
             ESP_LOGI(TAG, "* - Our IP address is: " IPSTR, IP2STR(&event->event_info.got_ip.ip_info.ip));
             ESP_LOGI(TAG, "********************************************");
-            unsigned char *buf = malloc(32);
-            buf[0] = EOS_WIFI_MTYPE_CONNECT;
-            eos_net_send(EOS_NET_MTYPE_WIFI, buf, 1, EOS_NET_FLAG_BUF_FREE);
+            rbuf = eos_net_alloc();
+            rbuf[0] = EOS_WIFI_MTYPE_CONNECT;
+            eos_net_send(EOS_NET_MTYPE_WIFI, rbuf, 1, 0);
             break;
 
         default: // Ignore the other event types
@@ -70,7 +72,6 @@ static void wifi_handler(unsigned char _mtype, unsigned char *buffer, uint16_t s
             eos_wifi_disconnect();
             break;
     }
-    // eos_wifi_connect((char *)buffer, (char *)(buffer+strlen((char *)buffer)+1));
 }
 
 void eos_wifi_init(void) {

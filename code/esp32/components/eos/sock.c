@@ -25,7 +25,7 @@
 #include "net.h"
 #include "sock.h"
 
-static const char *TAG = "EOS";
+static const char *TAG = "EOS SOCK";
 static SemaphoreHandle_t mutex;
 static int _socks[EOS_SOCK_MAX_SOCK];
 
@@ -80,22 +80,25 @@ static ssize_t t_recvfrom(int sock, void *msg, size_t msg_size, EOSNetAddr *addr
 
 static void sock_receiver(void *pvParameters) {
     EOSNetAddr addr;
-    unsigned char buffer[EOS_NET_SIZE_BUF];
     uint8_t esock = (uint8_t)pvParameters;
     int sock = _socks[esock-1];
+    unsigned char *buf;
 
-    buffer[0] = EOS_SOCK_MTYPE_PKT;
-    buffer[1] = esock;
     do {
-        ssize_t rv = t_recvfrom(sock, buffer+EOS_SOCK_SIZE_UDP_HDR, EOS_NET_SIZE_BUF-EOS_SOCK_SIZE_UDP_HDR, &addr);
+        ssize_t rv;
+
+        buf = eos_net_alloc();
+        rv = t_recvfrom(sock, buf+EOS_SOCK_SIZE_UDP_HDR, EOS_NET_SIZE_BUF-EOS_SOCK_SIZE_UDP_HDR, &addr);
         if (rv < 0) {
             sock = 0;
             ESP_LOGE(TAG, "UDP RECV ERR:%d", rv);
             continue;
         }
-        memcpy(buffer+2, addr.host, sizeof(addr.host));
-        memcpy(buffer+2+sizeof(addr.host), &addr.port, sizeof(addr.port));
-        eos_net_send(EOS_NET_MTYPE_SOCK, buffer, rv+EOS_SOCK_SIZE_UDP_HDR, 0);
+        buf[0] = EOS_SOCK_MTYPE_PKT;
+        buf[1] = esock;
+        memcpy(buf+2, addr.host, sizeof(addr.host));
+        memcpy(buf+2+sizeof(addr.host), &addr.port, sizeof(addr.port));
+        eos_net_send(EOS_NET_MTYPE_SOCK, buf, rv+EOS_SOCK_SIZE_UDP_HDR, 0);
     } while(sock);
     xSemaphoreTake(mutex, portMAX_DELAY);
     _socks[esock-1] = 0;
@@ -105,9 +108,9 @@ static void sock_receiver(void *pvParameters) {
 
 static void sock_handler(unsigned char type, unsigned char *buffer, uint16_t size) {
     EOSNetAddr addr;
-    unsigned char ret[2];
     uint8_t esock;
     int sock, i;
+    unsigned char *rbuf;
 
     if (size < 1) return;
 
@@ -119,6 +122,7 @@ static void sock_handler(unsigned char type, unsigned char *buffer, uint16_t siz
             memcpy(&addr.port, buffer+2+sizeof(addr.host), sizeof(addr.port));
             t_sendto(sock, buffer+EOS_SOCK_SIZE_UDP_HDR, size-EOS_SOCK_SIZE_UDP_HDR, &addr);
             break;
+
         case EOS_SOCK_MTYPE_OPEN_DGRAM:
             sock = t_open_dgram();
             esock = 0;
@@ -132,17 +136,20 @@ static void sock_handler(unsigned char type, unsigned char *buffer, uint16_t siz
                 }
                 xSemaphoreGive(mutex);
             }
-            ret[0] = EOS_SOCK_MTYPE_OPEN_DGRAM;
-            ret[1] = esock;
             // xTaskCreatePinnedToCore(&sock_receiver, "sock_receiver", 2048, NULL, EOS_IRQ_PRIORITY_UDP_RCVR, NULL, 1);
             xTaskCreate(&sock_receiver, "sock_receiver", 2048, (void *)esock, EOS_IRQ_PRIORITY_UDP_RCVR, NULL);
-            eos_net_send(EOS_NET_MTYPE_SOCK, ret, 2, 0);
+            rbuf = eos_net_alloc();
+            rbuf[0] = EOS_SOCK_MTYPE_OPEN_DGRAM;
+            rbuf[1] = esock;
+            eos_net_send(EOS_NET_MTYPE_SOCK, rbuf, 2, 0);
             break;
+
         case EOS_SOCK_MTYPE_CLOSE:
             if (size < 2) return;
             sock = _socks[buffer[1]-1];
             t_close(sock);
             break;
+
         default:
             break;
     }

@@ -4,7 +4,7 @@
 #include "eos.h"
 #include "i2c.h"
 
-static const char *TAG = "DRV2605L";
+static const char *TAG = "EOS DRV2605L";
 
 #define DRV2605L_ADDR                0x5A
 
@@ -52,37 +52,19 @@ static const char *TAG = "DRV2605L";
 #define DRV2605_REG_VBAT 0x21         ///< Vbat voltage-monitor register
 #define DRV2605_REG_LRARESON 0x22     ///< LRA resonance-period register
 
-/**
- * @brief test function to show buffer
- */
-static void disp_buf(uint8_t *buf, int len)
-{
-    int i;
-    for (i = 0; i < len; i++) {
-        printf("%02x ", buf[i]);
-        if ((i + 1) % 16 == 0) {
-            printf("\n");
-        }
-    }
-    printf("\n");
-}
-
 void eos_drv2605l_test(void) {
     uint8_t data = 0;
-    
+
     int ret = eos_i2c_read(DRV2605L_ADDR, DRV2605_REG_STATUS, &data, 1);
     if (ret) ESP_LOGE(TAG, "I2C ERROR!");
-    ESP_LOGI(TAG, "OK BUFFER: ");
-    disp_buf(&data, 1);
-    
-    eos_i2c_write8(DRV2605L_ADDR, DRV2605_REG_MODE, 0x00); // out of standby
 
-    eos_i2c_write8(DRV2605L_ADDR, DRV2605_REG_RTPIN, 0x00); // no real-time-playback
+    eos_i2c_write8(DRV2605L_ADDR, DRV2605_REG_MODE, 0x00);      // out of standby
+    eos_i2c_write8(DRV2605L_ADDR, DRV2605_REG_RTPIN, 0x00);     // no real-time-playback
 
-    eos_i2c_write8(DRV2605L_ADDR, DRV2605_REG_WAVESEQ1, 1); // strong click
-    eos_i2c_write8(DRV2605L_ADDR, DRV2605_REG_WAVESEQ2, 0); // end sequence
+    eos_i2c_write8(DRV2605L_ADDR, DRV2605_REG_WAVESEQ1, 1);     // strong click
+    eos_i2c_write8(DRV2605L_ADDR, DRV2605_REG_WAVESEQ2, 0);     // end sequence
 
-    eos_i2c_write8(DRV2605L_ADDR, DRV2605_REG_OVERDRIVE, 0); // no overdrive
+    eos_i2c_write8(DRV2605L_ADDR, DRV2605_REG_OVERDRIVE, 0);    // no overdrive
 
     eos_i2c_write8(DRV2605L_ADDR, DRV2605_REG_SUSTAINPOS, 0);
     eos_i2c_write8(DRV2605L_ADDR, DRV2605_REG_SUSTAINNEG, 0);
@@ -90,15 +72,10 @@ void eos_drv2605l_test(void) {
     eos_i2c_write8(DRV2605L_ADDR, DRV2605_REG_AUDIOMAX, 0x64);
 
     // LRA open loop
-    // turn on N_ERM_LRA
-    eos_i2c_write8(DRV2605L_ADDR, DRV2605_REG_FEEDBACK, eos_i2c_read8(DRV2605L_ADDR, DRV2605_REG_FEEDBACK) | 0x80);
-    
-    // turn on LRA_OPEN_LOOP
-    eos_i2c_write8(DRV2605L_ADDR, DRV2605_REG_CONTROL3, eos_i2c_read8(DRV2605L_ADDR, DRV2605_REG_CONTROL3) | 0x01);
+    eos_i2c_write8(DRV2605L_ADDR, DRV2605_REG_FEEDBACK, eos_i2c_read8(DRV2605L_ADDR, DRV2605_REG_FEEDBACK) | 0x80);     // turn on N_ERM_LRA
+    eos_i2c_write8(DRV2605L_ADDR, DRV2605_REG_CONTROL3, eos_i2c_read8(DRV2605L_ADDR, DRV2605_REG_CONTROL3) | 0x01);     // turn on LRA_OPEN_LOOP
 
+    eos_i2c_write8(DRV2605L_ADDR, DRV2605_REG_LIBRARY, 6);      // set LRA library
+    eos_i2c_write8(DRV2605L_ADDR, DRV2605_REG_GO, 1);           // go
 
-    // set LRA library
-    eos_i2c_write8(DRV2605L_ADDR, DRV2605_REG_LIBRARY, 6);
-    // go
-    eos_i2c_write8(DRV2605L_ADDR, DRV2605_REG_GO, 1);
 }

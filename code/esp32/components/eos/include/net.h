@@ -13,12 +13,15 @@
 #define EOS_NET_MTYPE_FLAG_ONEW     0x10
 
 #define EOS_NET_SIZE_BUF            1500
-#define EOS_NET_SIZE_BUFQ           64
+#define EOS_NET_SIZE_BUFQ           8
+#define EOS_NET_SIZE_SNDQ           16
 
-#define EOS_NET_FLAG_BUF_FREE       0x01
+#define EOS_NET_FLAG_BFREE          0x1
+#define EOS_NET_FLAG_BCOPY          0x2
 
 typedef void (*eos_net_fptr_t) (unsigned char, unsigned char *, uint16_t);
 
 void eos_net_init(void);
+unsigned char *eos_net_alloc(void);
 int eos_net_send(unsigned char mtype, unsigned char *buffer, uint16_t len, uint8_t flags);
 void eos_net_set_handler(unsigned char mtype, eos_net_fptr_t handler);

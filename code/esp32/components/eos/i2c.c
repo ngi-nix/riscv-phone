@@ -4,12 +4,12 @@
 
 #include "eos.h"
 
-static const char *TAG = "I2C";
+static const char *TAG = "EOS I2C";
 
 #define I2C_MASTER_NUM              I2C_NUM_0
 #define I2C_MASTER_FREQ_HZ          100000
-#define I2C_MASTER_SCL_IO           26
-#define I2C_MASTER_SDA_IO           25
+#define I2C_MASTER_GPIO_SCL         25
+#define I2C_MASTER_GPIO_SDA         26
 
 #define I2C_MASTER_TX_BUF_DISABLE   0       /*!< I2C master doesn't need buffer */
 #define I2C_MASTER_RX_BUF_DISABLE   0       /*!< I2C master doesn't need buffer */
@@ -25,9 +25,9 @@ static const char *TAG = "I2C";
 void eos_i2c_init(void) {
     i2c_config_t conf;
     conf.mode = I2C_MODE_MASTER;
-    conf.sda_io_num = I2C_MASTER_SDA_IO;
+    conf.sda_io_num = I2C_MASTER_GPIO_SDA;
     conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
-    conf.scl_io_num = I2C_MASTER_SCL_IO;
+    conf.scl_io_num = I2C_MASTER_GPIO_SCL;
     conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
     conf.master.clk_speed = I2C_MASTER_FREQ_HZ;
     i2c_param_config(I2C_MASTER_NUM, &conf);
