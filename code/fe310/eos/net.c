@@ -18,19 +18,19 @@
 
 #define MIN(X, Y)               (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y)               (((X) > (Y)) ? (X) : (Y))
-#define NET_BUFQ_IDX_MASK(IDX)  ((IDX) & (NET_SIZE_BUFQ - 1))
+#define NET_BUFQ_IDX_MASK(IDX)  ((IDX) & (EOS_NET_SIZE_BUFQ - 1))
 
 typedef struct EOSNetBufQ {
     uint8_t idx_r;
     uint8_t idx_w;
-    unsigned char *array[NET_SIZE_BUFQ];
+    unsigned char *array[EOS_NET_SIZE_BUFQ];
 } EOSNetBufQ;
 
 static EOSMsgQ net_send_q;
-static EOSMsgItem net_sndq_array[NET_SIZE_BUFQ];
+static EOSMsgItem net_sndq_array[EOS_NET_SIZE_BUFQ];
 
 static EOSNetBufQ net_buf_q;
-static unsigned char net_bufq_array[NET_SIZE_BUFQ][NET_SIZE_BUF];
+static unsigned char net_bufq_array[EOS_NET_SIZE_BUFQ][EOS_NET_SIZE_BUF];
 
 static uint8_t net_state_flags = 0;
 static unsigned char net_state_type = 0;
@@ -53,8 +53,8 @@ static void net_bufq_init(void) {
     int i;
 
     net_buf_q.idx_r = 0;
-    net_buf_q.idx_w = NET_SIZE_BUFQ;
-    for (i=0; i<NET_SIZE_BUFQ; i++) {
+    net_buf_q.idx_w = EOS_NET_SIZE_BUFQ;
+    for (i=0; i<EOS_NET_SIZE_BUFQ; i++) {
         net_buf_q.array[i] = net_bufq_array[i];
     }
 }
@@ -175,7 +175,7 @@ static void net_handler_xchg(void) {
             _eos_spi_state_len = ((_eos_spi_state_len + 2)/4 + 1) * 4 - 2;
         }
 
-        if (_eos_spi_state_len > NET_SIZE_BUF) {
+        if (_eos_spi_state_len > EOS_NET_SIZE_BUF) {
             SPI1_REG(SPI_REG_CSMODE) = SPI_CSMODE_AUTO;
             SPI1_REG(SPI_REG_IE) = 0x0;
         }
@@ -222,7 +222,7 @@ void eos_net_init(void) {
     int i;
 
     net_bufq_init();
-    eos_msgq_init(&net_send_q, net_sndq_array, NET_SIZE_BUFQ);
+    eos_msgq_init(&net_send_q, net_sndq_array, EOS_NET_SIZE_BUFQ);
     for (i=0; i<EOS_NET_MAX_MTYPE; i++) {
         evt_handler[i] = eos_evtq_bad_handler;
     }

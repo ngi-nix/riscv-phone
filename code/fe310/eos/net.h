@@ -1,6 +1,9 @@
 #include <stdint.h>
 #include "event.h"
 
+#define EOS_NET_SIZE_BUF        1500
+#define EOS_NET_SIZE_BUFQ       2
+
 #define EOS_NET_FLAG_BACQ       0x1
 #define EOS_NET_FLAG_BFREE      0x2
 

@@ -1,6 +1,3 @@
-#define NET_SIZE_BUF            1500
-#define NET_SIZE_BUFQ           2
-
 #define NET_PIN_RTS             20
 #define NET_PIN_CTS             22
 
