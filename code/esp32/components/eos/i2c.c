@@ -32,6 +32,7 @@ void eos_i2c_init(void) {
     conf.master.clk_speed = I2C_MASTER_FREQ_HZ;
     i2c_param_config(I2C_MASTER_NUM, &conf);
     i2c_driver_install(I2C_MASTER_NUM, conf.mode, I2C_MASTER_RX_BUF_DISABLE, I2C_MASTER_TX_BUF_DISABLE, 0);
+    ESP_LOGI(TAG, "INIT");
 }
 
 /**

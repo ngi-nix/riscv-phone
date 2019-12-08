@@ -13,8 +13,8 @@
 #define EOS_NET_MTYPE_FLAG_ONEW     0x10
 
 #define EOS_NET_SIZE_BUF            1500
-#define EOS_NET_SIZE_BUFQ           8
-#define EOS_NET_SIZE_SNDQ           16
+#define EOS_NET_SIZE_BUFQ           4
+#define EOS_NET_SIZE_SNDQ           4
 
 #define EOS_NET_FLAG_BFREE          0x1
 #define EOS_NET_FLAG_BCOPY          0x2

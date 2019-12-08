@@ -30,6 +30,8 @@
 static QueueHandle_t uart_queue;
 // static uint8_t *uart_data[UART_BUF_SIZE];
 
+static const char *TAG = "EOS MODEM";
+
 static void uart_event_task(void *pvParameters) {
     char mode = 0;
     uart_event_t event;
@@ -58,6 +60,7 @@ static void uart_event_task(void *pvParameters) {
                         default:
                             break;
                     }
+                    break;
 
                 case UART_EVENT_MAX:
                     /* Mode change
@@ -113,9 +116,10 @@ void eos_modem_init(void) {
     gpio_set_level(UART_GPIO_DTR, 1);
 
     // Create a task to handle uart event from ISR
-    xTaskCreate(uart_event_task, "uart_event_task", 2048, NULL, EOS_IRQ_PRIORITY_UART, NULL);
+    xTaskCreate(uart_event_task, "uart_event", EOS_TASK_SSIZE_UART, NULL, EOS_TASK_PRIORITY_UART, NULL);
 
     eos_net_set_handler(EOS_NET_MTYPE_CELL, modem_handler);
+    ESP_LOGI(TAG, "INIT");
 }
 
 ssize_t eos_modem_write(void *data, size_t size) {
@@ -126,5 +130,5 @@ void eos_modem_set_mode(char mode) {
     uart_event_t evt;
     evt.type = UART_EVENT_MAX;  /* my type */
     evt.size = mode;
-    xQueueSend(&uart_queue, (void *)&evt, portMAX_DELAY);
+    xQueueSend(uart_queue, (void *)&evt, portMAX_DELAY);
 }

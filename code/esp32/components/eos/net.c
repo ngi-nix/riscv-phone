@@ -37,7 +37,6 @@ typedef struct EOSNetBufQ {
 } EOSNetBufQ;
 
 static EOSNetBufQ net_buf_q;
-static unsigned char net_bufq_array[EOS_NET_SIZE_BUFQ][EOS_NET_SIZE_BUF];
 
 static EOSMsgQ net_send_q;
 static EOSMsgItem net_sndq_array[EOS_NET_SIZE_SNDQ];
@@ -59,7 +58,7 @@ static void net_bufq_init(void) {
     net_buf_q.idx_r = 0;
     net_buf_q.idx_w = EOS_NET_SIZE_BUFQ;
     for (i=0; i<EOS_NET_SIZE_BUFQ; i++) {
-        net_buf_q.array[i] = net_bufq_array[i];
+        net_buf_q.array[i] = malloc(EOS_NET_SIZE_BUF);
     }
 }
 
@@ -72,7 +71,7 @@ static unsigned char *net_bufq_pop(void) {
     return net_buf_q.array[NET_BUFQ_IDX_MASK(net_buf_q.idx_r++)];
 }
 
-static void exchange(void *pvParameters) {
+static void net_xchg_task(void *pvParameters) {
     int repeat = 0;
     unsigned char mtype = 0;
     unsigned char *buffer;
@@ -195,7 +194,8 @@ void eos_net_init(void) {
     semaph = xSemaphoreCreateCounting(EOS_NET_SIZE_BUFQ, EOS_NET_SIZE_BUFQ);
     mutex = xSemaphoreCreateBinary();
     xSemaphoreGive(mutex);
-    xTaskCreate(&exchange, "net_xchg", 2048, NULL, EOS_IRQ_PRIORITY_NET_XCHG, NULL);
+    xTaskCreate(&net_xchg_task, "net_xchg", EOS_TASK_SSIZE_NET_XCHG, NULL, EOS_TASK_PRIORITY_NET_XCHG, NULL);
+    ESP_LOGI(TAG, "INIT");
 }
 
 unsigned char *eos_net_alloc(void) {

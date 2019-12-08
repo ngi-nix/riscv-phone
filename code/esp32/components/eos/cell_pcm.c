@@ -5,6 +5,7 @@
 #include <freertos/task.h>
 #include <freertos/queue.h>
 #include <driver/i2s.h>
+#include <driver/gpio.h>
 #include <esp_log.h>
 
 #include "eos.h"
@@ -21,6 +22,8 @@ static i2s_dev_t* I2S[I2S_NUM_MAX] = {&I2S0, &I2S1};
 #define PCM_GPIO_DOUT   2
 
 static QueueHandle_t i2s_queue;
+
+static const char *TAG = "EOS PCM";
 
 static void i2s_event_task(void *pvParameters) {
     size_t size_out;
@@ -54,7 +57,7 @@ static void i2s_event_task(void *pvParameters) {
                     i2s_write(I2S_NUM_0, (const void *)data, BUF_SIZE, &size_out, 1000 / portTICK_RATE_MS);
                     break;
                 case I2S_EVENT_DMA_ERROR:
-                    printf("*** I2S DMA ERROR ***");
+                    ESP_LOGE(TAG, "*** I2S DMA ERROR ***");
                     break;
                 default:
                     break;
@@ -108,15 +111,18 @@ void eos_pcm_init(void) {
         .data_out_num   = PCM_GPIO_DOUT
     };
     i2s_driver_install(I2S_NUM_0, &i2s_config, 10, &i2s_queue);   //install and start i2s driver
-    i2s_set_pin(I2S_NUM_0, &pin_config);
     i2s_stop(I2S_NUM_0);
+    i2s_set_pin(I2S_NUM_0, &pin_config);
+    gpio_matrix_in(pin_config.ws_io_num, I2S0I_WS_IN_IDX, 1);
+    gpio_matrix_in(pin_config.bck_io_num, I2S0I_BCK_IN_IDX, 1);
     I2S[I2S_NUM_0]->conf.tx_mono = 1;
     I2S[I2S_NUM_0]->conf.rx_mono = 1;
-    i2s_start(I2S_NUM_0);
 
     // Create a task to handle i2s event from ISR
-    xTaskCreate(i2s_event_task, "i2s_event_task", 2048, NULL, EOS_IRQ_PRIORITY_I2S, NULL);
-    // xTaskCreate(i2s_write_task, "i2s_write_task", 2048, NULL, EOS_IRQ_PRIORITY_I2S, NULL);
+    xTaskCreate(i2s_event_task, "i2s_event", EOS_TASK_SSIZE_I2S, NULL, EOS_TASK_PRIORITY_I2S, NULL);
+    // xTaskCreate(i2s_write_task, "i2s_write_task", EOS_TASK_SSIZE_I2S, NULL, EOS_TASK_PRIORITY_I2S, NULL);
+    ESP_LOGI(TAG, "INIT");
+    i2s_start(I2S_NUM_0);
 }
 
 ssize_t eos_pcm_write(void *data, size_t size) {

@@ -78,7 +78,7 @@ static ssize_t t_recvfrom(int sock, void *msg, size_t msg_size, EOSNetAddr *addr
     return recvlen;
 }
 
-static void sock_receiver(void *pvParameters) {
+static void udp_rcvr_task(void *pvParameters) {
     EOSNetAddr addr;
     uint8_t esock = (uint8_t)pvParameters;
     int sock = _socks[esock-1];
@@ -136,8 +136,8 @@ static void sock_handler(unsigned char type, unsigned char *buffer, uint16_t siz
                 }
                 xSemaphoreGive(mutex);
             }
-            // xTaskCreatePinnedToCore(&sock_receiver, "sock_receiver", 2048, NULL, EOS_IRQ_PRIORITY_UDP_RCVR, NULL, 1);
-            xTaskCreate(&sock_receiver, "sock_receiver", 2048, (void *)esock, EOS_IRQ_PRIORITY_UDP_RCVR, NULL);
+            // xTaskCreatePinnedToCore(&sock_receiver, "sock_receiver", EOS_TASK_SSIZE_UDP_RCVR, (void *)esock, EOS_TASK_PRIORITY_UDP_RCVR, NULL, 1);
+            xTaskCreate(&udp_rcvr_task, "udp_rcvr", EOS_TASK_SSIZE_UDP_RCVR, (void *)esock, EOS_TASK_PRIORITY_UDP_RCVR, NULL);
             rbuf = eos_net_alloc();
             rbuf[0] = EOS_SOCK_MTYPE_OPEN_DGRAM;
             rbuf[1] = esock;
@@ -159,4 +159,5 @@ void eos_sock_init(void) {
     mutex = xSemaphoreCreateBinary();
     xSemaphoreGive(mutex);
     eos_net_set_handler(EOS_NET_MTYPE_SOCK, sock_handler);
+    ESP_LOGI(TAG, "INIT");
 }
