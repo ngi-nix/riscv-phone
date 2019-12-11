@@ -19,10 +19,6 @@
 #include "msgq.h"
 #include "net.h"
 
-#define MIN(X, Y)               (((X) < (Y)) ? (X) : (Y))
-#define MAX(X, Y)               (((X) > (Y)) ? (X) : (Y))
-#define NET_BUFQ_IDX_MASK(IDX)  ((IDX) & (EOS_NET_SIZE_BUFQ - 1))
-
 #define SPI_GPIO_RTS        22
 #define SPI_GPIO_CTS        21
 #define SPI_GPIO_MOSI       23
@@ -30,13 +26,8 @@
 #define SPI_GPIO_SCLK       18
 #define SPI_GPIO_CS         5
 
-typedef struct EOSNetBufQ {
-    uint8_t idx_r;
-    uint8_t idx_w;
-    unsigned char *array[EOS_NET_SIZE_BUFQ];
-} EOSNetBufQ;
-
-static EOSNetBufQ net_buf_q;
+static EOSBufQ net_buf_q;
+static unsigned char *net_bufq_array[EOS_NET_SIZE_BUFQ];
 
 static EOSMsgQ net_send_q;
 static EOSMsgItem net_sndq_array[EOS_NET_SIZE_SNDQ];
@@ -50,25 +41,6 @@ static eos_net_fptr_t mtype_handler[EOS_NET_MAX_MTYPE];
 
 static void bad_handler(unsigned char mtype, unsigned char *buffer, uint16_t len) {
     ESP_LOGE(TAG, "NET RECV: bad handler: %d", mtype);
-}
-
-static void net_bufq_init(void) {
-    int i;
-
-    net_buf_q.idx_r = 0;
-    net_buf_q.idx_w = EOS_NET_SIZE_BUFQ;
-    for (i=0; i<EOS_NET_SIZE_BUFQ; i++) {
-        net_buf_q.array[i] = malloc(EOS_NET_SIZE_BUF);
-    }
-}
-
-static int net_bufq_push(unsigned char *buffer) {
-    net_buf_q.array[NET_BUFQ_IDX_MASK(net_buf_q.idx_w++)] = buffer;
-    return EOS_OK;
-}
-
-static unsigned char *net_bufq_pop(void) {
-    return net_buf_q.array[NET_BUFQ_IDX_MASK(net_buf_q.idx_r++)];
 }
 
 static void net_xchg_task(void *pvParameters) {
@@ -99,7 +71,7 @@ static void net_xchg_task(void *pvParameters) {
                     if (flags & EOS_NET_FLAG_BFREE) {
                         free(buffer);
                     } else {
-                        net_bufq_push(buffer);
+                        eos_bufq_push(&net_buf_q, buffer);
                         xSemaphoreGive(semaph);
                     }
                 }
@@ -114,7 +86,7 @@ static void net_xchg_task(void *pvParameters) {
 
         memset(buf_recv, 0, EOS_NET_SIZE_BUF);
         spi_slave_transmit(HSPI_HOST, &t, portMAX_DELAY);
-        ESP_LOGI(TAG, "RECV:%d", (buf_recv[0] >> 3));
+        // ESP_LOGI(TAG, "RECV:%d", (buf_recv[0] >> 3));
         repeat = 0;
         if (buf_recv[0] != 0) {
             mtype = (buf_recv[0] >> 3);
@@ -184,8 +156,11 @@ void eos_net_init(void) {
     ret=spi_slave_initialize(HSPI_HOST, &buscfg, &slvcfg, 1);
     assert(ret==ESP_OK);
 
-    net_bufq_init();
     eos_msgq_init(&net_send_q, net_sndq_array, EOS_NET_SIZE_SNDQ);
+    eos_bufq_init(&net_buf_q, net_bufq_array, EOS_NET_SIZE_BUFQ);
+    for (i=0; i<EOS_NET_SIZE_BUFQ; i++) {
+        eos_bufq_push(&net_buf_q, malloc(EOS_NET_SIZE_BUF));
+    }
 
     for (i=0; i<EOS_NET_MAX_MTYPE; i++) {
         mtype_handler[i] = bad_handler;
@@ -203,10 +178,17 @@ unsigned char *eos_net_alloc(void) {
 
     xSemaphoreTake(semaph, portMAX_DELAY);
     xSemaphoreTake(mutex, portMAX_DELAY);
-    ret = net_bufq_pop();
+    ret = eos_bufq_pop(&net_buf_q);
     xSemaphoreGive(mutex);
 
     return ret;
+}
+
+void eos_net_free(unsigned char *buf) {
+    xSemaphoreTake(mutex, portMAX_DELAY);
+    eos_bufq_push(&net_buf_q, buf);
+    xSemaphoreGive(semaph);
+    xSemaphoreGive(mutex);
 }
 
 int eos_net_send(unsigned char mtype, unsigned char *buffer, uint16_t len, uint8_t flags) {
@@ -216,7 +198,7 @@ int eos_net_send(unsigned char mtype, unsigned char *buffer, uint16_t len, uint8
     xSemaphoreTake(mutex, portMAX_DELAY);
     WRITE_PERI_REG(GPIO_OUT_W1TS_REG, (1 << SPI_GPIO_RTS));
     if (flags & EOS_NET_FLAG_BCOPY) {
-        unsigned char *b = net_bufq_pop();
+        unsigned char *b = eos_bufq_pop(&net_buf_q);
         memcpy(b, buffer, len);
         buffer = b;
     }

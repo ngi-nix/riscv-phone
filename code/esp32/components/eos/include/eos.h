@@ -10,7 +10,7 @@
 
 #define EOS_TASK_SSIZE_UART         4096
 #define EOS_TASK_SSIZE_I2S          4096
-#define EOS_TASK_SSIZE_NET_XCHG     4096
+#define EOS_TASK_SSIZE_NET_XCHG     8192
 #define EOS_TASK_SSIZE_UDP_RCVR     4096
 
 
