@@ -18,19 +18,13 @@
 
 #define MIN(X, Y)               (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y)               (((X) > (Y)) ? (X) : (Y))
-#define NET_BUFQ_IDX_MASK(IDX)  ((IDX) & (EOS_NET_SIZE_BUFQ - 1))
 
-typedef struct EOSNetBufQ {
-    uint8_t idx_r;
-    uint8_t idx_w;
-    unsigned char *array[EOS_NET_SIZE_BUFQ];
-} EOSNetBufQ;
+static EOSBufQ net_buf_q;
+static unsigned char *net_bufq_array[EOS_NET_SIZE_BUFQ];
+static unsigned char net_bufq_buffer[EOS_NET_SIZE_BUFQ][EOS_NET_SIZE_BUF];
 
 static EOSMsgQ net_send_q;
 static EOSMsgItem net_sndq_array[EOS_NET_SIZE_BUFQ];
-
-static EOSNetBufQ net_buf_q;
-static unsigned char net_bufq_array[EOS_NET_SIZE_BUFQ][EOS_NET_SIZE_BUF];
 
 static uint8_t net_state_flags = 0;
 static unsigned char net_state_type = 0;
@@ -48,26 +42,6 @@ extern uint32_t _eos_spi_state_len;
 extern uint32_t _eos_spi_state_idx_tx;
 extern uint32_t _eos_spi_state_idx_rx;
 extern unsigned char *_eos_spi_state_buf;
-
-static void net_bufq_init(void) {
-    int i;
-
-    net_buf_q.idx_r = 0;
-    net_buf_q.idx_w = EOS_NET_SIZE_BUFQ;
-    for (i=0; i<EOS_NET_SIZE_BUFQ; i++) {
-        net_buf_q.array[i] = net_bufq_array[i];
-    }
-}
-
-static int net_bufq_push(unsigned char *buffer) {
-    net_buf_q.array[NET_BUFQ_IDX_MASK(net_buf_q.idx_w++)] = buffer;
-    return EOS_OK;
-}
-
-static unsigned char *net_bufq_pop(void) {
-    if (net_buf_q.idx_r == net_buf_q.idx_w) return NULL;
-    return net_buf_q.array[NET_BUFQ_IDX_MASK(net_buf_q.idx_r++)];
-}
 
 static void net_xchg_reset(void) {
     net_state_flags &= ~NET_STATE_FLAG_CTS;
@@ -114,7 +88,7 @@ static int net_xchg_next(unsigned char *_buffer) {
     if (type) {
         net_xchg_start(type, buffer, len);
     } else if (net_state_flags & NET_STATE_FLAG_RTS) {
-        if (_buffer == NULL) _buffer = net_bufq_pop();
+        if (_buffer == NULL) _buffer = eos_bufq_pop(&net_buf_q);
         if (_buffer) {
             net_xchg_start(0, _buffer, 0);
             return 0;
@@ -127,12 +101,12 @@ void eos_net_xchg_done(void) {
     SPI1_REG(SPI_REG_CSMODE) = SPI_CSMODE_AUTO;
     if (net_state_type) {
         int r = eos_evtq_push_isr(EOS_EVT_NET | net_state_type, _eos_spi_state_buf, net_state_len_rx);
-        if (r) net_bufq_push(_eos_spi_state_buf);
+        if (r) eos_bufq_push(&net_buf_q, _eos_spi_state_buf);
     } else if (((net_state_flags & NET_STATE_FLAG_ONEW) || net_state_next_cnt) && (net_state_next_buf == NULL)) {
         net_state_next_buf = _eos_spi_state_buf;
         net_state_flags &= ~NET_STATE_FLAG_ONEW;
     } else {
-        net_bufq_push(_eos_spi_state_buf);
+        eos_bufq_push(&net_buf_q, _eos_spi_state_buf);
     }
     net_state_flags &= ~NET_STATE_FLAG_XCHG;
 }
@@ -221,8 +195,12 @@ static void net_handler_evt(unsigned char type, unsigned char *buffer, uint16_t 
 void eos_net_init(void) {
     int i;
 
-    net_bufq_init();
     eos_msgq_init(&net_send_q, net_sndq_array, EOS_NET_SIZE_BUFQ);
+    eos_bufq_init(&net_buf_q, net_bufq_array, EOS_NET_SIZE_BUFQ);
+    for (i=0; i<EOS_NET_SIZE_BUFQ; i++) {
+        eos_bufq_push(&net_buf_q, net_bufq_buffer[i]);
+    }
+
     for (i=0; i<EOS_NET_MAX_MTYPE; i++) {
         evt_handler[i] = eos_evtq_bad_handler;
     }
@@ -322,7 +300,7 @@ int _eos_net_acquire(unsigned char reserved) {
         }
     } else {
         clear_csr(mstatus, MSTATUS_MIE);
-        if (net_state_next_buf == NULL) net_state_next_buf = net_bufq_pop();
+        if (net_state_next_buf == NULL) net_state_next_buf = eos_bufq_pop(&net_buf_q);
         ret = (net_state_next_buf != NULL);
         if (!ret) net_state_next_cnt++;
         set_csr(mstatus, MSTATUS_MIE);
@@ -338,7 +316,7 @@ void eos_net_acquire(void) {
 void eos_net_release(void) {
     clear_csr(mstatus, MSTATUS_MIE);
     if (!net_state_next_cnt && net_state_next_buf) {
-        net_bufq_push(net_state_next_buf);
+        eos_bufq_push(&net_buf_q, net_state_next_buf);
         net_state_next_buf = NULL;
     }
     set_csr(mstatus, MSTATUS_MIE);
@@ -363,7 +341,7 @@ void eos_net_free(unsigned char *buffer, unsigned char more) {
         net_state_next_buf = buffer;
     } else {
         if ((net_state_flags & NET_STATE_FLAG_RUN) && (net_state_flags & NET_STATE_FLAG_CTS)) do_release = net_xchg_next(buffer);
-        if (do_release) net_bufq_push(buffer);
+        if (do_release) eos_bufq_push(&net_buf_q, buffer);
     }
     set_csr(mstatus, MSTATUS_MIE);
 }
@@ -379,7 +357,7 @@ int eos_net_send(unsigned char type, unsigned char *buffer, uint16_t len, unsign
         net_xchg_start(type, buffer, len);
     } else {
         rv = eos_msgq_push(&net_send_q, type, buffer, len);
-        if (rv) net_bufq_push(buffer);
+        if (rv) eos_bufq_push(&net_buf_q, buffer);
     }
     set_csr(mstatus, MSTATUS_MIE);
 
