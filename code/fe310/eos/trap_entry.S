@@ -213,60 +213,64 @@ i2s_handler_sd_xchg:
   sw x9, GPIO_OUTPUT_EN(x18)
 
   not x20, x20
-  or x22, x22, x21
-
-  li x23, 17
-0:
-  addi x23, x23, -1
-  beqz x23, 1f
-  lw x9, GPIO_INPUT_VAL(x18)
-  and x9, x9, x19
-  srli x9, x9, I2S_PIN_SD_IN
-  slli x8, x8, 1
-  or x8, x8, x9
-
-1:
-  # idle
-  li x9, I2S_IDLE_CYCLES
-2:
-  addi x9, x9, -1
-  bnez x9, 2b
-
-  # ck high
   xor x22, x22, x21
-  sw x22, GPIO_OUTPUT_VAL(x18)
 
-  li x9, 0x1
-  slli x9, x9, 16
-  and x9, x9, x8
-#if I2S_PIN_SD_OUT > 16
-  slli x9, x9, (I2S_PIN_SD_OUT - 16)
+  li x23, 16
+0:
+  # write bit
+  li x9, 1
+  slli x9, x9, 15
+  and x9, x8, x9
+  slli x8, x8, 1
+#if I2S_PIN_SD_OUT > 15
+  slli x9, x9, (I2S_PIN_SD_OUT - 15)
 #else
-  srli x9, x9, (16 - I2S_PIN_SD_OUT)
+  srli x9, x9, (15 - I2S_PIN_SD_OUT)
 #endif
   and x22, x22, x20
   or x22, x22, x9
 
-  # idle
-  li x9, I2S_IDLE_CYCLES
-2:
-  addi x9, x9, -1
-  bnez x9, 2b
+  # read bit
+  lw x9, GPIO_INPUT_VAL(x18)
+  and x9, x9, x19
+  srli x9, x9, I2S_PIN_SD_IN
+  or x8, x8, x9
 
-  # ck low
+  # 74HC595 ck low (I2S_PIN_CK_SR high)
   xor x22, x22, x21
   sw x22, GPIO_OUTPUT_VAL(x18)
 
-  beqz x23, 3f
+  # idle
+  li x9, I2S_IDLE_CYCLES
+1:
+  addi x9, x9, -1
+  bnez x9, 1b
+
+  # 74HC595 ck high (I2S_PIN_CK_SR low)
+  xor x22, x22, x21
+  sw x22, GPIO_OUTPUT_VAL(x18)
+
+  # idle
+  li x9, I2S_IDLE_CYCLES
+1:
+  addi x9, x9, -1
+  bnez x9, 1b
+
+  addi x23, x23, -1
+  beqz x23, 2f
   j 0b
 
-3:
-  slli x8, x8, 16
-  srai x8, x8, 16
+2:
+  # 74HC595 ck low (I2S_PIN_CK_SR high)
+  xor x22, x22, x21
+  sw x22, GPIO_OUTPUT_VAL(x18)
 
   lw x9, GPIO_OUTPUT_EN(x18)
   and x9, x9, x20
   sw x9, GPIO_OUTPUT_EN(x18)
+
+  slli x8, x8, 16
+  srai x8, x8, 16
 
   la x9, _eos_i2s_fmt
   lw x23, 0(x9)
