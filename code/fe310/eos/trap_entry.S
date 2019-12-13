@@ -101,7 +101,7 @@ i2s_handler_sd:
   # exit if too early
   li x18, I2S_PWM_CTRL_ADDR_WS_SPK
   lw x8, PWM_COUNT(x18)
-  lw x9, PWM_CMP2(x18)
+  lw x9, PWM_CMP3(x18)
   bltu x8, x9, i2s_handler_sd_exit
 
   # disable sd irq
@@ -199,8 +199,6 @@ i2s_decode:
   mul x8, x8, x9
 
 i2s_handler_sd_xchg:
-  # li x8, 0xAf0A
-  # li x8, 0x50f5
   # read/write shift reg: x8 -> sr -> x8
   li x18, GPIO_CTRL_ADDR
   li x19, (0x1 << I2S_PIN_SD_IN)
@@ -394,7 +392,7 @@ _eos_i2s_start_pwm:
   li x20, I2S_PWM_CTRL_ADDR_WS_SPK
   li x21, PWM_CFG_ENALWAYS | PWM_CFG_ZEROCMP | I2S_PWM_SCALE_CK
   li x22, PWM_CFG_ENALWAYS | PWM_CFG_ZEROCMP | PWM_CFG_CMP2GANG
-  li x23, PWM_CFG_ENALWAYS | PWM_CFG_ZEROCMP
+  li x23, PWM_CFG_ENALWAYS | PWM_CFG_ZEROCMP | PWM_CFG_CMP1GANG
   sw x21, PWM_CFG(x18)
   sw x22, PWM_CFG(x19)
   sw x23, PWM_CFG(x20)
