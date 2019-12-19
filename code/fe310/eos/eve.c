@@ -96,8 +96,8 @@ static void _dl_inc(uint16_t i) {
 	dl_offset += i;
 }
 
-void eos_eve_dl_start(void) {
-    dl_offset = 0;
+void eos_eve_dl_start(uint16_t offset) {
+    dl_offset = offset;
 }
 
 void eos_eve_dl_write(uint32_t dl) {
@@ -106,8 +106,12 @@ void eos_eve_dl_write(uint32_t dl) {
     _dl_inc(4);
 }
 
-void eos_eve_dl_end(void) {
+void eos_eve_dl_swap(void) {
     eos_eve_write8(REG_DLSWAP, EVE_DLSWAP_FRAME);
+}
+
+uint16_t eos_eve_dl_offset(void) {
+    return dl_offset;
 }
 
 static void _cmd_inc(uint16_t i) {
@@ -145,8 +149,7 @@ static void _cmd_string(const char *s, uint8_t flags) {
 	p = 4 - p;  /* 4, 3, 2 or 1 */
 	i += p;
 
-	while(p > 0)
-	{
+	while(p > 0) {
         eos_spi_xchg8(0, EOS_SPI_FLAG_BSWAP | flags);
 		p--;
 	}
@@ -156,7 +159,8 @@ static void _cmd_string(const char *s, uint8_t flags) {
 void eos_eve_cmd(uint32_t cmd, const char *fmt, ...) {
     uint8_t flags = cmd_burst ? EOS_SPI_FLAG_TX : 0;
     va_list argv;
-    int i;
+    uint16_t *p;
+    int i = 0;
 
     va_start(argv, fmt);
     _cmd_begin(cmd);
@@ -174,6 +178,12 @@ void eos_eve_cmd(uint32_t cmd, const char *fmt, ...) {
                 eos_spi_xchg32(va_arg(argv, int), EOS_SPI_FLAG_BSWAP | flags);
                 _cmd_inc(4);
                 break;
+            case 'W':
+                p = va_arg(argv, uint16_t *);
+                *p = cmd_offset;
+                eos_spi_xchg32(0, EOS_SPI_FLAG_BSWAP | flags);
+                _cmd_inc(4);
+                break;
             case 's':
                 _cmd_string(va_arg(argv, const char *), flags);
                 break;
@@ -182,6 +192,10 @@ void eos_eve_cmd(uint32_t cmd, const char *fmt, ...) {
     }
     _cmd_end();
 	va_end(argv);
+}
+
+uint32_t eos_eve_cmd_result(uint16_t offset) {
+    return eos_eve_read32(EVE_RAM_CMD + offset);
 }
 
 void eos_eve_cmd_dl(uint32_t dl) {
@@ -271,11 +285,11 @@ int eos_eve_init(void) {
 	eos_eve_write16(REG_SOUND, 0x6000);     /* set synthesizer to mute */
 
 	/* write a basic display-list to get things started */
-    eos_eve_dl_start();
-    eos_eve_dl_write(DL_CLEAR_RGB);
-	eos_eve_dl_write(DL_CLEAR | CLR_COL | CLR_STN | CLR_TAG);
-    eos_eve_dl_write(DL_DISPLAY);
-    eos_eve_dl_end();
+    eos_eve_dl_start(0);
+    eos_eve_dl_write(CLEAR_COLOR_RGB(0,0,0));
+	eos_eve_dl_write(CLEAR(1,1,1));
+    eos_eve_dl_write(DISPLAY());
+    eos_eve_dl_swap();
 
 	/* nothing is being displayed yet... the pixel clock is still 0x00 */
 	eos_eve_write8(REG_GPIO, 0x80);         /* enable the DISP signal to the LCD panel, it is set to output in REG_GPIO_DIR by default */

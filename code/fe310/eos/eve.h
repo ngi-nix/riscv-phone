@@ -17,11 +17,13 @@ void eos_eve_sleep(void);
 void eos_eve_reset(void);
 void eos_eve_brightness(uint8_t b);
 
-void eos_eve_dl_start(void);
+void eos_eve_dl_start(uint16_t offset);
 void eos_eve_dl_write(uint32_t dl);
-void eos_eve_dl_end(void);
+void eos_eve_dl_swap(void);
+uint16_t eos_eve_dl_offset(void);
 
 void eos_eve_cmd(uint32_t cmd, const char *fmt, ...);
+uint32_t eos_eve_cmd_result(uint16_t offset);
 void eos_eve_cmd_dl(uint32_t dl);
 int eos_eve_cmd_done(void);
 int eos_eve_cmd_exec(int w);
