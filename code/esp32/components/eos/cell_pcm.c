@@ -31,6 +31,7 @@ static unsigned char *pcm_bufq_array[PCM_SIZE_BUFQ];
 
 static EOSMsgQ pcm_evt_q;
 static EOSMsgItem pcm_evtq_array[PCM_SIZE_BUFQ];
+static char pcm_running;
 
 static i2s_dev_t* I2S[I2S_NUM_MAX] = {&I2S0, &I2S1};
 
@@ -207,12 +208,16 @@ int eos_pcm_push(unsigned char *data, size_t size) {
     unsigned char *buf = NULL;
     ssize_t esize;
     int rv;
+    char running;
 
     if (size > PCM_MIC_WM) return EOS_ERR;
 
     xSemaphoreTake(mutex, portMAX_DELAY);
-    buf = eos_bufq_pop(&pcm_buf_q);
+    running = pcm_running;
+    if (running) buf = eos_bufq_pop(&pcm_buf_q);
     xSemaphoreGive(mutex);
+
+    if (!running) return EOS_ERR;
     if (buf == NULL) return EOS_ERR_EMPTY;
 
     esize = eos_pcm_expand(buf, data, size);
@@ -238,8 +243,26 @@ void eos_pcm_start(void) {
     xQueueSend(i2s_queue, (void *)&evt, portMAX_DELAY);
     i2s_zero_dma_buffer(I2S_NUM_0);
     i2s_start(I2S_NUM_0);
+    xSemaphoreTake(mutex, portMAX_DELAY);
+    while (1) {
+        unsigned char _type;
+        unsigned char *buf;
+        uint16_t len;
+
+        eos_msgq_pop(&pcm_evt_q, &_type, &buf, &len, NULL);
+        if (buf) {
+            eos_bufq_push(&pcm_buf_q, buf);
+        } else {
+            break;
+        }
+    }
+    pcm_running = 1;
+    xSemaphoreGive(mutex);
 }
 
 void eos_pcm_stop(void) {
     i2s_stop(I2S_NUM_0);
+    xSemaphoreTake(mutex, portMAX_DELAY);
+    pcm_running = 0;
+    xSemaphoreGive(mutex);
 }
