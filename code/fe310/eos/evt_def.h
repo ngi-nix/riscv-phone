@@ -3,7 +3,8 @@
 #define EOS_EVT_NET                 0x30
 #define EOS_EVT_SPI                 0x40
 #define EOS_EVT_UART                0x50
-#define EOS_EVT_USER                0x60
+#define EOS_EVT_UI                  0x60
+#define EOS_EVT_USER                0x70
 
 #define EOS_EVT_MAX_EVT             8
 #define EOS_EVT_MASK                0xF0

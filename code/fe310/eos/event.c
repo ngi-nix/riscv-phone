@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <stdio.h>
 
 #include "encoding.h"
 #include "platform.h"
@@ -43,7 +44,7 @@ void eos_evtq_pop(unsigned char *type, unsigned char **buffer, uint16_t *len) {
 }
 
 void eos_evtq_bad_handler(unsigned char type, unsigned char *buffer, uint16_t len) {
-    write(1, "error\n", 6);
+    printf("evt bad handler:%d\n", type);
 }
 
 static void evtq_handler_wrapper(unsigned char type, unsigned char *buffer, uint16_t len) {
