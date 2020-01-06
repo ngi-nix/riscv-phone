@@ -10,7 +10,6 @@
 #define IDX_LT(a,b)             ((uint8_t)((uint8_t)(a) - (uint8_t)(b)) > IDX_HALF)
 #define IDX_LTE(a,b)            ((uint8_t)((uint8_t)(b) - (uint8_t)(a)) < IDX_HALF)
 
-
 void eos_msgq_init(EOSMsgQ *msgq, EOSMsgItem *array, uint8_t size) {
     msgq->idx_r = 0;
     msgq->idx_w = 0;

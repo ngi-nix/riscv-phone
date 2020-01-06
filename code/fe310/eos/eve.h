@@ -2,13 +2,23 @@
 
 #include "eve_def.h"
 
-typedef struct EVETag {
+#define EOS_TOUCH_ETYPE_DOWN    0x01
+#define EOS_TOUCH_ETYPE_UP      0x02
+#define EOS_TOUCH_ETYPE_DRAG    0x04
+#define EOS_TOUCH_ETYPE_TRACK   0x08
+
+typedef struct EOSTouch {
     uint16_t x;
     uint16_t y;
-    uint8_t value;
-    uint8_t value_prev;
+    uint8_t tag;
+    uint8_t tag_prev;
+    uint8_t evt;
     char t;
-} EVETag;
+    struct {
+        uint16_t tag;
+        uint16_t val;
+    } tracker;
+} EOSTouch;
 
 typedef void (*eos_eve_fptr_t) (uint8_t, int);
 
@@ -38,5 +48,6 @@ void eos_eve_cmd_burst_start(void);
 void eos_eve_cmd_burst_end(void);
 
 int eos_eve_init(void);
-void eos_eve_set_renderer(eos_eve_fptr_t renderer);
-EVETag *eos_eve_tag(void);
+void eos_eve_set_renderer(eos_eve_fptr_t renderer, uint8_t flags);
+EOSTouch *eos_touch_evt(uint8_t tag0, int touch_idx, uint8_t tag_min, uint8_t tag_max, uint8_t *evt);
+void eos_touch_set_evt(uint8_t tag, uint8_t evt);
