@@ -39,7 +39,7 @@ void eos_text_init(EOSText *box, int x, int y, int w, int h, double scale_x, dou
         box->dl_size += 1;
     }
 
-    eos_touch_set_evt(tag, EOS_TOUCH_ETYPE_DRAG);
+    eos_touch_evt_set(tag, EOS_TOUCH_ETYPE_TRACK);
 
     eos_eve_cmd(CMD_MEMSET, "www", mem_addr, 0x0, w * 2 * buf_line_h);
     eos_eve_cmd_exec(1);
@@ -49,25 +49,23 @@ void eos_text_init(EOSText *box, int x, int y, int w, int h, double scale_x, dou
 }
 
 void eos_text_draw(EOSText *box, uint8_t tag0, int touch_idx) {
-    static int y0;
     static int line_idx = -1;
     static int line_idx_last;
     uint8_t evt;
     EOSTouch *t = eos_touch_evt(tag0, touch_idx, box->tag, box->tag, &evt);
 
     if (t && evt) {
-        if (evt & EOS_TOUCH_ETYPE_DOWN) {
-            y0 = t->y;
+        if (evt & EOS_TOUCH_ETYPE_TAG_DOWN) {
             if (line_idx < 0) {
                 line_idx = box->line_idx;
                 line_idx_last = line_idx;
             }
         }
-        if (evt & EOS_TOUCH_ETYPE_UP) {
+        if (evt & EOS_TOUCH_ETYPE_TAG_UP) {
             line_idx = line_idx_last;
         }
-        if (evt & EOS_TOUCH_ETYPE_DRAG) {
-            int _line_idx = LINE_IDX_ADD(line_idx, (y0 - t->y) / box->ch_h, box->buf_line_h);
+        if (evt & EOS_TOUCH_ETYPE_TRACK) {
+            int _line_idx = LINE_IDX_ADD(line_idx, ((int)t->y0 - t->y) / box->ch_h, box->buf_line_h);
             if (LINE_IDX_LTE(_line_idx, box->line_idx, box->buf_line_h, box->h)) {
                 eos_text_update(box, _line_idx);
                 line_idx_last = _line_idx;

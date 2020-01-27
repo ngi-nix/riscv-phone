@@ -37,8 +37,8 @@ void eos_kbd_draw(EOSKbd *kbd, uint8_t tag0, int touch_idx) {
     EOSTouch *t = eos_touch_evt(tag0, touch_idx, 1, 127, &evt);
 
     if (t && evt) {
-        if (evt & EOS_TOUCH_ETYPE_DOWN) {
-            uint8_t _tag = t->tag;
+        if (evt & EOS_TOUCH_ETYPE_TAG_DOWN) {
+            uint8_t _tag = t->tag_down;
 
             if (_tag >= KEY_SHIFT && _tag <= KEY_FN) {
                 if (touch_idx == 0) {
@@ -67,8 +67,8 @@ void eos_kbd_draw(EOSKbd *kbd, uint8_t tag0, int touch_idx) {
                 }
             }
         }
-        if (evt & EOS_TOUCH_ETYPE_UP) {
-            uint8_t _tag = t->tag_prev;
+        if (evt & EOS_TOUCH_ETYPE_TAG_UP) {
+            uint8_t _tag = t->tag_up;
 
             if (_tag >= KEY_SHIFT && _tag <= KEY_FN) {
                 if (touch_idx == 0) {

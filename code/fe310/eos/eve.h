@@ -2,18 +2,26 @@
 
 #include "eve_def.h"
 
-#define EOS_TOUCH_ETYPE_DOWN    0x01
-#define EOS_TOUCH_ETYPE_UP      0x02
-#define EOS_TOUCH_ETYPE_DRAG    0x04
-#define EOS_TOUCH_ETYPE_TRACK   0x08
+#define EOS_TOUCH_ETYPE_TRACK           0x01
+#define EOS_TOUCH_ETYPE_TRACK_REG       0x02
+#define EOS_TOUCH_ETYPE_POINT_UP        0x10
+#define EOS_TOUCH_ETYPE_POINT_DOWN      0x20
+#define EOS_TOUCH_ETYPE_TAG_UP          0x40
+#define EOS_TOUCH_ETYPE_TAG_DOWN        0x80
+
+#define EOS_TOUCH_ETYPE_TRACK_MASK      0x03
+#define EOS_TOUCH_ETYPE_POINT_MASK      0x30
+#define EOS_TOUCH_ETYPE_TAG_MASK        0xc0
 
 typedef struct EOSTouch {
     uint16_t x;
     uint16_t y;
-    uint8_t tag;
-    uint8_t tag_prev;
+    uint16_t x0;
+    uint16_t y0;
+    uint8_t tag0;
+    uint8_t tag_up;
+    uint8_t tag_down;
     uint8_t evt;
-    char t;
     struct {
         uint16_t tag;
         uint16_t val;
@@ -50,4 +58,4 @@ void eos_eve_cmd_burst_end(void);
 int eos_eve_init(void);
 void eos_eve_set_renderer(eos_eve_fptr_t renderer, uint8_t flags);
 EOSTouch *eos_touch_evt(uint8_t tag0, int touch_idx, uint8_t tag_min, uint8_t tag_max, uint8_t *evt);
-void eos_touch_set_evt(uint8_t tag, uint8_t evt);
+void eos_touch_evt_set(uint8_t tag, uint8_t evt);
