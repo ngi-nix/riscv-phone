@@ -56,7 +56,7 @@ void eos_timer_init(void) {
         timer_next[i] = 0;
         timer_handler[i] = NULL;
     }
-    eos_evtq_set_handler(EOS_EVT_TIMER, timer_handler_evt);
+    eos_evtq_set_handler(EOS_EVT_TIMER, timer_handler_evt, 0);
 }
 
 void eos_timer_set_handler(unsigned char evt, eos_timer_fptr_t handler, uint8_t flags) {
@@ -74,7 +74,11 @@ void eos_timer_set_handler(unsigned char evt, eos_timer_fptr_t handler, uint8_t 
     timer_handler[evt] = handler;
     if (*mtimecmp != 0) set_csr(mie, MIP_MTIP);
 
-    if ((evt != EOS_TIMER_MAX_ETYPE) && flags) eos_evtq_set_flags(EOS_EVT_TIMER | evt + 1, flags);
+    if (evt != EOS_TIMER_MAX_ETYPE) eos_evtq_set_hflags(EOS_EVT_TIMER | evt + 1, flags);
+}
+
+void eos_timer_set_hflags(unsigned char evt, uint8_t flags) {
+    if (evt && (evt < EOS_TIMER_MAX_ETYPE)) eos_evtq_set_hflags(EOS_EVT_TIMER | evt, flags);
 }
 
 uint64_t eos_timer_get(unsigned char evt) {

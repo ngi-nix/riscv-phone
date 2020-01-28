@@ -78,17 +78,23 @@ static void evtq_handler(unsigned char type, unsigned char *buffer, uint16_t len
     }
 }
 
-void eos_evtq_set_handler(unsigned char type, eos_evt_fptr_t handler) {
+void eos_evtq_set_handler(unsigned char type, eos_evt_fptr_t handler, uint8_t flags) {
     unsigned char idx = ((type & EOS_EVT_MASK) >> 4) - 1;
 
-    if (idx < EOS_EVT_MAX_EVT) evt_handler[idx] = handler;
+    if (idx < EOS_EVT_MAX_EVT) {
+        evt_handler[idx] = handler;
+        eos_evtq_set_hflags(type, flags);
+    }
 }
 
-void eos_evtq_set_flags(unsigned char type, uint8_t flags) {
+void eos_evtq_set_hflags(unsigned char type, uint8_t flags) {
     unsigned char idx = ((type & EOS_EVT_MASK) >> 4) - 1;
     uint16_t flag = type & ~EOS_EVT_MASK ? (uint16_t)1 << ((type & ~EOS_EVT_MASK) - 1) : 0xFFFF;
 
-    if ((idx < EOS_EVT_MAX_EVT) && (flags & EOS_NET_FLAG_BACQ)) evt_handler_flags_buf_acq[idx] |= flag;
+    if (idx < EOS_EVT_MAX_EVT) {
+        evt_handler_flags_buf_acq[idx] &= ~flag;
+        if (flags & EOS_NET_FLAG_BACQ) evt_handler_flags_buf_acq[idx] |= flag;
+    }
 }
 
 void eos_evtq_get(unsigned char type, unsigned char *selector, uint16_t sel_len, unsigned char **buffer, uint16_t *len) {

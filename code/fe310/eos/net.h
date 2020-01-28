@@ -23,7 +23,7 @@ void eos_net_init(void);
 void eos_net_start(void);
 void eos_net_stop(void);
 void _eos_net_handle(unsigned char type, unsigned char *buffer, uint16_t len, unsigned char idx, eos_evt_fptr_t handlers[], uint16_t *flags_buf_free, uint16_t *flags_buf_acq);
-void _eos_net_set_handler(unsigned char idx, eos_evt_fptr_t handler, eos_evt_fptr_t handlers[], uint16_t flags, uint16_t *flags_buf_free, uint16_t *flags_buf_acq);
+void _eos_net_set_handler(unsigned char idx, eos_evt_fptr_t handler, eos_evt_fptr_t handlers[], uint8_t flags, uint16_t *flags_buf_free, uint16_t *flags_buf_acq);
 void eos_net_set_handler(unsigned char type, eos_evt_fptr_t handler, uint8_t flags);
 
 int _eos_net_acquire(unsigned char reserved);

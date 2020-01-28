@@ -204,7 +204,7 @@ void eos_net_init(void) {
     for (i=0; i<EOS_NET_MAX_MTYPE; i++) {
         evt_handler[i] = eos_evtq_bad_handler;
     }
-    eos_evtq_set_handler(EOS_EVT_NET, net_handler_evt);
+    eos_evtq_set_handler(EOS_EVT_NET, net_handler_evt, 0);
 
     GPIO_REG(GPIO_INPUT_EN)     |=  (1 << NET_PIN_CTS);
     GPIO_REG(GPIO_OUTPUT_EN)    &= ~(1 << NET_PIN_CTS);
@@ -266,9 +266,11 @@ void _eos_net_handle(unsigned char type, unsigned char *buffer, uint16_t len, un
     if (buf_free && buf_acq) eos_net_release();
 }
 
-void _eos_net_set_handler(unsigned char idx, eos_evt_fptr_t handler, eos_evt_fptr_t handlers[], uint16_t flags, uint16_t *flags_buf_free, uint16_t *flags_buf_acq) {
+void _eos_net_set_handler(unsigned char idx, eos_evt_fptr_t handler, eos_evt_fptr_t handlers[], uint8_t flags, uint16_t *flags_buf_free, uint16_t *flags_buf_acq) {
     if (flags) {
         uint16_t flag = (uint16_t)1 << idx;
+        *flags_buf_free &= ~flag;
+        *flags_buf_acq &= ~flag;
         if (flags & EOS_NET_FLAG_BFREE) *flags_buf_free |= flag;
         if (flags & EOS_NET_FLAG_BACQ) *flags_buf_acq |= flag;
     }

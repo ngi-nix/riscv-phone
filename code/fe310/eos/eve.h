@@ -4,6 +4,7 @@
 
 #define EOS_TOUCH_ETYPE_TRACK           0x01
 #define EOS_TOUCH_ETYPE_TRACK_REG       0x02
+#define EOS_TOUCH_ETYPE_LPRESS          0x04
 #define EOS_TOUCH_ETYPE_POINT_UP        0x10
 #define EOS_TOUCH_ETYPE_POINT_DOWN      0x20
 #define EOS_TOUCH_ETYPE_TAG_UP          0x40

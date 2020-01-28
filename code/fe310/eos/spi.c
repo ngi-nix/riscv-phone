@@ -63,7 +63,7 @@ void eos_spi_init(void) {
     for (i=0; i<EOS_SPI_MAX_DEV; i++) {
         evt_handler[i] = eos_evtq_bad_handler;
     }
-    eos_evtq_set_handler(EOS_EVT_SPI, spi_handler_evt);
+    eos_evtq_set_handler(EOS_EVT_SPI, spi_handler_evt, 0);
     eos_intr_set(INT_SPI1_BASE, IRQ_PRIORITY_SPI_XCHG, NULL);
 
     GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << SPI_CS_PIN_CAM);
@@ -127,7 +127,7 @@ void eos_spi_set_handler(unsigned char dev, eos_evt_fptr_t handler, uint8_t flag
     }
     evt_handler[dev] = handler;
 
-    if (flags) eos_evtq_set_flags(EOS_EVT_SPI | dev + 1, flags);
+    eos_evtq_set_hflags(EOS_EVT_SPI | dev + 1, flags);
 }
 
 void eos_spi_xchg(unsigned char *buffer, uint16_t len, uint8_t flags) {

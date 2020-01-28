@@ -136,7 +136,7 @@ static void _spk_vol_set(uint8_t vol) {
 extern void _eos_i2s_start_pwm(void);
 
 void eos_i2s_init(void) {
-    eos_evtq_set_handler(EOS_EVT_AUDIO, i2s_handler_evt);
+    eos_evtq_set_handler(EOS_EVT_AUDIO, i2s_handler_evt, 0);
 
     GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_CK);
     GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << I2S_PIN_CK);
@@ -272,7 +272,7 @@ void eos_i2s_mic_set_handler(eos_i2s_fptr_t wm_handler, uint8_t flags) {
     i2s_mic_handler = wm_handler;
     set_csr(mstatus, MSTATUS_MIE);
 
-    if (flags) eos_evtq_set_flags(EOS_EVT_AUDIO | I2S_ETYPE_MIC, flags);
+    eos_evtq_set_hflags(EOS_EVT_AUDIO | I2S_ETYPE_MIC, flags);
 }
 
 void eos_i2s_mic_set_wm(uint16_t wm) {
@@ -348,7 +348,7 @@ void eos_i2s_spk_set_handler(eos_i2s_fptr_t wm_handler, uint8_t flags) {
     i2s_spk_handler = wm_handler;
     set_csr(mstatus, MSTATUS_MIE);
 
-    if (flags) eos_evtq_set_flags(EOS_EVT_AUDIO | I2S_ETYPE_SPK, flags);
+    eos_evtq_set_hflags(EOS_EVT_AUDIO | I2S_ETYPE_SPK, flags);
 }
 
 void eos_i2s_spk_set_wm(uint16_t wm) {

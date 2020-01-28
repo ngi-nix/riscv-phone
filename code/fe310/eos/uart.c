@@ -41,7 +41,7 @@ void eos_uart_init(void) {
     for (i=0; i<EOS_UART_MAX_ETYPE; i++) {
         uart_handler[i] = NULL;
     }
-    eos_evtq_set_handler(EOS_EVT_UART, uart_handler_evt);
+    eos_evtq_set_handler(EOS_EVT_UART, uart_handler_evt, 0);
     eos_intr_set(INT_UART0_BASE, IRQ_PRIORITY_UART, uart_handler_intr);
 }
 
@@ -53,7 +53,7 @@ void eos_uart_set_handler(unsigned char type, eos_uart_fptr_t handler, uint8_t f
     }
     uart_handler[type] = handler;
 
-    if (flags) eos_evtq_set_flags(EOS_EVT_UART | type + 1, flags);
+    eos_evtq_set_hflags(EOS_EVT_UART | type + 1, flags);
 }
 
 void eos_uart_txwm_set(uint8_t wm) {
