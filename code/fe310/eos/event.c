@@ -6,22 +6,30 @@
 #include "encoding.h"
 #include "platform.h"
 
-#include "net.h"
 #include "msgq.h"
 #include "event.h"
 
 EOSMsgQ _eos_event_q;
 static EOSMsgItem event_q_array[EOS_EVT_SIZE_Q];
 
-static eos_evt_fptr_t evt_handler[EOS_EVT_MAX_EVT];
-static uint16_t evt_handler_wrapper_acq[EOS_EVT_MAX_EVT];
-static uint16_t evt_handler_flags_buf_acq[EOS_EVT_MAX_EVT];
+static eos_evt_handler_t evt_handler[EOS_EVT_MAX_EVT + 1];
+
+static void evtq_handler(unsigned char type, unsigned char *buffer, uint16_t len) {
+    unsigned char idx = (type & EOS_EVT_MASK) >> 4;
+
+    if (idx && (idx <= EOS_EVT_MAX_EVT)) {
+        evt_handler[idx](type, buffer, len);
+    } else {
+        eos_evtq_bad_handler(type, buffer, len);
+    }
+}
 
 void eos_evtq_init(void) {
     int i;
 
+    evt_handler[0] = evtq_handler;
     for (i=0; i<EOS_EVT_MAX_EVT; i++) {
-        evt_handler[i] = eos_evtq_bad_handler;
+        evt_handler[i + 1] = eos_evtq_bad_handler;
     }
     eos_msgq_init(&_eos_event_q, event_q_array, EOS_EVT_SIZE_Q);
 }
@@ -47,54 +55,17 @@ void eos_evtq_bad_handler(unsigned char type, unsigned char *buffer, uint16_t le
     printf("evt bad handler:%d\n", type);
 }
 
-static void evtq_handler_wrapper(unsigned char type, unsigned char *buffer, uint16_t len) {
-    unsigned char idx = ((type & EOS_EVT_MASK) >> 4) - 1;
-    uint16_t flag = (uint16_t)1 << ((type & ~EOS_EVT_MASK) - 1);
-    int ok;
+void eos_evtq_set_handler(unsigned char type, eos_evt_handler_t handler) {
+    unsigned char idx = (type & EOS_EVT_MASK) >> 4;
 
-    ok = _eos_net_acquire(evt_handler_wrapper_acq[idx] & flag);
-    if (ok) {
-        evt_handler[idx](type, buffer, len);
-        eos_net_release();
-        evt_handler_wrapper_acq[idx] &= ~flag;
-    } else {
-        evt_handler_wrapper_acq[idx] |= flag;
-        eos_evtq_push(type, buffer, len);
-    }
+    if (idx <= EOS_EVT_MAX_EVT) evt_handler[idx] = handler;
 }
 
-static void evtq_handler(unsigned char type, unsigned char *buffer, uint16_t len) {
-    unsigned char idx = ((type & EOS_EVT_MASK) >> 4) - 1;
-    uint16_t flag = (uint16_t)1 << ((type & ~EOS_EVT_MASK) - 1);
+eos_evt_handler_t eos_evtq_get_handler(unsigned char type) {
+    unsigned char idx = (type & EOS_EVT_MASK) >> 4;
 
-    if (idx >= EOS_EVT_MAX_EVT) {
-        eos_evtq_bad_handler(type, buffer, len);
-        return;
-    }
-    if (flag & evt_handler_flags_buf_acq[idx]) {
-        evtq_handler_wrapper(type, buffer, len);
-    } else {
-        evt_handler[idx](type, buffer, len);
-    }
-}
-
-void eos_evtq_set_handler(unsigned char type, eos_evt_fptr_t handler, uint8_t flags) {
-    unsigned char idx = ((type & EOS_EVT_MASK) >> 4) - 1;
-
-    if (idx < EOS_EVT_MAX_EVT) {
-        evt_handler[idx] = handler;
-        eos_evtq_set_hflags(type, flags);
-    }
-}
-
-void eos_evtq_set_hflags(unsigned char type, uint8_t flags) {
-    unsigned char idx = ((type & EOS_EVT_MASK) >> 4) - 1;
-    uint16_t flag = type & ~EOS_EVT_MASK ? (uint16_t)1 << ((type & ~EOS_EVT_MASK) - 1) : 0xFFFF;
-
-    if (idx < EOS_EVT_MAX_EVT) {
-        evt_handler_flags_buf_acq[idx] &= ~flag;
-        if (flags & EOS_NET_FLAG_BACQ) evt_handler_flags_buf_acq[idx] |= flag;
-    }
+    if (idx <= EOS_EVT_MAX_EVT) return evt_handler[idx];
+    return NULL;
 }
 
 void eos_evtq_get(unsigned char type, unsigned char *selector, uint16_t sel_len, unsigned char **buffer, uint16_t *len) {
@@ -111,7 +82,7 @@ void eos_evtq_get(unsigned char type, unsigned char *selector, uint16_t sel_len,
             eos_msgq_pop(&_eos_event_q, &_type, &_buffer, &_len);
             if (_type) {
                 set_csr(mstatus, MSTATUS_MIE);
-                evtq_handler(_type, _buffer, _len);
+                evt_handler[0](_type, _buffer, _len);
             } else {
                 asm volatile ("wfi");
                 set_csr(mstatus, MSTATUS_MIE);
@@ -133,7 +104,7 @@ void eos_evtq_loop(void) {
         eos_msgq_pop(&_eos_event_q, &type, &buffer, &len);
         if (type) {
             set_csr(mstatus, MSTATUS_MIE);
-            evtq_handler(type, buffer, len);
+            evt_handler[0](type, buffer, len);
         } else {
             asm volatile ("wfi");
             set_csr(mstatus, MSTATUS_MIE);

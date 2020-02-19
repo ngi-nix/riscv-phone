@@ -1,3 +1,4 @@
+#include "eos.h"
 #include "eve.h"
 #include "eve_text.h"
 
@@ -8,16 +9,16 @@
 #define LINE_IDX_SUB(l1,l2,s)       (((((l1) - (l2)) % (s)) + (s)) % (s))
 
 #define LINE_IDX_LTE(l1,l2,s,h)     (LINE_IDX_SUB(l2,l1,s) <= (s) - (h))
-#define LINE_IDX_DIFF(l1,l2,s)      ((l1) > (l2) ? (l1) - (l2) : (s) - (l2) + (l1))
+#define LINE_IDX_DIFF(l1,l2,s)      ((l1) > (l2) ? (l1) - (l2) : (s) + (l1) - (l2))
 
-static void scroll1(EOSText *box) {
-    box->line_idx = (box->line_idx + 1) % box->buf_line_h;
-    eos_eve_cmd(CMD_MEMSET, "www", box->buf_addr + box->buf_idx, 0x0, box->w * 2);
-    eos_eve_cmd_exec(1);
+static void scroll1(EVEText *box) {
+    box->line0 = (box->line0 + 1) % box->line_size;
+    eve_cmd(CMD_MEMSET, "www", box->mem_addr + box->ch_idx, 0x0, box->w * 2);
+    eve_cmd_exec(1);
     box->dirty = 1;
 }
 
-void eos_text_init(EOSText *box, int x, int y, int w, int h, double scale_x, double scale_y, uint8_t tag, int buf_line_h, uint32_t mem_addr, uint32_t *mem_next) {
+void eve_text_init(EVEText *box, uint16_t x, uint16_t y, uint16_t w, uint16_t h, double scale_x, double scale_y, uint8_t tag, uint16_t line_size, uint32_t mem_addr, uint32_t *mem_next) {
     box->x = x;
     box->y = y;
     box->w = w;
@@ -28,10 +29,12 @@ void eos_text_init(EOSText *box, int x, int y, int w, int h, double scale_x, dou
     box->ch_w = scale_x * 8;
     box->ch_h = scale_y * 16;
     box->dl_size = 17;
-    box->buf_addr = mem_addr;
-    box->buf_line_h = buf_line_h;
-    box->buf_idx = 0;
-    box->line_idx = 0;
+    box->mem_addr = mem_addr;
+    box->line_size = line_size;
+    box->line0 = 0;
+    box->line_top = -1;
+    box->line_top0 = -1;
+    box->ch_idx = 0;
     if (box->transform_a != 256) {
         box->dl_size += 1;
     }
@@ -39,140 +42,146 @@ void eos_text_init(EOSText *box, int x, int y, int w, int h, double scale_x, dou
         box->dl_size += 1;
     }
 
-    eos_touch_evt_set(tag, EOS_TOUCH_ETYPE_TRACK);
+    eve_touch_set_opt(tag, EVE_TOUCH_ETYPE_TRACK);
 
-    eos_eve_cmd(CMD_MEMSET, "www", mem_addr, 0x0, w * 2 * buf_line_h);
-    eos_eve_cmd_exec(1);
+    eve_cmd(CMD_MEMSET, "www", mem_addr, 0x0, box->w * 2 * box->line_size);
+    eve_cmd_exec(1);
 
-    eos_text_update(box, -1);
-    *mem_next = box->buf_addr + box->w * 2 * box->buf_line_h + box->dl_size * 4;
+    eve_text_update(box);
+    *mem_next = box->mem_addr + box->w * 2 * box->line_size + box->dl_size * 4;
 }
 
-void eos_text_draw(EOSText *box, uint8_t tag0, int touch_idx) {
-    static int line_idx = -1;
-    static int line_idx_last;
-    uint8_t evt;
-    EOSTouch *t = eos_touch_evt(tag0, touch_idx, box->tag, box->tag, &evt);
+int eve_text_touch(EVEText *box, uint8_t tag0, int touch_idx) {
+    uint16_t evt;
+    EVETouch *t = eve_touch_evt(tag0, touch_idx, box->tag, box->tag, &evt);
 
     if (t && evt) {
-        if (evt & EOS_TOUCH_ETYPE_TAG_DOWN) {
-            if (line_idx < 0) {
-                line_idx = box->line_idx;
-                line_idx_last = line_idx;
+        if (evt & EVE_TOUCH_ETYPE_TAG) {
+            if (box->line_top < 0) {
+                box->line_top = box->line0;
+                box->line_top0 = box->line0;
             }
         }
-        if (evt & EOS_TOUCH_ETYPE_TAG_UP) {
-            line_idx = line_idx_last;
+        if (evt & EVE_TOUCH_ETYPE_TAG_UP) {
+            box->line_top0 = box->line_top;
         }
-        if (evt & EOS_TOUCH_ETYPE_TRACK) {
-            int _line_idx = LINE_IDX_ADD(line_idx, ((int)t->y0 - t->y) / box->ch_h, box->buf_line_h);
-            if (LINE_IDX_LTE(_line_idx, box->line_idx, box->buf_line_h, box->h)) {
-                eos_text_update(box, _line_idx);
-                line_idx_last = _line_idx;
+        if ((evt & EVE_TOUCH_ETYPE_TRACK) && (box->line_top0 >=0)) {
+            int line = LINE_IDX_ADD(box->line_top0, (t->y0 - t->y) / box->ch_h, box->line_size);
+            if (LINE_IDX_LTE(line, box->line0, box->line_size, box->h)) {
+                box->line_top = line;
+                box->dirty = 1;
             }
         }
-    } else if (line_idx >= 0) {
-        line_idx = -1;
+        return 1;
+    } else if (box->line_top >= 0) {
+        box->line_top = -1;
+        box->line_top0 = -1;
         box->dirty = 1;
     }
-
-    if (box->dirty) {
-        eos_text_update(box, -1);
-        box->dirty = 0;
-    }
-    eos_eve_cmd(CMD_APPEND, "ww", box->buf_addr + box->w * 2 * box->buf_line_h, box->dl_size * 4);
+    return 0;
 }
 
-void eos_text_update(EOSText *box, int line_idx) {
+uint8_t eve_text_draw(EVEText *box) {
+    if (box->dirty) {
+        eve_text_update(box);
+        box->dirty = 0;
+    }
+    eve_cmd(CMD_APPEND, "ww", box->mem_addr + box->w * 2 * box->line_size, box->dl_size * 4);
+    return box->tag;
+}
+
+int eve_text_putc(EVEText *box, int c) {
+    int line_c, line_n;
+
+    switch (c) {
+        case '\b':
+            eve_text_backspace(box);
+            break;
+        case '\r':
+        case '\n':
+            eve_text_newline(box);
+            break;
+        default:
+            line_c = box->ch_idx / 2 / box->w;
+
+            eve_write16(box->mem_addr + box->ch_idx, 0x0200 | (c & 0xff));
+            box->ch_idx = (box->ch_idx + 2) % (box->line_size * box->w * 2);
+            eve_write16(box->mem_addr + box->ch_idx, TEXT_CRSR);
+
+            line_n = box->ch_idx / 2 / box->w;
+            if ((line_c != line_n) && (LINE_IDX_DIFF(line_n, box->line0, box->line_size) == box->h)) scroll1(box);
+            break;
+    }
+    return EOS_OK;
+}
+
+void eve_text_update(EVEText *box) {
     int text_h1;
     int text_h2;
+    int line_top;
 
-    if (line_idx < 0) line_idx = box->line_idx;
+    line_top = box->line_top >= 0 ? box->line_top : box->line0;
 
-    if (line_idx + box->h > box->buf_line_h) {
-        text_h1 = box->buf_line_h - line_idx;
+    if (line_top + box->h > box->line_size) {
+        text_h1 = box->line_size - line_top;
         text_h2 = box->h - text_h1;
     } else {
         text_h1 = box->h;
         text_h2 = 0;
     }
-    eos_eve_dl_start(box->buf_addr + box->w * 2 * box->buf_line_h);
+    eve_dl_start(box->mem_addr + box->w * 2 * box->line_size);
 
-    eos_eve_dl_write(SAVE_CONTEXT());
-    eos_eve_dl_write(BEGIN(EVE_BITMAPS));
-    eos_eve_dl_write(TAG(box->tag));
-    eos_eve_dl_write(VERTEX_FORMAT(0));
-    eos_eve_dl_write(BITMAP_HANDLE(15));
+    eve_dl_write(SAVE_CONTEXT());
+    eve_dl_write(BEGIN(EVE_BITMAPS));
+    eve_dl_write(TAG(box->tag));
+    eve_dl_write(VERTEX_FORMAT(0));
+    eve_dl_write(BITMAP_HANDLE(15));
     if (box->transform_a != 256) {
-        eos_eve_dl_write(BITMAP_TRANSFORM_A(box->transform_a));
+        eve_dl_write(BITMAP_TRANSFORM_A(box->transform_a));
     }
     if (box->transform_e != 256) {
-        eos_eve_dl_write(BITMAP_TRANSFORM_E(box->transform_e));
+        eve_dl_write(BITMAP_TRANSFORM_E(box->transform_e));
     }
-    eos_eve_dl_write(BITMAP_SOURCE(box->buf_addr + line_idx * box->w * 2));
-    eos_eve_dl_write(BITMAP_LAYOUT(EVE_TEXTVGA, box->w * 2, text_h1));
-    eos_eve_dl_write(BITMAP_SIZE(EVE_NEAREST, EVE_BORDER, EVE_BORDER, box->w * box->ch_w, text_h1 * box->ch_h));
-    eos_eve_dl_write(BITMAP_SIZE_H(box->w * box->ch_w, text_h1 * box->ch_h));
-    eos_eve_dl_write(VERTEX2F(box->x, box->y));
+    eve_dl_write(BITMAP_SOURCE(box->mem_addr + line_top * box->w * 2));
+    eve_dl_write(BITMAP_LAYOUT(EVE_TEXTVGA, box->w * 2, text_h1));
+    eve_dl_write(BITMAP_SIZE(EVE_NEAREST, EVE_BORDER, EVE_BORDER, box->w * box->ch_w, text_h1 * box->ch_h));
+    eve_dl_write(BITMAP_SIZE_H(box->w * box->ch_w, text_h1 * box->ch_h));
+    eve_dl_write(VERTEX2F(box->x, box->y));
 
     if (text_h2) {
-        eos_eve_dl_write(BITMAP_SOURCE(box->buf_addr));
-        eos_eve_dl_write(BITMAP_LAYOUT(EVE_TEXTVGA, box->w * 2, text_h2));
-        eos_eve_dl_write(BITMAP_SIZE(EVE_NEAREST, EVE_BORDER, EVE_BORDER, box->w * box->ch_w, text_h2 * box->ch_h));
-        eos_eve_dl_write(BITMAP_SIZE_H(box->w * box->ch_w, text_h2 * box->ch_h));
-        eos_eve_dl_write(VERTEX2F(box->x, box->y + text_h1 * box->ch_h));
+        eve_dl_write(BITMAP_SOURCE(box->mem_addr));
+        eve_dl_write(BITMAP_LAYOUT(EVE_TEXTVGA, box->w * 2, text_h2));
+        eve_dl_write(BITMAP_SIZE(EVE_NEAREST, EVE_BORDER, EVE_BORDER, box->w * box->ch_w, text_h2 * box->ch_h));
+        eve_dl_write(BITMAP_SIZE_H(box->w * box->ch_w, text_h2 * box->ch_h));
+        eve_dl_write(VERTEX2F(box->x, box->y + text_h1 * box->ch_h));
     } else {
-        eos_eve_dl_write(NOP());
-        eos_eve_dl_write(NOP());
-        eos_eve_dl_write(NOP());
-        eos_eve_dl_write(NOP());
-        eos_eve_dl_write(NOP());
+        eve_dl_write(NOP());
+        eve_dl_write(NOP());
+        eve_dl_write(NOP());
+        eve_dl_write(NOP());
+        eve_dl_write(NOP());
     }
 
-    eos_eve_dl_write(END());
-    eos_eve_dl_write(RESTORE_CONTEXT());
+    eve_dl_write(END());
+    eve_dl_write(RESTORE_CONTEXT());
 }
 
-void eos_text_putc(EOSText *box, int c) {
-    int line_c, line_n;
+void eve_text_newline(EVEText *box) {
+    int line = (box->ch_idx / 2 / box->w + 1) % box->line_size;
 
-    switch (c) {
-        case '\b':
-            eos_text_backspace(box);
-            break;
-        case '\r':
-        case '\n':
-            eos_text_newline(box);
-            break;
-        default:
-            line_c = box->buf_idx / 2 / box->w;
-
-            eos_eve_write16(box->buf_addr + box->buf_idx, 0x0200 | (c & 0xff));
-            box->buf_idx = (box->buf_idx + 2) % (box->buf_line_h * box->w * 2);
-            eos_eve_write16(box->buf_addr + box->buf_idx, TEXT_CRSR);
-
-            line_n = box->buf_idx / 2 / box->w;
-            if ((line_c != line_n) && (LINE_IDX_DIFF(line_n, box->line_idx, box->buf_line_h) == box->h)) scroll1(box);
-            break;
-    }
+    eve_write16(box->mem_addr + box->ch_idx, 0);
+    box->ch_idx = line * box->w * 2;
+    if (LINE_IDX_DIFF(line, box->line0, box->line_size) == box->h) scroll1(box);
+    eve_write16(box->mem_addr + box->ch_idx, TEXT_CRSR);
 }
 
-void eos_text_newline(EOSText *box) {
-    int line = (box->buf_idx / 2 / box->w + 1) % box->buf_line_h;
-
-    eos_eve_write16(box->buf_addr + box->buf_idx, 0);
-    box->buf_idx = line * box->w * 2;
-    if (LINE_IDX_DIFF(line, box->line_idx, box->buf_line_h) == box->h) scroll1(box);
-    eos_eve_write16(box->buf_addr + box->buf_idx, TEXT_CRSR);
-}
-
-void eos_text_backspace(EOSText *box) {
+void eve_text_backspace(EVEText *box) {
     uint16_t c;
 
-    eos_eve_write16(box->buf_addr + box->buf_idx, 0);
-    box->buf_idx = (box->buf_idx - 2) % (box->buf_line_h * box->w * 2);
-    if (eos_eve_read16(box->buf_addr + box->buf_idx) == 0) {
-        box->buf_idx = (box->buf_idx + 2) % (box->buf_line_h * box->w * 2);
+    eve_write16(box->mem_addr + box->ch_idx, 0);
+    box->ch_idx = (box->ch_idx - 2) % (box->line_size * box->w * 2);
+    if (eve_read16(box->mem_addr + box->ch_idx) == 0) {
+        box->ch_idx = (box->ch_idx + 2) % (box->line_size * box->w * 2);
     }
-    eos_eve_write16(box->buf_addr + box->buf_idx, TEXT_CRSR);
+    eve_write16(box->mem_addr + box->ch_idx, TEXT_CRSR);
 }

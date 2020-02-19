@@ -12,9 +12,9 @@
 #include "uart.h"
 #include "irq_def.h"
 
-static eos_uart_fptr_t uart_handler[EOS_UART_MAX_ETYPE];
+static eos_uart_handler_t uart_handler[EOS_UART_MAX_ETYPE];
 
-static void uart_handler_evt(unsigned char type, unsigned char *buffer, uint16_t len) {
+static void uart_handle_evt(unsigned char type, unsigned char *buffer, uint16_t len) {
     unsigned char idx = (type & ~EOS_EVT_MASK) - 1;
 
     if ((idx < EOS_UART_MAX_ETYPE) && uart_handler[idx]) {
@@ -24,7 +24,7 @@ static void uart_handler_evt(unsigned char type, unsigned char *buffer, uint16_t
     }
 }
 
-static void uart_handler_intr(void) {
+static void uart_handle_intr(void) {
     if (UART0_REG(UART_REG_IP) & UART_IP_TXWM) {
         UART0_REG(UART_REG_IE) &= ~UART_IP_TXWM;
         eos_evtq_push_isr(EOS_EVT_UART | EOS_UART_ETYPE_TX, NULL, 0);
@@ -41,19 +41,12 @@ void eos_uart_init(void) {
     for (i=0; i<EOS_UART_MAX_ETYPE; i++) {
         uart_handler[i] = NULL;
     }
-    eos_evtq_set_handler(EOS_EVT_UART, uart_handler_evt, 0);
-    eos_intr_set(INT_UART0_BASE, IRQ_PRIORITY_UART, uart_handler_intr);
+    eos_evtq_set_handler(EOS_EVT_UART, uart_handle_evt);
+    eos_intr_set(INT_UART0_BASE, IRQ_PRIORITY_UART, uart_handle_intr);
 }
 
-void eos_uart_set_handler(unsigned char type, eos_uart_fptr_t handler, uint8_t flags) {
-    if (type && (type <= EOS_UART_MAX_ETYPE)) {
-        type--;
-    } else {
-        return;
-    }
-    uart_handler[type] = handler;
-
-    eos_evtq_set_hflags(EOS_EVT_UART | type + 1, flags);
+void eos_uart_set_handler(unsigned char type, eos_uart_handler_t handler) {
+    if (type && (type <= EOS_UART_MAX_ETYPE)) uart_handler[type - 1] = handler;
 }
 
 void eos_uart_txwm_set(uint8_t wm) {

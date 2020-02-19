@@ -12,6 +12,8 @@
 
 #include "eos.h"
 
+uint32_t touch_transform[6] = {0xfa46,0xfffffcf6,0x422fe,0xffffff38,0x10002,0xf3cb0};
+
 void eos_init(void) {
     eos_evtq_init();
     eos_intr_init();
@@ -23,7 +25,9 @@ void eos_init(void) {
     eos_wifi_init();
     eos_cell_init();
     eos_sock_init();
-    eos_spi_dev_start(EOS_SPI_DEV_DISP);
-    eos_eve_init();
+    eos_spi_dev_init();
+
+    eos_spi_dev_start(EOS_DEV_DISP);
+    eve_init(touch_transform);
     eos_spi_dev_stop();
 }

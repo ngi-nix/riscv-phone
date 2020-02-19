@@ -5,10 +5,10 @@
 
 #define EOS_UART_MAX_ETYPE      2
 
-typedef void (*eos_uart_fptr_t) (unsigned char);
+typedef void (*eos_uart_handler_t) (unsigned char);
 
 void eos_uart_init(void);
-void eos_uart_set_handler(unsigned char type, eos_uart_fptr_t handler, uint8_t flags);
+void eos_uart_set_handler(unsigned char type, eos_uart_handler_t handler);
 
 void eos_uart_txwm_set(uint8_t wm);
 void eos_uart_txwm_clear(void);

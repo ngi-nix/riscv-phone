@@ -17,28 +17,32 @@
 #define KEYS_HEIGHT 40
 #define KEYS_RSIZE  45
 
-void eos_kbd_init(EOSKbd *kbd, eos_kbd_fptr_t key_down_f, uint32_t mem_addr, uint32_t *mem_next) {
-    eos_eve_write16(REG_CMD_DL, 0);
-    eos_kbd_update(kbd);
-    eos_eve_cmd_exec(1);
+void eve_kbd_init(EVEKbd *kbd, eve_kbd_input_handler_t putc, uint32_t mem_addr, uint32_t *mem_next) {
+    uint16_t mem_size;
+
+    eve_write16(REG_CMD_DL, 0);
+    eve_kbd_draw(kbd, 1);
+    eve_cmd_exec(1);
+    mem_size = eve_read16(REG_CMD_DL);
+    eve_cmd(CMD_MEMCPY, "www", mem_addr, EVE_RAM_DL, mem_size);
+    eve_cmd_exec(1);
+
     kbd->mem_addr = mem_addr;
-    kbd->mem_size = eos_eve_read16(REG_CMD_DL);
+    kbd->mem_size = mem_size;
     kbd->key_modifier = 0;
     kbd->key_count = 0;
     kbd->key_down = 0;
-    kbd->key_down_f = key_down_f;
-    eos_eve_cmd(CMD_MEMCPY, "www", kbd->mem_addr, EVE_RAM_DL, kbd->mem_size);
-    eos_eve_cmd_exec(1);
+    kbd->putc = putc;
     *mem_next = kbd->mem_addr + kbd->mem_size;
 }
 
-void eos_kbd_draw(EOSKbd *kbd, uint8_t tag0, int touch_idx) {
-    uint8_t evt;
-    EOSTouch *t = eos_touch_evt(tag0, touch_idx, 1, 127, &evt);
+int eve_kbd_touch(EVEKbd *kbd, uint8_t tag0, int touch_idx, void *w) {
+    uint16_t evt;
+    EVETouch *t = eve_touch_evt(tag0, touch_idx, 1, 0x7e, &evt);
 
     if (t && evt) {
-        if (evt & EOS_TOUCH_ETYPE_TAG_DOWN) {
-            uint8_t _tag = t->tag_down;
+        if (evt & EVE_TOUCH_ETYPE_TAG) {
+            uint8_t _tag = t->tag;
 
             if (_tag >= KEY_SHIFT && _tag <= KEY_FN) {
                 if (touch_idx == 0) {
@@ -59,15 +63,15 @@ void eos_kbd_draw(EOSKbd *kbd, uint8_t tag0, int touch_idx) {
             } else {
                 kbd->key_count++;
                 kbd->key_down = _tag;
-                if (kbd->key_down_f) {
+                if (kbd->putc) {
                     int c = _tag;
 
                     if ((kbd->key_modifier & FLAG_CTRL) && (_tag >= '?') && (_tag <= '_')) c = (_tag - '@') & 0x7f;
-                    kbd->key_down_f(c);
+                    kbd->putc(w, c);
                 }
             }
         }
-        if (evt & EOS_TOUCH_ETYPE_TAG_UP) {
+        if (evt & EVE_TOUCH_ETYPE_TAG_UP) {
             uint8_t _tag = t->tag_up;
 
             if (_tag >= KEY_SHIFT && _tag <= KEY_FN) {
@@ -87,29 +91,34 @@ void eos_kbd_draw(EOSKbd *kbd, uint8_t tag0, int touch_idx) {
                 }
             }
         }
-        eos_kbd_update(kbd);
+        return 1;
     } else {
-        eos_eve_cmd(CMD_APPEND, "ww", kbd->mem_addr, kbd->mem_size);
+        return 0;
     }
 }
 
-void eos_kbd_update(EOSKbd *kbd) {
-    eos_eve_cmd_dl(SAVE_CONTEXT());
-    eos_eve_cmd(CMD_KEYS, "hhhhhhs", 0, KEYS_Y + KEYS_RSIZE * 0, 480, KEYS_HEIGHT, KEYS_FSIZE, kbd->key_down, kbd->key_modifier & (FLAG_FN | FLAG_SHIFT) ? "!@#$%^&*()" : (kbd->key_modifier & FLAG_CTRL ? " @[\\]^_?  " : "1234567890"));
-    eos_eve_cmd(CMD_KEYS, "hhhhhhs", 0, KEYS_Y + KEYS_RSIZE * 1, 480, KEYS_HEIGHT, KEYS_FSIZE, kbd->key_down, kbd->key_modifier & FLAG_FN ? "-_=+[]{}\\|" : kbd->key_modifier & (FLAG_SHIFT | FLAG_CTRL) ? "QWERTYUIOP" : "qwertyuiop");
-    eos_eve_cmd(CMD_KEYS, "hhhhhhs", 24, KEYS_Y + KEYS_RSIZE * 2, 432, KEYS_HEIGHT, KEYS_FSIZE, kbd->key_down, kbd->key_modifier & FLAG_FN ? "`~   ;:'\"" : kbd->key_modifier & (FLAG_SHIFT | FLAG_CTRL) ? "ASDFGHJKL" : "asdfghjkl");
-    eos_eve_cmd(CMD_KEYS, "hhhhhhs", 72, KEYS_Y + KEYS_RSIZE * 3, 335, KEYS_HEIGHT, KEYS_FSIZE, kbd->key_down, kbd->key_modifier & FLAG_FN ? " ,.<>/?" : kbd->key_modifier & (FLAG_SHIFT | FLAG_CTRL) ? "ZXCVBNM" : "zxcvbnm");
-    eos_eve_cmd_dl(TAG(KEY_SHIFT));
-    eos_eve_cmd(CMD_BUTTON, "hhhhhhs", 0, KEYS_Y + KEYS_RSIZE * 3, 69, KEYS_HEIGHT, 21, kbd->key_modifier & FLAG_SHIFT ? EVE_OPT_FLAT : 0, "shift");
-    eos_eve_cmd_dl(TAG(KEY_DEL));
-    eos_eve_cmd(CMD_BUTTON, "hhhhhhs", 410, KEYS_Y + KEYS_RSIZE * 3, 70, KEYS_HEIGHT, 21, kbd->key_down == KEY_DEL ? EVE_OPT_FLAT : 0, "del");
-    eos_eve_cmd_dl(TAG(KEY_FN));
-    eos_eve_cmd(CMD_BUTTON, "hhhhhhs", 0, KEYS_Y + KEYS_RSIZE * 4, 69, KEYS_HEIGHT, 21, kbd->key_modifier & FLAG_FN ? EVE_OPT_FLAT : 0, "fn");
-    eos_eve_cmd_dl(TAG(KEY_CTRL));
-    eos_eve_cmd(CMD_BUTTON, "hhhhhhs", 72, KEYS_Y + KEYS_RSIZE * 4, 69, KEYS_HEIGHT, 21, kbd->key_modifier & FLAG_CTRL ? EVE_OPT_FLAT : 0, "ctrl");
-    eos_eve_cmd_dl(TAG(' '));
-    eos_eve_cmd(CMD_BUTTON, "hhhhhhs", 144, KEYS_Y + KEYS_RSIZE * 4, 263, KEYS_HEIGHT, 21, kbd->key_down == ' ' ? EVE_OPT_FLAT : 0, "");
-    eos_eve_cmd_dl(TAG(KEY_RET));
-    eos_eve_cmd(CMD_BUTTON, "hhhhhhs", 410, KEYS_Y + KEYS_RSIZE * 4, 69, KEYS_HEIGHT, 21, kbd->key_down == KEY_RET ? EVE_OPT_FLAT : 0, "ret");
-    eos_eve_cmd_dl(RESTORE_CONTEXT());
+uint8_t eve_kbd_draw(EVEKbd *kbd, char active) {
+    if (active) {
+        eve_cmd_dl(SAVE_CONTEXT());
+        eve_cmd(CMD_KEYS, "hhhhhhs", 0, KEYS_Y + KEYS_RSIZE * 0, 480, KEYS_HEIGHT, KEYS_FSIZE, kbd->key_down, kbd->key_modifier & (FLAG_FN | FLAG_SHIFT) ? "!@#$%^&*()" : (kbd->key_modifier & FLAG_CTRL ? " @[\\]^_?  " : "1234567890"));
+        eve_cmd(CMD_KEYS, "hhhhhhs", 0, KEYS_Y + KEYS_RSIZE * 1, 480, KEYS_HEIGHT, KEYS_FSIZE, kbd->key_down, kbd->key_modifier & FLAG_FN ? "-_=+[]{}\\|" : kbd->key_modifier & (FLAG_SHIFT | FLAG_CTRL) ? "QWERTYUIOP" : "qwertyuiop");
+        eve_cmd(CMD_KEYS, "hhhhhhs", 24, KEYS_Y + KEYS_RSIZE * 2, 432, KEYS_HEIGHT, KEYS_FSIZE, kbd->key_down, kbd->key_modifier & FLAG_FN ? "`~   ;:'\"" : kbd->key_modifier & (FLAG_SHIFT | FLAG_CTRL) ? "ASDFGHJKL" : "asdfghjkl");
+        eve_cmd(CMD_KEYS, "hhhhhhs", 72, KEYS_Y + KEYS_RSIZE * 3, 335, KEYS_HEIGHT, KEYS_FSIZE, kbd->key_down, kbd->key_modifier & FLAG_FN ? " ,.<>/?" : kbd->key_modifier & (FLAG_SHIFT | FLAG_CTRL) ? "ZXCVBNM" : "zxcvbnm");
+        eve_cmd_dl(TAG(KEY_SHIFT));
+        eve_cmd(CMD_BUTTON, "hhhhhhs", 0, KEYS_Y + KEYS_RSIZE * 3, 69, KEYS_HEIGHT, 21, kbd->key_modifier & FLAG_SHIFT ? EVE_OPT_FLAT : 0, "shift");
+        eve_cmd_dl(TAG(KEY_DEL));
+        eve_cmd(CMD_BUTTON, "hhhhhhs", 410, KEYS_Y + KEYS_RSIZE * 3, 70, KEYS_HEIGHT, 21, kbd->key_down == KEY_DEL ? EVE_OPT_FLAT : 0, "del");
+        eve_cmd_dl(TAG(KEY_FN));
+        eve_cmd(CMD_BUTTON, "hhhhhhs", 0, KEYS_Y + KEYS_RSIZE * 4, 69, KEYS_HEIGHT, 21, kbd->key_modifier & FLAG_FN ? EVE_OPT_FLAT : 0, "fn");
+        eve_cmd_dl(TAG(KEY_CTRL));
+        eve_cmd(CMD_BUTTON, "hhhhhhs", 72, KEYS_Y + KEYS_RSIZE * 4, 69, KEYS_HEIGHT, 21, kbd->key_modifier & FLAG_CTRL ? EVE_OPT_FLAT : 0, "ctrl");
+        eve_cmd_dl(TAG(' '));
+        eve_cmd(CMD_BUTTON, "hhhhhhs", 144, KEYS_Y + KEYS_RSIZE * 4, 263, KEYS_HEIGHT, 21, kbd->key_down == ' ' ? EVE_OPT_FLAT : 0, "");
+        eve_cmd_dl(TAG(KEY_RET));
+        eve_cmd(CMD_BUTTON, "hhhhhhs", 410, KEYS_Y + KEYS_RSIZE * 4, 69, KEYS_HEIGHT, 21, kbd->key_down == KEY_RET ? EVE_OPT_FLAT : 0, "ret");
+        eve_cmd_dl(RESTORE_CONTEXT());
+    } else {
+        eve_cmd(CMD_APPEND, "ww", kbd->mem_addr, kbd->mem_size);
+    }
+    return 0x7e;
 }

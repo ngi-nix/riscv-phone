@@ -63,14 +63,14 @@ eos_trap_entry:
 
   csrr x8, mcause
   li x18, MCAUSE_EXT
-  bne x8, x18, handler
+  bne x8, x18, handle_intr
   li x18, PLIC_CLAIM
   lw x9, 0(x18)
   li x18, I2S_IRQ_WS_ID
-  beq x9, x18, i2s_handler_ws
+  beq x9, x18, i2s_handle_ws
   li x18, I2S_IRQ_SD_ID
-  beq x9, x18, i2s_handler_sd
-  j handler
+  beq x9, x18, i2s_handle_sd
+  j handle_intr
 
 evtq_push:
   la x9, _eos_event_q
@@ -97,12 +97,12 @@ evtq_push:
   mv x20, x0
   jalr x0, x21
 
-i2s_handler_sd:
+i2s_handle_sd:
   # exit if too early
   li x18, I2S_PWM_CTRL_ADDR_WS_SPK
   lw x8, PWM_COUNT(x18)
   lw x9, PWM_CMP3(x18)
-  bltu x8, x9, i2s_handler_sd_exit
+  bltu x8, x9, i2s_handle_sd_exit
 
   # disable sd irq
   li x18, PLIC_PRIORITY
@@ -119,7 +119,7 @@ i2s_abuf_pop:
   lhu x19, I2S_ABUF_OFF_IDXW(x9)
   lhu x20, I2S_ABUF_OFF_SIZE(x9)
 
-  beq x18, x19, i2s_handler_sd_xchg
+  beq x18, x19, i2s_handle_sd_xchg
 
   addi x20, x20, -1
   and x20, x20, x18
@@ -160,7 +160,7 @@ i2s_abuf_pop:
   sb x18, MSGQ_ITEM_OFF_TYPE(x21)
 
 i2s_decode:
-  bnez x23, i2s_handler_sd_xchg
+  bnez x23, i2s_handle_sd_xchg
   # aLaw decode -> x8
   xori x8, x8, 0x55
   andi x9, x8, 0x80
@@ -195,10 +195,10 @@ i2s_decode:
   slli x8, x8, 1
   ori x8, x8, 1
 2:
-  beqz x9, i2s_handler_sd_xchg
+  beqz x9, i2s_handle_sd_xchg
   mul x8, x8, x9
 
-i2s_handler_sd_xchg:
+i2s_handle_sd_xchg:
   # read/write shift reg: x8 -> sr -> x8
   li x18, GPIO_CTRL_ADDR
   li x19, (0x1 << I2S_PIN_SD_IN)
@@ -315,7 +315,7 @@ i2s_abuf_push:
 
   sub x18, x19, x18
   and x18, x18, x21
-  beq x18, x20, i2s_handler_sd_exit
+  beq x18, x20, i2s_handle_sd_exit
 
   addi x20, x20, -1
   and x20, x20, x19
@@ -338,21 +338,21 @@ i2s_abuf_push:
   # check for push to event queue
   la x9, _eos_i2s_mic_wm
   lw x20, 0(x9)
-  beqz x20, i2s_handler_sd_exit
-  bltu x18, x20, i2s_handler_sd_exit
+  beqz x20, i2s_handle_sd_exit
+  bltu x18, x20, i2s_handle_sd_exit
 
   la x9, _eos_i2s_mic_evt_enable
   lw x18, 0(x9)
-  beqz x18, i2s_handler_sd_exit
+  beqz x18, i2s_handle_sd_exit
   sw x0, 0(x9)
 
   # push to event queue
   jal x22, evtq_push
-  beqz x21, i2s_handler_sd_exit
+  beqz x21, i2s_handle_sd_exit
   li x18, (EOS_EVT_AUDIO | I2S_ETYPE_MIC)
   sb x18, MSGQ_ITEM_OFF_TYPE(x21)
 
-i2s_handler_sd_exit:
+i2s_handle_sd_exit:
   # complete
   li x18, I2S_IRQ_SD_ID
   li x19, PLIC_CLAIM
@@ -361,7 +361,7 @@ i2s_handler_sd_exit:
   # exit
   j trap_exit_data
 
-i2s_handler_ws:
+i2s_handle_ws:
   # enable sd irq
   li x18, PLIC_PRIORITY
   li x19, IRQ_PRIORITY_I2S_SD
@@ -436,7 +436,7 @@ trap_exit_data:
 
   mret
 
-handler:
+handle_intr:
   lui x18,       %hi(trap_entry_text)
   addi x18, x18, %lo(trap_entry_text)
   jalr x0, x18

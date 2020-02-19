@@ -6,11 +6,10 @@
 
 #define EOS_TIMER_MAX_ETYPE     4
 
-typedef void (*eos_timer_fptr_t) (unsigned char);
+typedef void (*eos_timer_handler_t) (unsigned char);
 
 void eos_timer_init(void);
-void eos_timer_set_handler(unsigned char evt, eos_timer_fptr_t handler, uint8_t flags);
-void eos_timer_set_hflags(unsigned char evt, uint8_t flags);
+void eos_timer_set_handler(unsigned char evt, eos_timer_handler_t handler);
 
 uint64_t eos_timer_get(unsigned char evt);
 void eos_timer_set(uint32_t msec, unsigned char evt, unsigned char b);

@@ -13,7 +13,7 @@
 // for use by the PLIC Driver.
 static plic_instance_t plic;
 
-static eos_intr_fptr_t ext_interrupt_handler[PLIC_NUM_INTERRUPTS];
+static eos_intr_handler_t ext_interrupt_handler[PLIC_NUM_INTERRUPTS];
 
 uintptr_t eos_intr_handle(uintptr_t int_num) {
     if ((int_num >=1) && (int_num <= PLIC_NUM_INTERRUPTS) && (ext_interrupt_handler[int_num-1])) {
@@ -45,13 +45,13 @@ void eos_intr_init(void) {
     set_csr(mstatus, MSTATUS_MIE);
 }
 
-void eos_intr_set(uint8_t int_num, uint8_t priority, eos_intr_fptr_t handler) {
+void eos_intr_set(uint8_t int_num, uint8_t priority, eos_intr_handler_t handler) {
     ext_interrupt_handler[int_num-1] = handler;
     PLIC_set_priority(&plic, int_num, priority);
     PLIC_enable_interrupt(&plic, int_num);
 }
 
-void eos_intr_set_handler(uint8_t int_num, eos_intr_fptr_t handler) {
+void eos_intr_set_handler(uint8_t int_num, eos_intr_handler_t handler) {
     ext_interrupt_handler[int_num-1] = handler;
 }
 

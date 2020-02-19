@@ -13,4 +13,4 @@
 #define EOS_CELL_MAX_MTYPE          2
 
 void eos_cell_init(void);
-void eos_cell_set_handler(int mtype, eos_evt_fptr_t handler, uint8_t flags);
+void eos_cell_set_handler(unsigned char mtype, eos_evt_handler_t handler);

@@ -8,7 +8,6 @@
 #include "eos.h"
 #include "interrupt.h"
 #include "event.h"
-#include "net.h"
 
 #include "i2s.h"
 #include "i2s_def.h"
@@ -31,8 +30,8 @@ uint32_t _eos_i2s_spk_wm = 0;
 uint32_t _eos_i2s_mic_evt_enable = 0;
 uint32_t _eos_i2s_spk_evt_enable = 0;
 
-static eos_i2s_fptr_t i2s_spk_handler = NULL;
-static eos_i2s_fptr_t i2s_mic_handler = NULL;
+static eos_i2s_handler_t i2s_spk_handler = NULL;
+static eos_i2s_handler_t i2s_mic_handler = NULL;
 static uint32_t i2s_clk_period;
 static uint8_t i2s_mic_volume = 0;      /* 0 - 8 */
 static uint8_t i2s_spk_volume = 16;     /* 0 - 16 */
@@ -92,7 +91,7 @@ static uint16_t _abuf_len(EOSABuf *buf) {
     return buf->idx_w - buf->idx_r;
 }
 
-static void i2s_handler_evt(unsigned char type, unsigned char *buffer, uint16_t len) {
+static void i2s_handle_evt(unsigned char type, unsigned char *buffer, uint16_t len) {
     switch(type & ~EOS_EVT_MASK) {
         case I2S_ETYPE_MIC:
             if (i2s_mic_handler) i2s_mic_handler(type);
@@ -136,7 +135,7 @@ static void _spk_vol_set(uint8_t vol) {
 extern void _eos_i2s_start_pwm(void);
 
 void eos_i2s_init(void) {
-    eos_evtq_set_handler(EOS_EVT_AUDIO, i2s_handler_evt, 0);
+    eos_evtq_set_handler(EOS_EVT_AUDIO, i2s_handle_evt);
 
     GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_CK);
     GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << I2S_PIN_CK);
@@ -267,12 +266,10 @@ void eos_i2s_mic_init(uint8_t *mic_arr, uint16_t mic_arr_size) {
     set_csr(mstatus, MSTATUS_MIE);
 }
 
-void eos_i2s_mic_set_handler(eos_i2s_fptr_t wm_handler, uint8_t flags) {
+void eos_i2s_mic_set_handler(eos_i2s_handler_t wm_handler) {
     clear_csr(mstatus, MSTATUS_MIE);
     i2s_mic_handler = wm_handler;
     set_csr(mstatus, MSTATUS_MIE);
-
-    eos_evtq_set_hflags(EOS_EVT_AUDIO | I2S_ETYPE_MIC, flags);
 }
 
 void eos_i2s_mic_set_wm(uint16_t wm) {
@@ -343,12 +340,10 @@ void eos_i2s_spk_init(uint8_t *spk_arr, uint16_t spk_arr_size) {
     set_csr(mstatus, MSTATUS_MIE);
 }
 
-void eos_i2s_spk_set_handler(eos_i2s_fptr_t wm_handler, uint8_t flags) {
+void eos_i2s_spk_set_handler(eos_i2s_handler_t wm_handler) {
     clear_csr(mstatus, MSTATUS_MIE);
     i2s_spk_handler = wm_handler;
     set_csr(mstatus, MSTATUS_MIE);
-
-    eos_evtq_set_hflags(EOS_EVT_AUDIO | I2S_ETYPE_SPK, flags);
 }
 
 void eos_i2s_spk_set_wm(uint16_t wm) {

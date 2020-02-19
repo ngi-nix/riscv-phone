@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <math.h>
 
 #include "encoding.h"
 #include "platform.h"
@@ -13,28 +14,38 @@
 #include "eve.h"
 #include "irq_def.h"
 
-#define MEM_WRITE               0x800000
 
-#define EVE_PIN_INT             0
+#define EVE_PIN_INTR            0
 #define EVE_MAX_TOUCH           5
+#define EVE_ETYPE_INTR          1
 
-#define EVE_ETYPE_INT           1
+#define EVE_THRESHOLD_X         5
+#define EVE_THRESHOLD_Y         5
+#define EVE_TIMEOUT_TAP         1000
+#define EVE_TIMEOUT_TRACK       20
+#define EVE_TRAVG               3
+#define EVE_FRICTION            500
 
-#define EVE_MOVE_THRESHOLD      10
-#define EVE_LPRESS_TIMEOUT      1000
+#define EVE_NOTOUCH             0x80000000
+#define EVE_MEM_WRITE           0x800000
 
-static char eve_cmd_burst;
-static uint16_t eve_cmd_offset;
-static uint32_t eve_dl_addr;
+// #define EOS_SPI_FLAG_TX         0
 
-static int eve_int_mask = EVE_INT_TAG | EVE_INT_TOUCH;
-static int eve_multitouch = 0;
-static uint8_t eve_tag0;
-static EOSTouch eve_touch[5];
-static uint64_t eve_touch_timer_t0;
-static uint8_t eve_touch_timer_tag;
-static uint8_t eve_tag_evt[256];
-static eos_eve_fptr_t eve_renderer;
+static char _cmd_burst;
+static uint16_t _cmd_offset;
+static uint32_t _dl_addr;
+
+static int _intr_mask = EVE_INT_TAG | EVE_INT_TOUCH;
+static int _multitouch;
+static uint8_t _tag0;
+
+static EVETouch _touch[EVE_MAX_TOUCH];
+static EVETouchTimer _touch_timer;
+
+static eve_touch_handler_t _touch_handler;
+static void *_touch_handler_param;
+
+static uint8_t _tag_opt[255];
 
 static const uint32_t _reg_touch[] = {
     REG_CTOUCH_TOUCH0_XY,
@@ -59,13 +70,13 @@ static const uint32_t _reg_track[] = {
     REG_TRACKER_4
 };
 
-void eos_eve_command(uint8_t command, uint8_t parameter) {
+void eve_command(uint8_t command, uint8_t parameter) {
     eos_spi_cs_set();
     eos_spi_xchg24(((uint32_t)command << 16) | ((uint32_t)parameter << 8), 0);
     eos_spi_cs_clear();
 }
 
-uint8_t eos_eve_read8(uint32_t addr) {
+uint8_t eve_read8(uint32_t addr) {
     uint8_t r;
     eos_spi_cs_set();
     eos_spi_xchg32(addr << 8, 0);
@@ -75,7 +86,7 @@ uint8_t eos_eve_read8(uint32_t addr) {
     return r;
 }
 
-uint16_t eos_eve_read16(uint32_t addr) {
+uint16_t eve_read16(uint32_t addr) {
     uint16_t r;
     eos_spi_cs_set();
     eos_spi_xchg32(addr << 8, 0);
@@ -85,7 +96,7 @@ uint16_t eos_eve_read16(uint32_t addr) {
     return r;
 }
 
-uint32_t eos_eve_read32(uint32_t addr) {
+uint32_t eve_read32(uint32_t addr) {
     uint32_t r;
     eos_spi_cs_set();
     eos_spi_xchg32(addr << 8, 0);
@@ -95,77 +106,77 @@ uint32_t eos_eve_read32(uint32_t addr) {
     return r;
 }
 
-void eos_eve_write8(uint32_t addr, uint8_t data) {
+void eve_write8(uint32_t addr, uint8_t data) {
     eos_spi_cs_set();
-    eos_spi_xchg24(addr | MEM_WRITE, 0);
+    eos_spi_xchg24(addr | EVE_MEM_WRITE, 0);
     eos_spi_xchg8(data, EOS_SPI_FLAG_BSWAP);
     eos_spi_cs_clear();
 }
 
-void eos_eve_write16(uint32_t addr, uint16_t data) {
+void eve_write16(uint32_t addr, uint16_t data) {
     eos_spi_cs_set();
-    eos_spi_xchg24(addr | MEM_WRITE, 0);
+    eos_spi_xchg24(addr | EVE_MEM_WRITE, 0);
     eos_spi_xchg16(data, EOS_SPI_FLAG_BSWAP);
     eos_spi_cs_clear();
 }
 
-void eos_eve_write32(uint32_t addr, uint32_t data) {
+void eve_write32(uint32_t addr, uint32_t data) {
     eos_spi_cs_set();
-    eos_spi_xchg24(addr | MEM_WRITE, 0);
+    eos_spi_xchg24(addr | EVE_MEM_WRITE, 0);
     eos_spi_xchg32(data, EOS_SPI_FLAG_BSWAP);
     eos_spi_cs_clear();
 }
 
-void eos_eve_active(void) {
-    eos_eve_command(EVE_ACTIVE, 0);
+void eve_active(void) {
+    eve_command(EVE_ACTIVE, 0);
 }
 
-void eos_eve_brightness(uint8_t b) {
-	eos_eve_write8(REG_PWM_DUTY, b);
+void eve_brightness(uint8_t b) {
+	eve_write8(REG_PWM_DUTY, b);
 }
 
 static void _dl_inc(uint32_t i) {
-	eve_dl_addr += i;
+	_dl_addr += i;
 }
 
-void eos_eve_dl_start(uint32_t addr) {
-    eve_dl_addr = addr;
+void eve_dl_start(uint32_t addr) {
+    _dl_addr = addr;
 }
 
-void eos_eve_dl_write(uint32_t dl) {
-    eos_eve_write32(eve_dl_addr, dl);
+void eve_dl_write(uint32_t dl) {
+    eve_write32(_dl_addr, dl);
     _dl_inc(4);
 }
 
-void eos_eve_dl_swap(void) {
-    eos_eve_write8(REG_DLSWAP, EVE_DLSWAP_FRAME);
+void eve_dl_swap(void) {
+    eve_write8(REG_DLSWAP, EVE_DLSWAP_FRAME);
 }
 
-uint32_t eos_eve_dl_addr(void) {
-    return eve_dl_addr;
+uint32_t eve_dl_get_addr(void) {
+    return _dl_addr;
 }
 
 static void _cmd_inc(uint16_t i) {
-	eve_cmd_offset += i;
-	eve_cmd_offset &= 0x0fff;
+	_cmd_offset += i;
+	_cmd_offset &= 0x0fff;
 }
 
 static void _cmd_begin(uint32_t command) {
     uint8_t flags = 0;
 
-    if (eve_cmd_burst) {
+    if (_cmd_burst) {
         flags = EOS_SPI_FLAG_TX;
     } else {
-    	uint32_t addr = EVE_RAM_CMD + eve_cmd_offset;
+    	uint32_t addr = EVE_RAM_CMD + _cmd_offset;
         eos_spi_cs_set();
-        eos_spi_xchg24(addr | MEM_WRITE, 0);
+        eos_spi_xchg24(addr | EVE_MEM_WRITE, 0);
     }
     eos_spi_xchg32(command, EOS_SPI_FLAG_BSWAP | flags);
     _cmd_inc(4);
 }
 
 static void _cmd_end(void) {
-    if (!eve_cmd_burst) eos_spi_cs_clear();
+    if (!_cmd_burst) eos_spi_cs_clear();
 }
 
 static void _cmd_string(const char *s, uint8_t flags) {
@@ -189,8 +200,8 @@ static void _cmd_buffer(const char *b, int size, uint8_t flags) {
     _cmd_inc(size);
 }
 
-void eos_eve_cmd(uint32_t cmd, const char *fmt, ...) {
-    uint8_t flags = eve_cmd_burst ? EOS_SPI_FLAG_TX : 0;
+void eve_cmd(uint32_t cmd, const char *fmt, ...) {
+    uint8_t flags = _cmd_burst ? EOS_SPI_FLAG_TX : 0;
     va_list argv;
     uint16_t *p;
     int i = 0;
@@ -213,7 +224,7 @@ void eos_eve_cmd(uint32_t cmd, const char *fmt, ...) {
                 break;
             case '&':
                 p = va_arg(argv, uint16_t *);
-                *p = eve_cmd_offset;
+                *p = _cmd_offset;
                 eos_spi_xchg32(0, EOS_SPI_FLAG_BSWAP | flags);
                 _cmd_inc(4);
                 break;
@@ -227,7 +238,7 @@ void eos_eve_cmd(uint32_t cmd, const char *fmt, ...) {
         i++;
     }
     /* padding */
-	i = eve_cmd_offset & 3;  /* equivalent to eve_cmd_offset % 4 */
+	i = _cmd_offset & 3;  /* equivalent to _cmd_offset % 4 */
     if (i) {
     	i = 4 - i;  /* 3, 2 or 1 */
         _cmd_inc(i);
@@ -241,363 +252,482 @@ void eos_eve_cmd(uint32_t cmd, const char *fmt, ...) {
 	va_end(argv);
 }
 
-uint32_t eos_eve_cmd_result(uint16_t offset) {
-    return eos_eve_read32(EVE_RAM_CMD + offset);
+uint32_t eve_cmd_result(uint16_t offset) {
+    return eve_read32(EVE_RAM_CMD + offset);
 }
 
-void eos_eve_cmd_dl(uint32_t dl) {
+void eve_cmd_dl(uint32_t dl) {
     _cmd_begin(dl);
     _cmd_end();
 }
 
-int eos_eve_cmd_done(void) {
-	uint16_t r = eos_eve_read16(REG_CMD_READ);
+int eve_cmd_done(void) {
+	uint16_t r = eve_read16(REG_CMD_READ);
     if (r == 0xfff) {
-		eve_cmd_offset = 0;
-		eos_eve_write8(REG_CPURESET, 1);
-		eos_eve_write16(REG_CMD_READ, 0);
-		eos_eve_write16(REG_CMD_WRITE, 0);
-		eos_eve_write16(REG_CMD_DL, 0);
-		eos_eve_write8(REG_CPURESET, 0);
+		_cmd_offset = 0;
+		eve_write8(REG_CPURESET, 1);
+		eve_write16(REG_CMD_READ, 0);
+		eve_write16(REG_CMD_WRITE, 0);
+		eve_write16(REG_CMD_DL, 0);
+		eve_write8(REG_CPURESET, 0);
         return -1;
     }
-    return (r == eve_cmd_offset);
+    return (r == _cmd_offset);
 }
 
-int eos_eve_cmd_exec(int w) {
-    eos_eve_write16(REG_CMD_WRITE, eve_cmd_offset);
+int eve_cmd_exec(int w) {
+    eve_write16(REG_CMD_WRITE, _cmd_offset);
     if (w) {
         int r;
         do {
-            r = eos_eve_cmd_done();
+            r = eve_cmd_done();
         } while (!r);
         if (r < 0) return EOS_ERR;
     }
     return EOS_OK;
 }
 
-void eos_eve_cmd_burst_start(void) {
-	uint32_t addr = EVE_RAM_CMD + eve_cmd_offset;
+void eve_cmd_burst_start(void) {
+	uint32_t addr = EVE_RAM_CMD + _cmd_offset;
     eos_spi_cs_set();
-    eos_spi_xchg24(addr | MEM_WRITE, EOS_SPI_FLAG_TX);
-    eve_cmd_burst = 1;
+    eos_spi_xchg24(addr | EVE_MEM_WRITE, EOS_SPI_FLAG_TX);
+    _cmd_burst = 1;
 }
 
-void eos_eve_cmd_burst_end(void) {
+void eve_cmd_burst_end(void) {
+    eos_spi_flush();
     eos_spi_cs_clear();
-    eve_cmd_burst = 0;
+    _cmd_burst = 0;
 }
 
-static void eve_handle_touch(uint8_t flags) {
+static void _touch_timer_clear(void) {
+    _touch_timer.tag = 0;
+    _touch_timer.fc = 0;
+}
+
+static void handle_touch(uint8_t flags) {
     int i;
-    uint8_t tag0 = eve_tag0;
-    uint8_t touch_last = 0;
     char touch_ex = 0;
     char int_ccomplete = 0;
-    if (!eve_multitouch && (flags & EVE_INT_TOUCH)) eve_multitouch = 1;
+    uint8_t tag0 = _tag0;
+    uint8_t touch_last = 0;
 
+    if (!_multitouch && (flags & EVE_INT_TOUCH)) _multitouch = 1;
     for (i=0; i<EVE_MAX_TOUCH; i++) {
         uint8_t touch_tag;
         uint32_t touch_xy;
-        EOSTouch *touch = &eve_touch[i];
+        volatile uint64_t *mtime = (uint64_t *) (CLINT_CTRL_ADDR + CLINT_MTIME);
+        uint64_t now = 0;
+        EVETouch *touch = &_touch[i];
 
-        touch->evt &= (EOS_TOUCH_ETYPE_LPRESS | EOS_TOUCH_ETYPE_TRACK_MASK);
-
-        touch_xy = i < 4 ? eos_eve_read32(_reg_touch[i]) : (((uint32_t)eos_eve_read16(REG_CTOUCH_TOUCH4_X) << 16) | eos_eve_read16(REG_CTOUCH_TOUCH4_Y));
+        touch->evt &= 0xff00;
+        touch_xy = i < 4 ? eve_read32(_reg_touch[i]) : (((uint32_t)eve_read16(REG_CTOUCH_TOUCH4_X) << 16) | eve_read16(REG_CTOUCH_TOUCH4_Y));
 
         if (touch_xy != 0x80008000) {
-            uint16_t touch_x = touch_xy >> 16;
-            uint16_t touch_y = touch_xy & 0xffff;
-            if (touch->x == 0x8000) {
-                touch->evt |= EOS_TOUCH_ETYPE_POINT_DOWN;
+            int16_t touch_x = touch_xy >> 16;
+            int16_t touch_y = touch_xy & 0xffff;
+            now = *mtime;
+            if (touch->x == EVE_NOTOUCH) {
+                if (!_tag0 && _touch_timer.tag) {
+                    if (_touch_timer.evt & EVE_TOUCH_ETYPE_TAP1) {
+                        int dx = touch_x - touch->x0;
+                        int dy = touch_y - touch->y0;
+                        dx = dx < 0 ? -dx : dx;
+                        dy = dy < 0 ? -dy : dy;
+                        if ((dx > EVE_THRESHOLD_X) || (dy > EVE_THRESHOLD_Y)) {
+                            touch->evt = EVE_TOUCH_ETYPE_TAP1;
+                        } else {
+                            touch->evt = EVE_TOUCH_ETYPE_TAP2;
+                        }
+                        _touch_handler(_touch_handler_param, _touch_timer.tag, i);
+                    }
+                    eos_timer_clear(EOS_TIMER_ETYPE_UI);
+                    _touch_timer_clear();
+                }
+                touch->evt = EVE_TOUCH_ETYPE_POINT;
+                touch->tag0 = 0;
+                touch->tag = 0;
+                touch->tag_up = 0;
+                touch->tracker.tag = 0;
+                touch->tracker.track = 0;
+                touch->tracker.val = 0;
+                touch->t = 0;
+                touch->vx = 0;
+                touch->vy = 0;
                 touch->x0 = touch_x;
                 touch->y0 = touch_y;
+            } else if (touch->t) {
+                int dt = now - touch->t;
+                int vx = ((int)touch_x - touch->x) * (int)(RTC_FREQ) / dt;
+                int vy = ((int)touch_y - touch->y) * (int)(RTC_FREQ) / dt;
+                touch->vx = touch->vx ? (vx + touch->vx * EVE_TRAVG) / (EVE_TRAVG + 1) : vx;
+                touch->vy = touch->vy ? (vy + touch->vy * EVE_TRAVG) / (EVE_TRAVG + 1) : vy;
+                touch->t = now;
             }
             touch->x = touch_x;
             touch->y = touch_y;
-            if (eve_multitouch || (flags & EVE_INT_TAG)) {
-                touch_tag = eos_eve_read8(_reg_tag[i]);
+            if (_multitouch || (flags & EVE_INT_TAG)) {
+                touch_tag = eve_read8(_reg_tag[i]);
             } else {
-                touch_tag = touch->tag_down;
+                touch_tag = touch->tag;
             }
             touch_ex = 1;
         } else {
             touch_tag = 0;
-            if (touch->x != 0x8000) touch->evt |= EOS_TOUCH_ETYPE_POINT_UP;
-        }
-        if (touch_tag != touch->tag_down) {
-            if (touch_tag) {
-                if (!eve_tag0) tag0 = eve_tag0 = touch_tag;
-                if (!touch->tag0) {
-                    touch->tag0 = touch_tag;
-                    touch->evt |= eve_tag_evt[touch_tag] & EOS_TOUCH_ETYPE_TRACK_MASK;
-                    if (touch->evt & EOS_TOUCH_ETYPE_TRACK_MASK) {
-                        if (touch->evt & EOS_TOUCH_ETYPE_TRACK) touch->tracker.tag = touch_tag;
-                    } else {
-                        touch->evt |= eve_tag_evt[0xff] & EOS_TOUCH_ETYPE_TRACK_MASK;
-                        if (touch->evt & EOS_TOUCH_ETYPE_TRACK) touch->tracker.tag = 0xff;
-                    }
-                    if (((eve_tag_evt[touch_tag] | eve_tag_evt[0xff]) & EOS_TOUCH_ETYPE_LPRESS) && (i == 0)) {
-                        volatile uint64_t *mtime = (uint64_t *) (CLINT_CTRL_ADDR + CLINT_MTIME);
-
-                        eve_touch_timer_t0 = *mtime;
-                        eve_touch_timer_tag = eve_tag_evt[touch_tag] & EOS_TOUCH_ETYPE_LPRESS ? touch_tag : 0xff;
-                        eos_timer_set(EVE_LPRESS_TIMEOUT, EOS_TIMER_ETYPE_UI, 0);
+            if (touch->x != EVE_NOTOUCH) {
+                touch->evt |= EVE_TOUCH_ETYPE_POINT_UP;
+                if (_touch_timer.tag && (i == 0)) {
+                    _touch_timer.evt &= ~EVE_TOUCH_ETYPE_LPRESS;
+                    if (!_touch_timer.evt) {
+                        eos_timer_clear(EOS_TIMER_ETYPE_UI);
+                        _touch_timer_clear();
                     }
                 }
-            }
-            touch->tag_up = touch->tag_down;
-            touch->tag_down = touch_tag;
-            if (touch->tag_up) touch->evt |= EOS_TOUCH_ETYPE_TAG_UP;
-            if (touch->tag_down) touch->evt |= EOS_TOUCH_ETYPE_TAG_DOWN;
-        }
-        if (touch->evt & EOS_TOUCH_ETYPE_TRACK_REG) {
-            uint32_t touch_track = eos_eve_read32(_reg_track[i]);
-            touch->tracker.tag = touch_track & 0xffff;
-            touch->tracker.val = touch_track >> 16;
-        }
-        if (eve_touch_timer_tag && (i == 0)) {
-            uint16_t dx = touch->x > touch->x0 ? touch->x - touch->x0 : touch->x0 - touch->x;
-            uint16_t dy = touch->y > touch->y0 ? touch->y - touch->y0 : touch->y0 - touch->y;
-            if ((dx > EVE_MOVE_THRESHOLD) || (dy > EVE_MOVE_THRESHOLD)) {
-                eos_timer_clear(EOS_TIMER_ETYPE_UI);
-                eve_touch_timer_t0 = 0;
-                eve_touch_timer_tag = 0;
+                if (!_touch_timer.tag && touch->tracker.tag && touch->tracker.track && (_tag_opt[touch->tracker.tag] & EVE_TOUCH_OPT_INERT)) {
+                    _touch_timer.x0 = touch->x;
+                    _touch_timer.y0 = touch->y;
+                    _touch_timer.tag = touch->tracker.tag;
+                    _touch_timer.idx = i;
+                    _touch_timer.evt = EVE_TOUCH_ETYPE_TRACK;
+                    eos_timer_set(EVE_TIMEOUT_TRACK, EOS_TIMER_ETYPE_UI, 0);
+                }
+                touch->x = EVE_NOTOUCH;
+                touch->y = EVE_NOTOUCH;
             }
         }
-        if (touch->evt) {
-            touch_last = i + 1;
-            if (touch->evt & EOS_TOUCH_ETYPE_TRACK_MASK) int_ccomplete = 1;
+        if (touch_tag != touch->tag) {
+            if (touch_tag) {
+                if (!touch->tag0) {
+                    touch->tag0 = touch_tag;
+                    if (_tag_opt[touch_tag] & EVE_TOUCH_OPT_TRACK_MASK) {
+                        touch->tracker.tag = touch_tag;
+                    } else if (_tag_opt[0xff] & EVE_TOUCH_OPT_TRACK_MASK) {
+                        touch->tracker.tag = 0xff;
+                    }
+                    if (touch->tracker.tag && !(_tag_opt[touch->tracker.tag] & EVE_TOUCH_OPT_TRACK_XY)) {
+                        touch->tracker.track = 1;
+                        if (!touch->t && (_tag_opt[touch->tracker.tag] & EVE_TOUCH_OPT_INERT)) touch->t = now;
+                    }
+                    if (!_tag0 && ((_tag_opt[touch_tag] | _tag_opt[0xff]) & EVE_TOUCH_OPT_TIMER_MASK)) {
+                        _touch_timer.tag = _tag_opt[touch_tag] & EVE_TOUCH_OPT_TIMER_MASK ? touch_tag : 0xff;
+                        _touch_timer.idx = 0;
+                        _touch_timer.evt = 0;
+                        if (_tag_opt[_touch_timer.tag] & EVE_TOUCH_OPT_LPRESS) _touch_timer.evt |= EVE_TOUCH_ETYPE_LPRESS;
+                        if (_tag_opt[_touch_timer.tag] & EVE_TOUCH_OPT_DTAP) _touch_timer.evt |= EVE_TOUCH_ETYPE_TAP1;
+                        eos_timer_set(EVE_TIMEOUT_TAP, EOS_TIMER_ETYPE_UI, 0);
+                    }
+                }
+                if (!_tag0) tag0 = _tag0 = touch_tag;
+            }
+            touch->tag_up = touch->tag;
+            if (touch->tag_up) touch->evt |= EVE_TOUCH_ETYPE_TAG_UP;
+            touch->tag = touch_tag;
+            if (touch->tag) touch->evt |= EVE_TOUCH_ETYPE_TAG;
         }
-        if (!eve_multitouch) break;
+        if (touch_xy != 0x80008000) {
+            char _track = touch->tracker.tag && !touch->tracker.track;
+            if (_track || _touch_timer.tag) {
+                int dx = touch->x - touch->x0;
+                int dy = touch->y - touch->y0;
+                dx = dx < 0 ? -dx : dx;
+                dy = dy < 0 ? -dy : dy;
+                if (_track) {
+                    if ((dx > EVE_THRESHOLD_X) && !(_tag_opt[touch->tracker.tag] & EVE_TOUCH_OPT_TRACK_X)) {
+                        touch->tracker.tag = 0;
+                    }
+                    if ((dy > EVE_THRESHOLD_Y) && !(_tag_opt[touch->tracker.tag] & EVE_TOUCH_OPT_TRACK_Y)) {
+                        touch->tracker.tag = 0;
+                    }
+                    if (touch->tracker.tag && ((dx > EVE_THRESHOLD_X) || (dy > EVE_THRESHOLD_Y))) {
+                        if (dx > EVE_THRESHOLD_X) {
+                            touch->evt |= touch->x > touch->x0 ? EVE_TOUCH_ETYPE_TRACK_RIGHT : EVE_TOUCH_ETYPE_TRACK_LEFT;
+                        }
+                        if (dy > EVE_THRESHOLD_Y) {
+                            touch->evt |= touch->y > touch->y0 ? EVE_TOUCH_ETYPE_TRACK_DOWN : EVE_TOUCH_ETYPE_TRACK_UP;
+                        }
+                        touch->tracker.track = 1;
+                        if (!touch->t && (_tag_opt[touch->tracker.tag] & EVE_TOUCH_OPT_INERT)) touch->t = now;
+                    }
+                }
+                if (_touch_timer.tag && ((dx > EVE_THRESHOLD_X) || (dy > EVE_THRESHOLD_Y))) {
+                    eos_timer_clear(EOS_TIMER_ETYPE_UI);
+                    _touch_timer_clear();
+                }
+            }
+            if (touch->tracker.tag && touch->tracker.track) {
+                touch->evt |= _tag_opt[touch->tracker.tag] & EVE_TOUCH_ETYPE_TRACK_MASK;
+            }
+            if (touch->evt & EVE_TOUCH_ETYPE_TRACK_REG) {
+                uint32_t touch_track = eve_read32(_reg_track[i]);
+                if (touch->tracker.tag == (touch_track & 0xff)) {
+                    touch->tracker.val = touch_track >> 16;
+                } else {
+                    touch->evt &= ~EVE_TOUCH_ETYPE_TRACK_REG;
+                }
+            }
+            if (touch->tracker.tag || _touch_timer.tag) int_ccomplete = 1;
+        }
+        if (touch->evt & 0xff) touch_last = i + 1;
+        if (!_multitouch) break;
+        if (_touch_timer.tag) {
+            eos_timer_clear(EOS_TIMER_ETYPE_UI);
+            _touch_timer_clear();
+        }
     }
 
     if (!touch_ex) {
-        eve_tag0 = 0;
-        eve_multitouch = 0;
+        _tag0 = 0;
+        _multitouch = 0;
     }
 
-    if (eve_multitouch) int_ccomplete = 1;
+    if (_multitouch) int_ccomplete = 1;
 
-    if (int_ccomplete && !(eve_int_mask & EVE_INT_CONVCOMPLETE)) {
-        eve_int_mask |= EVE_INT_CONVCOMPLETE;
-        eos_eve_write8(REG_INT_MASK, eve_int_mask);
+    if (int_ccomplete && !(_intr_mask & EVE_INT_CONVCOMPLETE)) {
+        _intr_mask |= EVE_INT_CONVCOMPLETE;
+        eve_write8(REG_INT_MASK, _intr_mask);
     }
-    if (!int_ccomplete && (eve_int_mask & EVE_INT_CONVCOMPLETE)) {
-        eve_int_mask &= ~EVE_INT_CONVCOMPLETE;
-        eos_eve_write8(REG_INT_MASK, eve_int_mask);
+    if (!int_ccomplete && (_intr_mask & EVE_INT_CONVCOMPLETE)) {
+        _intr_mask &= ~EVE_INT_CONVCOMPLETE;
+        eve_write8(REG_INT_MASK, _intr_mask);
     }
 
     for (i=0; i<touch_last; i++) {
-        EOSTouch *touch = &eve_touch[i];
-        if (touch->evt) {
-            eve_renderer(tag0, i);
-            if (touch->evt & EOS_TOUCH_ETYPE_POINT_UP) {
-                touch->x = 0x8000;
-                touch->y = 0x8000;
-                touch->evt = 0;
-                touch->tag0 = 0;
-                touch->tag_up = 0;
-                touch->tag_down = 0;
-                touch->tracker.tag = 0;
-                touch->tracker.val = 0;
-                if (eve_touch_timer_tag && (i == 0)) {
-                    eos_timer_clear(EOS_TIMER_ETYPE_UI);
-                    eve_touch_timer_t0 = 0;
-                    eve_touch_timer_tag = 0;
-                }
-            }
+        EVETouch *touch = &_touch[i];
+        if (touch->evt & 0xff) {
+            _touch_handler(_touch_handler_param, tag0, i);
         }
     }
 }
 
-static void eve_handler_time(unsigned char type) {
-    eve_touch[0].evt |= EOS_TOUCH_ETYPE_LPRESS;
+static void handle_time(unsigned char type) {
+    if (_touch_timer.tag) {
+        EVETouch *touch = &_touch[_touch_timer.idx];
 
-    eos_spi_dev_start(EOS_SPI_DEV_DISP);
-    eve_handle_touch(0);
-    eos_spi_dev_stop();
+        if ((_touch_timer.evt & EVE_TOUCH_ETYPE_TAP1) && (touch->x != EVE_NOTOUCH)) _touch_timer.evt &= ~EVE_TOUCH_ETYPE_TAP1;
 
-    eve_touch[0].evt &= ~EOS_TOUCH_ETYPE_LPRESS;
-    eve_touch_timer_t0 = 0;
-    eve_touch_timer_tag = 0;
+        if (_touch_timer.evt) {
+            char more = 0;
+            int _x = touch->x;
+            int _y = touch->y;
+            uint16_t _evt = touch->evt;
+
+            touch->evt = _touch_timer.evt;
+            if (touch->evt & EVE_TOUCH_ETYPE_TRACK) {
+                volatile uint64_t *mtime = (uint64_t *) (CLINT_CTRL_ADDR + CLINT_MTIME);
+                int dt = *mtime - touch->t;
+
+                if (_touch_timer.fc == 0) {
+                    double d = sqrt(touch->vx * touch->vx + touch->vy * touch->vy);
+                    _touch_timer.fc = (double)(RTC_FREQ) * d / EVE_FRICTION;
+                }
+
+                if (dt < _touch_timer.fc / 2) {
+                    more = 1;
+                } else {
+                    touch->evt |= EVE_TOUCH_ETYPE_TRACK_DONE;
+                    dt = _touch_timer.fc / 2;
+                }
+                touch->x = _touch_timer.x0 + (touch->vx * dt - touch->vx * dt / _touch_timer.fc * dt ) / (int)(RTC_FREQ);
+                touch->y = _touch_timer.y0 + (touch->vy * dt - touch->vy * dt / _touch_timer.fc * dt ) / (int)(RTC_FREQ);
+
+                if (more) eos_timer_set(EVE_TIMEOUT_TRACK, EOS_TIMER_ETYPE_UI, 0);
+            }
+
+
+            eos_spi_dev_start(EOS_DEV_DISP);
+            _touch_handler(_touch_handler_param, _touch_timer.tag, _touch_timer.idx);
+            eos_spi_dev_stop();
+
+            if (!more) _touch_timer_clear();
+            touch->evt = _evt;
+            touch->x = _x;
+            touch->y = _y;
+        }
+    }
 }
 
-static void eve_handler_evt(unsigned char type, unsigned char *buffer, uint16_t len) {
+static void handle_evt(unsigned char type, unsigned char *buffer, uint16_t len) {
     uint8_t flags;
 
-    eos_spi_dev_start(EOS_SPI_DEV_DISP);
-    flags = eos_eve_read8(REG_INT_FLAGS) & eve_int_mask;
-    eve_handle_touch(flags);
+    eos_spi_dev_start(EOS_DEV_DISP);
+    flags = eve_read8(REG_INT_FLAGS) & _intr_mask;
+    handle_touch(flags);
     eos_spi_dev_stop();
 
-    GPIO_REG(GPIO_LOW_IP) = (1 << EVE_PIN_INT);
-    GPIO_REG(GPIO_LOW_IE) |= (1 << EVE_PIN_INT);
+    GPIO_REG(GPIO_LOW_IP) = (1 << EVE_PIN_INTR);
+    GPIO_REG(GPIO_LOW_IE) |= (1 << EVE_PIN_INTR);
 }
 
-static void eve_handler_int(void) {
-    GPIO_REG(GPIO_LOW_IE) &= ~(1 << EVE_PIN_INT);
-    eos_evtq_push_isr(EOS_EVT_UI | EVE_ETYPE_INT, NULL, 0);
+static void handle_intr(void) {
+    GPIO_REG(GPIO_LOW_IE) &= ~(1 << EVE_PIN_INTR);
+    eos_evtq_push_isr(EOS_EVT_UI | EVE_ETYPE_INTR, NULL, 0);
     return;
 }
 
-int eos_eve_init(void) {
+int eve_init(uint32_t *touch_transform) {
     int i;
 	uint8_t chipid = 0;
 	uint16_t timeout = 0;
-    uint32_t touch_transform[6] = {0xfa46,0xfffffcf6,0x422fe,0xffffff38,0x10002,0xf3cb0};
 
-    eos_eve_command(EVE_RST_PULSE, 0);
-    eos_eve_command(EVE_CLKEXT, 0);
-    eos_eve_command(EVE_ACTIVE, 0);     /* start EVE */
+    eve_command(EVE_RST_PULSE, 0);
+    eve_command(EVE_CLKEXT, 0);
+    eve_command(EVE_ACTIVE, 0);     /* start EVE */
 
     while(chipid != 0x7C) {             /* if chipid is not 0x7c, continue to read it until it is, EVE needs a moment for it's power on self-test and configuration */
 		eos_timer_sleep(1);
-		chipid = eos_eve_read8(REG_ID);
+		chipid = eve_read8(REG_ID);
 		timeout++;
 		if (timeout > 400) return EOS_ERR;
 	}
 
-    eos_eve_write8(REG_PWM_DUTY, 0);
+    eve_write8(REG_PWM_DUTY, 0);
 
     /* Initialize Display */
-	eos_eve_write16(REG_HCYCLE,  EVE_HCYCLE);   /* total number of clocks per line, incl front/back porch */
-	eos_eve_write16(REG_HOFFSET, EVE_HOFFSET);  /* start of active line */
-	eos_eve_write16(REG_HSYNC0,  EVE_HSYNC0);   /* start of horizontal sync pulse */
-	eos_eve_write16(REG_HSYNC1,  EVE_HSYNC1);   /* end of horizontal sync pulse */
-	eos_eve_write16(REG_VCYCLE,  EVE_VCYCLE);   /* total number of lines per screen, including pre/post */
-	eos_eve_write16(REG_VOFFSET, EVE_VOFFSET);  /* start of active screen */
-	eos_eve_write16(REG_VSYNC0,  EVE_VSYNC0);   /* start of vertical sync pulse */
-	eos_eve_write16(REG_VSYNC1,  EVE_VSYNC1);   /* end of vertical sync pulse */
-	eos_eve_write8(REG_SWIZZLE,  EVE_SWIZZLE);  /* FT8xx output to LCD - pin order */
-	eos_eve_write8(REG_PCLK_POL, EVE_PCLKPOL);  /* LCD data is clocked in on this PCLK edge */
-	eos_eve_write8(REG_CSPREAD,	 EVE_CSPREAD);  /* helps with noise, when set to 1 fewer signals are changed simultaneously, reset-default: 1 */
-	eos_eve_write16(REG_HSIZE,   EVE_HSIZE);    /* active display width */
-	eos_eve_write16(REG_VSIZE,   EVE_VSIZE);    /* active display height */
+	eve_write16(REG_HCYCLE,  EVE_HCYCLE);   /* total number of clocks per line, incl front/back porch */
+	eve_write16(REG_HOFFSET, EVE_HOFFSET);  /* start of active line */
+	eve_write16(REG_HSYNC0,  EVE_HSYNC0);   /* start of horizontal sync pulse */
+	eve_write16(REG_HSYNC1,  EVE_HSYNC1);   /* end of horizontal sync pulse */
+	eve_write16(REG_VCYCLE,  EVE_VCYCLE);   /* total number of lines per screen, including pre/post */
+	eve_write16(REG_VOFFSET, EVE_VOFFSET);  /* start of active screen */
+	eve_write16(REG_VSYNC0,  EVE_VSYNC0);   /* start of vertical sync pulse */
+	eve_write16(REG_VSYNC1,  EVE_VSYNC1);   /* end of vertical sync pulse */
+	eve_write8(REG_SWIZZLE,  EVE_SWIZZLE);  /* FT8xx output to LCD - pin order */
+	eve_write8(REG_PCLK_POL, EVE_PCLKPOL);  /* LCD data is clocked in on this PCLK edge */
+	eve_write8(REG_CSPREAD,	 EVE_CSPREAD);  /* helps with noise, when set to 1 fewer signals are changed simultaneously, reset-default: 1 */
+	eve_write16(REG_HSIZE,   EVE_HSIZE);    /* active display width */
+	eve_write16(REG_VSIZE,   EVE_VSIZE);    /* active display height */
 
 	/* do not set PCLK yet - wait for just after the first display list */
 
 	/* configure Touch */
-	eos_eve_write8(REG_TOUCH_MODE, EVE_TMODE_CONTINUOUS);       /* enable touch */
-	eos_eve_write16(REG_TOUCH_RZTHRESH, EVE_TOUCH_RZTHRESH);    /* eliminate any false touches */
+	eve_write8(REG_TOUCH_MODE, EVE_TMODE_CONTINUOUS);       /* enable touch */
+	eve_write16(REG_TOUCH_RZTHRESH, EVE_TOUCH_RZTHRESH);    /* eliminate any false touches */
 
 	/* disable Audio for now */
-	eos_eve_write8(REG_VOL_PB, 0x00);       /* turn recorded audio volume down */
-	eos_eve_write8(REG_VOL_SOUND, 0x00);    /* turn synthesizer volume off */
-	eos_eve_write16(REG_SOUND, 0x6000);     /* set synthesizer to mute */
+	eve_write8(REG_VOL_PB, 0x00);       /* turn recorded audio volume down */
+	eve_write8(REG_VOL_SOUND, 0x00);    /* turn synthesizer volume off */
+	eve_write16(REG_SOUND, 0x6000);     /* set synthesizer to mute */
 
 	/* write a basic display-list to get things started */
-    eos_eve_dl_start(EVE_RAM_DL);
-    eos_eve_dl_write(CLEAR_COLOR_RGB(0,0,0));
-	eos_eve_dl_write(CLEAR(1,1,1));
-    eos_eve_dl_write(DISPLAY());
-    eos_eve_dl_swap();
+    eve_dl_start(EVE_RAM_DL);
+    eve_dl_write(CLEAR_COLOR_RGB(0,0,0));
+	eve_dl_write(CLEAR(1,1,1));
+    eve_dl_write(DISPLAY());
+    eve_dl_swap();
 
 	/* nothing is being displayed yet... the pixel clock is still 0x00 */
-	eos_eve_write8(REG_GPIO, 0x80);         /* enable the DISP signal to the LCD panel, it is set to output in REG_GPIO_DIR by default */
-	eos_eve_write8(REG_PCLK, EVE_PCLK);     /* now start clocking data to the LCD panel */
+	eve_write8(REG_GPIO, 0x80);         /* enable the DISP signal to the LCD panel, it is set to output in REG_GPIO_DIR by default */
+	eve_write8(REG_PCLK, EVE_PCLK);     /* now start clocking data to the LCD panel */
 
-    eos_eve_write8(REG_INT_EN, 0x01);
-    eos_eve_write8(REG_INT_MASK, eve_int_mask);
-    while(eos_eve_read8(REG_INT_FLAGS));
+    eve_write8(REG_INT_EN, 0x01);
+    eve_write8(REG_INT_MASK, _intr_mask);
+    while(eve_read8(REG_INT_FLAGS));
 
-    /*
-	eos_eve_cmd_dl(CMD_DLSTART);
-	eos_eve_cmd_dl(CLEAR_COLOR_RGB(0,0,0));
-	eos_eve_cmd_dl(CLEAR(1,1,1));
-    eos_eve_cmd(CMD_TEXT, "hhhhs", EVE_HSIZE/2, EVE_VSIZE/2, 27, EVE_OPT_CENTER, "Please tap on the dot.");
-    eos_eve_cmd(CMD_CALIBRATE, "w", 0);
-	eos_eve_cmd_dl(DISPLAY());
-	eos_eve_cmd_dl(CMD_SWAP);
-	eos_eve_cmd_exec(1);
+    if (touch_transform) {
+        eve_write32(REG_TOUCH_TRANSFORM_A, touch_transform[0]);
+        eve_write32(REG_TOUCH_TRANSFORM_B, touch_transform[1]);
+        eve_write32(REG_TOUCH_TRANSFORM_C, touch_transform[2]);
+        eve_write32(REG_TOUCH_TRANSFORM_D, touch_transform[3]);
+        eve_write32(REG_TOUCH_TRANSFORM_E, touch_transform[4]);
+        eve_write32(REG_TOUCH_TRANSFORM_F, touch_transform[5]);
+    } else {
+        uint32_t touch_transform[6];
+        eve_cmd_dl(CMD_DLSTART);
+        eve_cmd_dl(CLEAR_COLOR_RGB(0,0,0));
+        eve_cmd_dl(CLEAR(1,1,1));
+        eve_cmd(CMD_TEXT, "hhhhs", EVE_HSIZE/2, EVE_VSIZE/2, 27, EVE_OPT_CENTER, "Please tap on the dot.");
+        eve_cmd(CMD_CALIBRATE, "w", 0);
+        eve_cmd_dl(DISPLAY());
+        eve_cmd_dl(CMD_SWAP);
+        eve_cmd_exec(1);
 
-    uint32_t touch_transform[0] = eos_eve_read32(REG_TOUCH_TRANSFORM_A);
-    uint32_t touch_transform[1] = eos_eve_read32(REG_TOUCH_TRANSFORM_B);
-    uint32_t touch_transform[2] = eos_eve_read32(REG_TOUCH_TRANSFORM_C);
-    uint32_t touch_transform[3] = eos_eve_read32(REG_TOUCH_TRANSFORM_D);
-    uint32_t touch_transform[4] = eos_eve_read32(REG_TOUCH_TRANSFORM_E);
-    uint32_t touch_transform[5] = eos_eve_read32(REG_TOUCH_TRANSFORM_F);
+        touch_transform[0] = eve_read32(REG_TOUCH_TRANSFORM_A);
+        touch_transform[1] = eve_read32(REG_TOUCH_TRANSFORM_B);
+        touch_transform[2] = eve_read32(REG_TOUCH_TRANSFORM_C);
+        touch_transform[3] = eve_read32(REG_TOUCH_TRANSFORM_D);
+        touch_transform[4] = eve_read32(REG_TOUCH_TRANSFORM_E);
+        touch_transform[5] = eve_read32(REG_TOUCH_TRANSFORM_F);
 
-    printf("TOUCH TRANSFORM:{0x%x,0x%x,0x%x,0x%x,0x%x,0x%x}\n", touch_transform[0], touch_transform[1], touch_transform[2], touch_transform[3], touch_transform[4], touch_transform[5]);
-    */
+        printf("TOUCH TRANSFORM:{0x%x,0x%x,0x%x,0x%x,0x%x,0x%x}\n", touch_transform[0], touch_transform[1], touch_transform[2], touch_transform[3], touch_transform[4], touch_transform[5]);
+    }
 
-    eos_eve_write32(REG_TOUCH_TRANSFORM_A, touch_transform[0]);
-    eos_eve_write32(REG_TOUCH_TRANSFORM_B, touch_transform[1]);
-    eos_eve_write32(REG_TOUCH_TRANSFORM_C, touch_transform[2]);
-    eos_eve_write32(REG_TOUCH_TRANSFORM_D, touch_transform[3]);
-    eos_eve_write32(REG_TOUCH_TRANSFORM_E, touch_transform[4]);
-    eos_eve_write32(REG_TOUCH_TRANSFORM_F, touch_transform[5]);
-    eos_eve_write32(REG_CTOUCH_EXTENDED, 0x00);
-
-    eos_eve_cmd(CMD_SETROTATE, "w", 2);
-    eos_eve_cmd_exec(1);
+    eve_write32(REG_CTOUCH_EXTENDED, 0x00);
+    eve_cmd(CMD_SETROTATE, "w", 2);
+    eve_cmd_exec(1);
 
     eos_timer_sleep(500);
-    eos_eve_command(EVE_STANDBY, 0);
+    eve_command(EVE_STANDBY, 0);
 
     for (i=0; i<EVE_MAX_TOUCH; i++) {
-        EOSTouch *touch = &eve_touch[i];
-        touch->x = 0x8000;
-        touch->y = 0x8000;
+        EVETouch *touch = &_touch[i];
+        touch->x = EVE_NOTOUCH;
+        touch->y = EVE_NOTOUCH;
     }
-    eos_evtq_set_handler(EOS_EVT_UI, eve_handler_evt, 0);
-    eos_timer_set_handler(EOS_TIMER_ETYPE_UI, eve_handler_time, 0);
+    eos_evtq_set_handler(EOS_EVT_UI, handle_evt);
+    eos_timer_set_handler(EOS_TIMER_ETYPE_UI, handle_time);
 
-    GPIO_REG(GPIO_INPUT_EN)     |=  (1 << EVE_PIN_INT);
-    GPIO_REG(GPIO_OUTPUT_EN)    &= ~(1 << EVE_PIN_INT);
-    GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << EVE_PIN_INT);
-    GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << EVE_PIN_INT);
+    GPIO_REG(GPIO_INPUT_EN)     |=  (1 << EVE_PIN_INTR);
+    GPIO_REG(GPIO_OUTPUT_EN)    &= ~(1 << EVE_PIN_INTR);
+    GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << EVE_PIN_INTR);
+    GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << EVE_PIN_INTR);
 
-    GPIO_REG(GPIO_LOW_IE)       |=  (1 << EVE_PIN_INT);
-    eos_intr_set(INT_GPIO_BASE + EVE_PIN_INT, IRQ_PRIORITY_UI, eve_handler_int);
+    GPIO_REG(GPIO_LOW_IE)       |=  (1 << EVE_PIN_INTR);
+    eos_intr_set(INT_GPIO_BASE + EVE_PIN_INTR, IRQ_PRIORITY_UI, handle_intr);
 
     return EOS_OK;
 }
 
-void eos_eve_set_renderer(eos_eve_fptr_t renderer, uint8_t flags) {
-    eve_renderer = renderer;
-    eos_evtq_set_hflags(EOS_EVT_UI | EVE_ETYPE_INT, flags);
+void eve_touch_set_handler(eve_touch_handler_t handler, void *param) {
+    _touch_handler = handler;
+    _touch_handler_param = param;
+    /*
+    eos_evtq_set_hflags(EOS_EVT_UI | EVE_ETYPE_INTR, flags);
     eos_timer_set_hflags(EOS_TIMER_ETYPE_UI, flags);
+    */
 }
 
-EOSTouch *eos_touch_evt(uint8_t tag0, int touch_idx, uint8_t tag_min, uint8_t tag_max, uint8_t *evt) {
+EVETouch *eve_touch_evt(uint8_t tag0, int touch_idx, uint8_t tag_min, uint8_t tag_max, uint16_t *evt) {
     uint8_t _tag;
-    uint8_t _evt;
-    EOSTouch *ret = NULL;
+    uint16_t _evt;
+    EVETouch *ret = NULL;
 
     *evt = 0;
     if ((touch_idx < 0) || (touch_idx > 4)) return ret;
-
-    ret = &eve_touch[touch_idx];
     if ((tag0 < tag_min) || (tag0 > tag_max)) return ret;
 
+    ret = &_touch[touch_idx];
     _evt = ret->evt;
-    if (tag0 == 0xff) *evt |= _evt & EOS_TOUCH_ETYPE_POINT_MASK;
 
-    if (_evt & EOS_TOUCH_ETYPE_TAG_UP) {
+    *evt |= _evt & EVE_TOUCH_ETYPE_POINT_MASK;
+    if (_evt & EVE_TOUCH_ETYPE_TAG) {
+        _tag = ret->tag;
+        if ((_tag >= tag_min) && (_tag <= tag_max)) *evt |= EVE_TOUCH_ETYPE_TAG;
+    }
+    if (_evt & EVE_TOUCH_ETYPE_TAG_UP) {
         _tag = ret->tag_up;
-        if ((_tag >= tag_min) && (_tag <= tag_max)) *evt |= EOS_TOUCH_ETYPE_TAG_UP;
+        if ((_tag >= tag_min) && (_tag <= tag_max)) *evt |= EVE_TOUCH_ETYPE_TAG_UP;
     }
-    if (_evt & EOS_TOUCH_ETYPE_TAG_DOWN) {
-        _tag = ret->tag_down;
-        if ((_tag >= tag_min) && (_tag <= tag_max)) *evt |= EOS_TOUCH_ETYPE_TAG_DOWN;
-    }
-    if (_evt & EOS_TOUCH_ETYPE_TRACK) {
+    if (_evt & EVE_TOUCH_ETYPE_TRACK) {
         _tag = ret->tracker.tag;
-        if ((_tag >= tag_min) && (_tag <= tag_max)) *evt |= EOS_TOUCH_ETYPE_TRACK;
+        if ((_tag >= tag_min) && (_tag <= tag_max)) *evt |= EVE_TOUCH_ETYPE_TRACK | (_evt & (EVE_TOUCH_ETYPE_TRACK_X | EVE_TOUCH_ETYPE_TRACK_Y));
     }
-    if (_evt & EOS_TOUCH_ETYPE_TRACK_REG) {
+    if (_evt & EVE_TOUCH_ETYPE_TRACK_REG) {
         _tag = ret->tracker.tag;
-        if ((_tag >= tag_min) && (_tag <= tag_max) && (_tag == ret->tag0)) *evt |= EOS_TOUCH_ETYPE_TRACK_REG;
+        if ((_tag >= tag_min) && (_tag <= tag_max)) *evt |= EVE_TOUCH_ETYPE_TRACK_REG;
     }
-    if (_evt & EOS_TOUCH_ETYPE_LPRESS) {
-        _tag = eve_touch_timer_tag;
-        if ((_tag >= tag_min) && (_tag <= tag_max)) *evt |= EOS_TOUCH_ETYPE_LPRESS;
+    if (_evt & (EVE_TOUCH_ETYPE_LPRESS | EVE_TOUCH_ETYPE_TAP1 | EVE_TOUCH_ETYPE_TAP2 | EVE_TOUCH_ETYPE_TRACK_DONE)) {
+        _tag = _touch_timer.tag;
+        if ((_tag >= tag_min) && (_tag <= tag_max)) *evt |= _evt & (EVE_TOUCH_ETYPE_LPRESS | EVE_TOUCH_ETYPE_TAP1 | EVE_TOUCH_ETYPE_TAP2 | EVE_TOUCH_ETYPE_TRACK_DONE);
     }
 
     return ret;
 }
 
-void eos_touch_evt_set(uint8_t tag, uint8_t evt) {
-    eve_tag_evt[tag] = evt;
+void eve_touch_set_opt(uint8_t tag, uint8_t opt) {
+    _tag_opt[tag] = opt;
 }
+
+EVETouchTimer *eve_touch_get_timer(void) {
+    return &_touch_timer;
+}
+

@@ -11,3 +11,5 @@
 
 #define NET_MTYPE_FLAG_ONEW     0x10
 
+#define NET_SPI_DIV             16
+#define NET_SPI_CSID            3
