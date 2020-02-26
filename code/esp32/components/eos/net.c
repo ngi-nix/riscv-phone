@@ -6,7 +6,6 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/semphr.h>
-// #include <freertos/heap_regions.h>
 
 #include <esp_system.h>
 #include <esp_log.h>
@@ -76,7 +75,7 @@ static void net_xchg_task(void *pvParameters) {
                     }
                 }
             } else {
-                WRITE_PERI_REG(GPIO_OUT_W1TC_REG, (1 << SPI_GPIO_RTS));
+                gpio_set_level(SPI_GPIO_RTS, 0);
                 buf_send[0] = 0;
                 buf_send[1] = 0;
             }
@@ -108,12 +107,12 @@ static void net_xchg_task(void *pvParameters) {
 
 // Called after a transaction is queued and ready for pickup by master. We use this to set the handshake line high.
 static void _post_setup_cb(spi_slave_transaction_t *trans) {
-    WRITE_PERI_REG(GPIO_OUT_W1TS_REG, (1 << SPI_GPIO_CTS));
+    gpio_set_level(SPI_GPIO_CTS, 1);
 }
 
 // Called after transaction is sent/received. We use this to set the handshake line low.
 static void _post_trans_cb(spi_slave_transaction_t *trans) {
-    WRITE_PERI_REG(GPIO_OUT_W1TC_REG, (1 << SPI_GPIO_CTS));
+    gpio_set_level(SPI_GPIO_CTS, 0);
 }
 
 void eos_net_init(void) {
@@ -125,15 +124,19 @@ void eos_net_init(void) {
 
     io_conf.intr_type = GPIO_INTR_DISABLE;
     io_conf.mode = GPIO_MODE_OUTPUT;
-    io_conf.pin_bit_mask = (1 << SPI_GPIO_CTS);
+    io_conf.pull_up_en = 0;
+    io_conf.pull_down_en = 0;
+    io_conf.pin_bit_mask = ((uint64_t)1 << SPI_GPIO_CTS);
     gpio_config(&io_conf);
-    WRITE_PERI_REG(GPIO_OUT_W1TC_REG, (1 << SPI_GPIO_CTS));
+    gpio_set_level(SPI_GPIO_CTS, 0);
 
     io_conf.intr_type = GPIO_INTR_DISABLE;
     io_conf.mode = GPIO_MODE_OUTPUT;
-    io_conf.pin_bit_mask = (1 << SPI_GPIO_RTS);
+    io_conf.pull_up_en = 0;
+    io_conf.pull_down_en = 0;
+    io_conf.pin_bit_mask = ((uint64_t)1 << SPI_GPIO_RTS);
     gpio_config(&io_conf);
-    WRITE_PERI_REG(GPIO_OUT_W1TC_REG, (1 << SPI_GPIO_RTS));
+    gpio_set_level(SPI_GPIO_RTS, 0);
 
     //Configuration for the SPI bus
     spi_bus_config_t buscfg = {
@@ -196,7 +199,7 @@ int eos_net_send(unsigned char mtype, unsigned char *buffer, uint16_t len, uint8
 
     if (flags & EOS_NET_FLAG_BCOPY) xSemaphoreTake(semaph, portMAX_DELAY);
     xSemaphoreTake(mutex, portMAX_DELAY);
-    WRITE_PERI_REG(GPIO_OUT_W1TS_REG, (1 << SPI_GPIO_RTS));
+    gpio_set_level(SPI_GPIO_RTS, 1);
     if (flags & EOS_NET_FLAG_BCOPY) {
         unsigned char *b = eos_bufq_pop(&net_buf_q);
         memcpy(b, buffer, len);
