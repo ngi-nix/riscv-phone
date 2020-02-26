@@ -9,13 +9,13 @@
 #define KEY_CTRL    0x12
 #define KEY_FN      0x13
 
-#define KEY_DEL     0x08
-#define KEY_RET     0x0a
-
 #define KEYS_Y      575
 #define KEYS_FSIZE  29
 #define KEYS_HEIGHT 40
 #define KEYS_RSIZE  45
+
+#define KEY_BS      0x08
+#define KEY_RET     0x0a
 
 void eve_kbd_init(EVEKbd *kbd, eve_kbd_input_handler_t putc, uint32_t mem_addr, uint32_t *mem_next) {
     uint16_t mem_size;
@@ -106,8 +106,8 @@ uint8_t eve_kbd_draw(EVEKbd *kbd, char active) {
         eve_cmd(CMD_KEYS, "hhhhhhs", 72, KEYS_Y + KEYS_RSIZE * 3, 335, KEYS_HEIGHT, KEYS_FSIZE, kbd->key_down, kbd->key_modifier & FLAG_FN ? " ,.<>/?" : kbd->key_modifier & (FLAG_SHIFT | FLAG_CTRL) ? "ZXCVBNM" : "zxcvbnm");
         eve_cmd_dl(TAG(KEY_SHIFT));
         eve_cmd(CMD_BUTTON, "hhhhhhs", 0, KEYS_Y + KEYS_RSIZE * 3, 69, KEYS_HEIGHT, 21, kbd->key_modifier & FLAG_SHIFT ? EVE_OPT_FLAT : 0, "shift");
-        eve_cmd_dl(TAG(KEY_DEL));
-        eve_cmd(CMD_BUTTON, "hhhhhhs", 410, KEYS_Y + KEYS_RSIZE * 3, 70, KEYS_HEIGHT, 21, kbd->key_down == KEY_DEL ? EVE_OPT_FLAT : 0, "del");
+        eve_cmd_dl(TAG(KEY_BS));
+        eve_cmd(CMD_BUTTON, "hhhhhhs", 410, KEYS_Y + KEYS_RSIZE * 3, 70, KEYS_HEIGHT, 21, kbd->key_down == KEY_BS ? EVE_OPT_FLAT : 0, "del");
         eve_cmd_dl(TAG(KEY_FN));
         eve_cmd(CMD_BUTTON, "hhhhhhs", 0, KEYS_Y + KEYS_RSIZE * 4, 69, KEYS_HEIGHT, 21, kbd->key_modifier & FLAG_FN ? EVE_OPT_FLAT : 0, "fn");
         eve_cmd_dl(TAG(KEY_CTRL));

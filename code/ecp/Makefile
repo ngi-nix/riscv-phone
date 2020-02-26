@@ -13,7 +13,7 @@ subdirs = crypto platform $(htable) $(vconn)
 all: $(obj)
 	$(AR) rcs libecpcore.a $(obj)
 	for i in $(subdirs); do \
-		(cd $$i && $(MAKE) && cd ..) || exit; \
+		(cd $$i && $(MAKE)) || exit; \
 	done
 
 install: all
@@ -31,6 +31,6 @@ install: all
 
 clean:
 	for i in $(subdirs); do \
-		(cd $$i && $(MAKE) clean && cd ..) || exit; \
+		(cd $$i && $(MAKE) clean) || exit; \
 	done
 	rm -f *.o *.a
