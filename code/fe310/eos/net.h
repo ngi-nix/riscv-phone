@@ -18,6 +18,7 @@ void eos_net_init(void);
 void eos_net_start(void);
 void eos_net_stop(void);
 void eos_net_set_handler(unsigned char type, eos_evt_handler_t handler);
+void eos_net_acquire_for_evt(unsigned char type, char acq);
 
 void eos_net_acquire(void);
 void eos_net_release(void);

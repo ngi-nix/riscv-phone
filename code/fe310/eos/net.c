@@ -302,7 +302,7 @@ void eos_net_set_handler(unsigned char mtype, eos_evt_handler_t handler) {
     if (mtype && (mtype <= EOS_NET_MAX_MTYPE)) net_handler[mtype - 1] = handler;
 }
 
-void eos_net_set_acquire_for_evt(unsigned char type, char acq) {
+void eos_net_acquire_for_evt(unsigned char type, char acq) {
     unsigned char idx = ((type & EOS_EVT_MASK) >> 4) - 1;
     uint16_t flag = type & ~EOS_EVT_MASK ? (uint16_t)1 << ((type & ~EOS_EVT_MASK) - 1) : 0xFFFF;
 
