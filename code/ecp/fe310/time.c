@@ -19,7 +19,8 @@ static void timer_handler(unsigned char type) {
 }
 
 int ecp_tm_init(ECPContext *ctx) {
-    eos_timer_set_handler(EOS_TIMER_ETYPE_ECP, timer_handler, EOS_NET_FLAG_BACQ);
+    eos_timer_set_handler(EOS_TIMER_ETYPE_ECP, timer_handler);
+    eos_net_acquire_for_evt(EOS_EVT_TIMER | EOS_TIMER_ETYPE_ECP, 1);
     return ECP_OK;
 }
 

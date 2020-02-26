@@ -65,7 +65,7 @@ int ecp_tr_open(ECPSocket *sock, void *addr_s) {
         sock->sock = 0;
         return ECP_ERR_SEND;
     }
-    eos_sock_set_handler(sock->sock, packet_handler, 0);
+    eos_sock_set_handler(sock->sock, packet_handler);
     _ecp_tr_sock = sock;
     return ECP_OK;
 }
