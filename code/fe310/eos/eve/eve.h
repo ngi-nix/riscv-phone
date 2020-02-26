@@ -3,6 +3,8 @@
 #include "eve_def.h"
 
 #define EVE_ETYPE_INTR                  1
+#define EVE_OK                          0
+#define EVE_ERR                         -1
 
 /* events */
 #define EVE_TOUCH_ETYPE_TRACK           0x0001
@@ -102,6 +104,8 @@ int eve_cmd_exec(int w);
 void eve_cmd_burst_start(void);
 void eve_cmd_burst_end(void);
 
+void eve_handle_touch(void);
+void eve_handle_time(void);
 int eve_init(uint32_t *touch_transform);
 
 void eve_touch_set_handler(eve_touch_handler_t handler, void *handler_param);

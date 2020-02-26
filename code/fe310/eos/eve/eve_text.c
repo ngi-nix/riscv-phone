@@ -1,4 +1,3 @@
-#include "eos.h"
 #include "eve.h"
 #include "eve_text.h"
 
@@ -110,7 +109,7 @@ int eve_text_putc(EVEText *box, int c) {
             if ((line_c != line_n) && (LINE_IDX_DIFF(line_n, box->line0, box->line_size) == box->h)) scroll1(box);
             break;
     }
-    return EOS_OK;
+    return EVE_OK;
 }
 
 void eve_text_update(EVEText *box) {

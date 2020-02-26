@@ -8,7 +8,7 @@
 #include "wifi.h"
 #include "cell.h"
 #include "sock.h"
-#include "eve.h"
+#include "eve/eve.h"
 
 #include "eos.h"
 
