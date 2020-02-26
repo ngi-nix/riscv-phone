@@ -156,7 +156,7 @@ i2s_abuf_pop:
   # push to event queue
   jal x22, evtq_push
   beqz x21, i2s_decode
-  li x18, (EOS_EVT_AUDIO | I2S_ETYPE_SPK)
+  li x18, (EOS_EVT_I2S | I2S_ETYPE_SPK)
   sb x18, MSGQ_ITEM_OFF_TYPE(x21)
 
 i2s_decode:
@@ -349,7 +349,7 @@ i2s_abuf_push:
   # push to event queue
   jal x22, evtq_push
   beqz x21, i2s_handle_sd_exit
-  li x18, (EOS_EVT_AUDIO | I2S_ETYPE_MIC)
+  li x18, (EOS_EVT_I2S | I2S_ETYPE_MIC)
   sb x18, MSGQ_ITEM_OFF_TYPE(x21)
 
 i2s_handle_sd_exit:

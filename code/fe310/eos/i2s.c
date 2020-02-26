@@ -93,13 +93,13 @@ static uint16_t _abuf_len(EOSABuf *buf) {
 
 static void i2s_handle_evt(unsigned char type, unsigned char *buffer, uint16_t len) {
     switch(type & ~EOS_EVT_MASK) {
-        case I2S_ETYPE_MIC:
+        case EOS_I2S_ETYPE_MIC:
             if (i2s_mic_handler) i2s_mic_handler(type);
             clear_csr(mstatus, MSTATUS_MIE);
             _eos_i2s_mic_evt_enable = 1;
             set_csr(mstatus, MSTATUS_MIE);
             break;
-        case I2S_ETYPE_SPK:
+        case EOS_I2S_ETYPE_SPK:
             if (i2s_spk_handler) i2s_spk_handler(type);
             clear_csr(mstatus, MSTATUS_MIE);
             _eos_i2s_spk_evt_enable = 1;
@@ -135,7 +135,7 @@ static void _spk_vol_set(uint8_t vol) {
 extern void _eos_i2s_start_pwm(void);
 
 void eos_i2s_init(void) {
-    eos_evtq_set_handler(EOS_EVT_AUDIO, i2s_handle_evt);
+    eos_evtq_set_handler(EOS_EVT_I2S, i2s_handle_evt);
 
     GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_CK);
     GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << I2S_PIN_CK);

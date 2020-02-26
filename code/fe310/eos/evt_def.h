@@ -1,5 +1,5 @@
 #define EOS_EVT_TIMER               0x10
-#define EOS_EVT_AUDIO               0x20
+#define EOS_EVT_I2S                 0x20
 #define EOS_EVT_NET                 0x30
 #define EOS_EVT_SPI                 0x40
 #define EOS_EVT_UART                0x50
