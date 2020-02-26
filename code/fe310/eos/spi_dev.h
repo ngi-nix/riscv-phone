@@ -7,3 +7,5 @@
 void eos_spi_dev_init(void);
 void eos_spi_dev_start(unsigned char dev);
 void eos_spi_dev_stop(void);
+
+void eos_spi_dev_set_div(unsigned char dev, uint16_t div);

@@ -66,4 +66,6 @@ void eve_init_platform(void) {
 
     GPIO_REG(GPIO_LOW_IE)       |=  (1 << EVE_PIN_INTR);
     eos_intr_set(INT_GPIO_BASE + EVE_PIN_INTR, IRQ_PRIORITY_UI, handle_intr);
+
+    eos_spi_dev_set_div(EOS_DEV_DISP, 4);
 }

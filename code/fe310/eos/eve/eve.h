@@ -5,6 +5,7 @@
 #define EVE_ETYPE_INTR                  1
 #define EVE_OK                          0
 #define EVE_ERR                         -1
+#define EVE_ERR_TEXT                    -100
 
 /* events */
 #define EVE_TOUCH_ETYPE_TRACK           0x0001
