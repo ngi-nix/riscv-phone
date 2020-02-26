@@ -42,7 +42,7 @@ void eve_text_init(EVEText *box, uint16_t x, uint16_t y, uint16_t w, uint16_t h,
         box->dl_size += 1;
     }
 
-    eve_touch_set_opt(tag, EVE_TOUCH_ETYPE_TRACK);
+    eve_touch_set_opt(tag, EVE_TOUCH_OPT_TRACK);
 
     eve_cmd(CMD_MEMSET, "www", mem_addr, 0x0, box->w * 2 * box->line_size);
     eve_cmd_exec(1);
@@ -56,14 +56,9 @@ int eve_text_touch(EVEText *box, uint8_t tag0, int touch_idx) {
     EVETouch *t = eve_touch_evt(tag0, touch_idx, box->tag, box->tag, &evt);
 
     if (t && evt) {
-        if (evt & EVE_TOUCH_ETYPE_TAG) {
-            if (box->line_top < 0) {
-                box->line_top = box->line0;
-                box->line_top0 = box->line0;
-            }
-        }
-        if (evt & EVE_TOUCH_ETYPE_TAG_UP) {
-            box->line_top0 = box->line_top;
+        if ((evt & EVE_TOUCH_ETYPE_TRACK_START) && (box->line_top < 0)) {
+            box->line_top = box->line0;
+            box->line_top0 = box->line0;
         }
         if ((evt & EVE_TOUCH_ETYPE_TRACK) && (box->line_top0 >=0)) {
             int line = LINE_IDX_ADD(box->line_top0, (t->y0 - t->y) / box->ch_h, box->line_size);
@@ -71,6 +66,9 @@ int eve_text_touch(EVEText *box, uint8_t tag0, int touch_idx) {
                 box->line_top = line;
                 box->dirty = 1;
             }
+        }
+        if (evt & EVE_TOUCH_ETYPE_TRACK_STOP) {
+            box->line_top0 = box->line_top;
         }
         return 1;
     } else if (box->line_top >= 0) {
