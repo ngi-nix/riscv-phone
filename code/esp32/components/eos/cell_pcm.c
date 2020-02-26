@@ -14,8 +14,8 @@
 #include "cell.h"
 
 #define PCM_MIC_WM          128
-#define PCM_HOLD_CNT_TX     2
-#define PCM_HOLD_CNT_RX     2
+#define PCM_HOLD_CNT_TX     3
+#define PCM_HOLD_CNT_RX     3
 #define PCM_SIZE_BUFQ       4
 #define PCM_SIZE_BUF        (PCM_MIC_WM * 4)
 
@@ -31,7 +31,7 @@ static unsigned char *pcm_bufq_array[PCM_SIZE_BUFQ];
 
 static EOSMsgQ pcm_evt_q;
 static EOSMsgItem pcm_evtq_array[PCM_SIZE_BUFQ];
-static char pcm_running;
+static char pcm_hold_tx;
 
 static i2s_dev_t* I2S[I2S_NUM_MAX] = {&I2S0, &I2S1};
 
@@ -49,8 +49,7 @@ static void i2s_event_task(void *pvParameters) {
     uint16_t bytes_e;
     ssize_t hold_bytes_r = 0;
     unsigned char *hold_buf = NULL;
-    static char hold_cnt_tx = 0;
-    static char hold_cnt_rx = 0;
+    char hold_cnt = 0;
 
     while (1) {
         // Waiting for I2S event.
@@ -58,44 +57,43 @@ static void i2s_event_task(void *pvParameters) {
             switch (event.type) {
                 case I2S_EVENT_RX_DONE:
                     // Event of I2S receiving data
-                    if (!hold_cnt_rx) {
+                    if (!hold_cnt) {
                         buf = eos_net_alloc();
                         buf[0] = EOS_CELL_MTYPE_AUDIO;
                         bytes_r = eos_pcm_read(buf + 1, PCM_MIC_WM);
                         eos_net_send(EOS_NET_MTYPE_CELL, buf, bytes_r + 1, 0);
                     } else {
-                        hold_cnt_rx--;
+                        hold_cnt--;
                         if (hold_buf == NULL) {
                             hold_buf = eos_net_alloc();
                             hold_buf[0] = EOS_CELL_MTYPE_AUDIO;
                         }
-                        hold_bytes_r += eos_pcm_read(hold_buf + 1 + hold_bytes_r, PCM_MIC_WM);
-                        if (hold_cnt_rx == 0) eos_net_send(EOS_NET_MTYPE_CELL, hold_buf, hold_bytes_r + 1, 0);
+                        if (1 + hold_bytes_r + PCM_MIC_WM <= EOS_NET_SIZE_BUF) hold_bytes_r += eos_pcm_read(hold_buf + 1 + hold_bytes_r, PCM_MIC_WM);
+                        if (hold_cnt == 0) {
+                            eos_net_send(EOS_NET_MTYPE_CELL, hold_buf, hold_bytes_r + 1, 0);
+                            hold_bytes_r = 0;
+                            hold_buf = NULL;
+                        }
                     }
 
-                    if (!hold_cnt_tx) {
-                        xSemaphoreTake(mutex, portMAX_DELAY);
-                        eos_msgq_pop(&pcm_evt_q, &_type, &buf, &bytes_e, NULL);
-                        xSemaphoreGive(mutex);
+                    buf = NULL;
+                    xSemaphoreTake(mutex, portMAX_DELAY);
+                    if (pcm_hold_tx && (eos_msgq_size(&pcm_evt_q) == PCM_HOLD_CNT_TX)) pcm_hold_tx = 0;
+                    if (!pcm_hold_tx) eos_msgq_pop(&pcm_evt_q, &_type, &buf, &bytes_e, NULL);
+                    xSemaphoreGive(mutex);
 
-                        if (buf) {
-                            i2s_write(I2S_NUM_0, (const void *)buf, bytes_e, &bytes_w, portMAX_DELAY);
-                            xSemaphoreTake(mutex, portMAX_DELAY);
-                            eos_bufq_push(&pcm_buf_q, buf);
-                            xSemaphoreGive(mutex);
-                        }
-                    } else {
-                        hold_cnt_tx--;
+                    if (buf) {
+                        i2s_write(I2S_NUM_0, (const void *)buf, bytes_e, &bytes_w, portMAX_DELAY);
+                        xSemaphoreTake(mutex, portMAX_DELAY);
+                        eos_bufq_push(&pcm_buf_q, buf);
+                        xSemaphoreGive(mutex);
                     }
                     break;
                 case I2S_EVENT_DMA_ERROR:
                     ESP_LOGE(TAG, "*** I2S DMA ERROR ***");
                     break;
                 case I2S_EVENT_MAX:
-                    hold_cnt_tx = PCM_HOLD_CNT_TX;
-                    hold_cnt_rx = PCM_HOLD_CNT_RX;
-                    hold_bytes_r = 0;
-                    hold_buf = NULL;
+                    hold_cnt = PCM_HOLD_CNT_RX;
                     break;
                 default:
                     break;
@@ -186,17 +184,6 @@ ssize_t eos_pcm_expand(unsigned char *buf, unsigned char *data, size_t size) {
 
     memset(buf, 0, PCM_SIZE_BUF);
     for (i=0; i<size/2; i++) {
-        /*
-        unsigned char _d;
-        if (i % 2 == 0) {
-            _d = 0xAA;
-        } else {
-            _d = 0xF0;
-        }
-        _d = 0xF0;
-        buf[i * 8 + 3] = _d;
-        buf[i * 8 + 2] = _d;
-        */
         buf[i * 8 + 3] = data[i * 2];
         buf[i * 8 + 2] = data[i * 2 + 1];
     }
@@ -208,16 +195,20 @@ int eos_pcm_push(unsigned char *data, size_t size) {
     unsigned char *buf = NULL;
     ssize_t esize;
     int rv;
-    char running;
 
     if (size > PCM_MIC_WM) return EOS_ERR;
 
     xSemaphoreTake(mutex, portMAX_DELAY);
-    running = pcm_running;
-    if (running) buf = eos_bufq_pop(&pcm_buf_q);
+    if (pcm_hold_tx && (eos_msgq_size(&pcm_evt_q) == PCM_HOLD_CNT_TX)) {
+        unsigned char _type;
+        uint16_t _len;
+
+        eos_msgq_pop(&pcm_evt_q, &_type, &buf, &_len, NULL);
+    } else {
+        buf = eos_bufq_pop(&pcm_buf_q);
+    }
     xSemaphoreGive(mutex);
 
-    if (!running) return EOS_ERR;
     if (buf == NULL) return EOS_ERR_EMPTY;
 
     esize = eos_pcm_expand(buf, data, size);
@@ -239,10 +230,6 @@ int eos_pcm_push(unsigned char *data, size_t size) {
 void eos_pcm_start(void) {
     i2s_event_t evt;
 
-    evt.type = I2S_EVENT_MAX;   /* my type */
-    xQueueSend(i2s_queue, (void *)&evt, portMAX_DELAY);
-    i2s_zero_dma_buffer(I2S_NUM_0);
-    i2s_start(I2S_NUM_0);
     xSemaphoreTake(mutex, portMAX_DELAY);
     while (1) {
         unsigned char _type;
@@ -256,13 +243,15 @@ void eos_pcm_start(void) {
             break;
         }
     }
-    pcm_running = 1;
+    pcm_hold_tx = 1;
     xSemaphoreGive(mutex);
+
+    evt.type = I2S_EVENT_MAX;   /* my type */
+    xQueueSend(i2s_queue, (void *)&evt, portMAX_DELAY);
+    i2s_zero_dma_buffer(I2S_NUM_0);
+    i2s_start(I2S_NUM_0);
 }
 
 void eos_pcm_stop(void) {
     i2s_stop(I2S_NUM_0);
-    xSemaphoreTake(mutex, portMAX_DELAY);
-    pcm_running = 0;
-    xSemaphoreGive(mutex);
 }

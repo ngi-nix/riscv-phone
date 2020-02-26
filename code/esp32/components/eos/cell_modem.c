@@ -23,11 +23,12 @@
 #define UART_GPIO_RI    35
 
 static QueueHandle_t uart_queue;
+static QueueHandle_t uart_ri_queue;
 
 static const char *TAG = "EOS MODEM";
 
 static void uart_event_task(void *pvParameters) {
-    char mode = EOS_CELL_UART_MODE_RELAY;
+    char mode = EOS_CELL_UART_MODE_NONE;
     uart_event_t event;
     size_t len;
     unsigned char *buf;
@@ -48,7 +49,7 @@ static void uart_event_task(void *pvParameters) {
                             buf = eos_net_alloc();
                             buf[0] = EOS_CELL_MTYPE_DATA;
                             len = uart_read_bytes(UART_NUM_2, buf+1, MIN(event.size, EOS_NET_SIZE_BUF-1), 100 / portTICK_RATE_MS);
-                            eos_net_send(EOS_NET_MTYPE_CELL, buf, len, 0);
+                            eos_net_send(EOS_NET_MTYPE_CELL, buf, len+1, 0);
                             break;
 
                         default:
@@ -68,6 +69,28 @@ static void uart_event_task(void *pvParameters) {
         }
     }
     vTaskDelete(NULL);
+}
+
+static void uart_ri_event_task(void *pvParameters) {
+    int level;
+
+    while (1) {
+        if (xQueueReceive(uart_ri_queue, (void * )&level, (portTickType)portMAX_DELAY) && (level == 0)) {
+            uint64_t t_start = esp_timer_get_time();
+            if (xQueueReceive(uart_ri_queue, (void * )&level, 200 / portTICK_RATE_MS) && (level == 1)) {
+                uint64_t t_end = esp_timer_get_time();
+                ESP_LOGI(TAG, "TDELTA:%u", (uint32_t)(t_end - t_start));
+            } else {
+                ESP_LOGI(TAG, "RING");
+            }
+        }
+    }
+    vTaskDelete(NULL);
+}
+
+static void IRAM_ATTR uart_ri_isr_handler(void *arg) {
+    int level = gpio_get_level(UART_GPIO_RI);
+    xQueueSendFromISR(uart_ri_queue, &level, NULL);
 }
 
 void eos_modem_init(void) {
@@ -90,11 +113,24 @@ void eos_modem_init(void) {
     io_conf.intr_type = GPIO_INTR_DISABLE;
     io_conf.mode = GPIO_MODE_OUTPUT;
     io_conf.pin_bit_mask = ((uint64_t)1 << UART_GPIO_DTR);
+    io_conf.pull_up_en = 0;
+    io_conf.pull_down_en = 0;
     gpio_config(&io_conf);
     gpio_set_level(UART_GPIO_DTR, 1);
 
+    io_conf.intr_type = GPIO_PIN_INTR_ANYEDGE;
+    io_conf.mode = GPIO_MODE_INPUT;
+    io_conf.pin_bit_mask = ((uint64_t)1 << UART_GPIO_RI);
+    io_conf.pull_up_en = 0;
+    io_conf.pull_down_en = 0;
+    gpio_config(&io_conf);
+
+    uart_ri_queue = xQueueCreate(4, sizeof(int));
     // Create a task to handle uart event from ISR
     xTaskCreate(uart_event_task, "uart_event", EOS_TASK_SSIZE_UART, NULL, EOS_TASK_PRIORITY_UART, NULL);
+    xTaskCreate(uart_ri_event_task, "uart_ri_event", EOS_TASK_SSIZE_UART_RI, NULL, EOS_TASK_PRIORITY_UART_RI, NULL);
+
+    gpio_isr_handler_add(UART_GPIO_RI, uart_ri_isr_handler, NULL);
     ESP_LOGI(TAG, "INIT");
 }
 

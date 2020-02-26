@@ -33,8 +33,6 @@ static void cell_handler(unsigned char _mtype, unsigned char *buffer, uint16_t s
 }
 
 void eos_cell_init(void) {
-    eos_pcm_init();
-    eos_modem_init();
     eos_net_set_handler(EOS_NET_MTYPE_CELL, cell_handler);
 }
 
