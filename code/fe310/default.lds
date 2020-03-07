@@ -21,7 +21,7 @@ PHDRS
 SECTIONS
 {
 
-	__heap_size = 0x200;
+	__stack_size = 0x1000;
 	PROVIDE(__metal_boot_hart = 0);
 	PROVIDE(__metal_chicken_bit = 0);
 
@@ -112,33 +112,27 @@ SECTIONS
 		PROVIDE( __global_pointer$ = . + 0x800 );
 		*(.sdata .sdata.* .sdata2.*)
 		*(.gnu.linkonce.s.*)
-		. = ALIGN(8);
-		*(.srodata.cst16)
-		*(.srodata.cst8)
-		*(.srodata.cst4)
-		*(.srodata.cst2)
-		*(.srodata .srodata.*)
-		. = ALIGN(8);
-		*(.rdata)
-		*(.rodata .rodata.*)
-		*(.gnu.linkonce.r.*)
-	} >ram AT>flash :ram_init
+	} >itim AT>flash :itim_init
+/*	>ram AT>flash :ram_init */
 
 	PROVIDE( metal_segment_data_source_start = LOADADDR(.data) );
 	PROVIDE( metal_segment_data_target_start = ADDR(.data) );
 	PROVIDE( metal_segment_data_target_end = ADDR(.data) + SIZEOF(.data) );
 
 	.bss : ALIGN(8) {
+		*(.ibss .ibss.*)
 		*(.sbss*)
 		*(.gnu.linkonce.sb.*)
 		*(.bss .bss.*)
 		*(.gnu.linkonce.b.*)
 		*(COMMON)
-	} >ram AT>ram :ram
+	} >itim AT>ram :itim
+/*	>ram AT>ram :ram */
 
 	PROVIDE( metal_segment_bss_target_start = ADDR(.bss) );
 	PROVIDE( metal_segment_bss_target_end = ADDR(.bss) + SIZEOF(.bss) );
 
+	__heap_size = 0x4000 - __stack_size;
 	.heap : {
 		PROVIDE( metal_segment_heap_target_start = . );
 		. += __heap_size;
@@ -146,7 +140,6 @@ SECTIONS
 		PROVIDE( _heap_end = . );
 	} >ram AT>ram :ram
 
-	__stack_size = 0x4000 - SIZEOF(.heap) - SIZEOF(.bss) - SIZEOF(.data);
 	PROVIDE(__stack_size = __stack_size);
 
 	.stack : {
