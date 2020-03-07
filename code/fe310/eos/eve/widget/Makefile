@@ -1,6 +1,6 @@
 include ../../../common.mk
 
-CFLAGS += -I. -I.. -I../.. -I../../../include -I../../../drivers
+CFLAGS += -I. -I.. -I../..
 
 obj = widget.o page.o text.o
 

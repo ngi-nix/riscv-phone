@@ -1,6 +1,6 @@
 include ../../../common.mk
 
-CFLAGS += -I. -I.. -I../.. -I../../../include -I../../../drivers
+CFLAGS += -I. -I.. -I../..
 
 obj = font.o screen.o tile.o page.o form.o
 
