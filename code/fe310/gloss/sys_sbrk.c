@@ -28,10 +28,9 @@ _sbrk(ptrdiff_t incr)
   }
 
   /* Don't move the break past the end of the heap */
-  if ((brk + incr) < &metal_segment_heap_target_end) {
+  if ((brk + incr) <= &metal_segment_heap_target_end) {
     brk += incr;
   } else {
-    brk = &metal_segment_heap_target_end;
     return (void *)-1;
   }
 
