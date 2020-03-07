@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <math.h>
@@ -168,28 +169,28 @@ static void _cmd_end(void) {
 }
 
 static void _cmd_string(const char *s, uint8_t flags) {
-    int i = 0, p = 0;
+    int i = 0;
 
     while (s[i] != 0) {
-        eve_spi_xchg8(s[i], EVE_SPI_FLAG_BSWAP | flags);
+        eve_spi_xchg8(s[i], flags);
         i++;
     }
-    eve_spi_xchg8(0, EVE_SPI_FLAG_BSWAP | flags);
+    eve_spi_xchg8(0, flags);
     i++;
     _cmd_inc(i);
 }
 
 static void _cmd_buffer(const char *b, int size, uint8_t flags) {
-    int i = 0, p = 0;
+    int i = 0;
 
     for (i=0; i<size; i++) {
-        eve_spi_xchg8(b[i], EVE_SPI_FLAG_BSWAP | flags);
+        eve_spi_xchg8(b[i], flags);
     }
     _cmd_inc(size);
 }
 
 void eve_cmd(uint32_t cmd, const char *fmt, ...) {
-    uint8_t flags = _cmd_burst ? EVE_SPI_FLAG_TX : 0;
+    uint8_t flags = _cmd_burst ? (EVE_SPI_FLAG_TX | EVE_SPI_FLAG_BSWAP) : EVE_SPI_FLAG_BSWAP;
     va_list argv;
     uint16_t *p;
     int i = 0;
@@ -199,21 +200,21 @@ void eve_cmd(uint32_t cmd, const char *fmt, ...) {
     while (fmt[i]) {
         switch (fmt[i]) {
             case 'b':
-                eve_spi_xchg8(va_arg(argv, int), EVE_SPI_FLAG_BSWAP | flags);
+                eve_spi_xchg8(va_arg(argv, int), flags);
                 _cmd_inc(1);
                 break;
             case 'h':
-                eve_spi_xchg16(va_arg(argv, int), EVE_SPI_FLAG_BSWAP | flags);
+                eve_spi_xchg16(va_arg(argv, int), flags);
                 _cmd_inc(2);
                 break;
             case 'w':
-                eve_spi_xchg32(va_arg(argv, int), EVE_SPI_FLAG_BSWAP | flags);
+                eve_spi_xchg32(va_arg(argv, int), flags);
                 _cmd_inc(4);
                 break;
             case '&':
                 p = va_arg(argv, uint16_t *);
                 *p = _cmd_offset;
-                eve_spi_xchg32(0, EVE_SPI_FLAG_BSWAP | flags);
+                eve_spi_xchg32(0, flags);
                 _cmd_inc(4);
                 break;
             case 's':
@@ -225,6 +226,7 @@ void eve_cmd(uint32_t cmd, const char *fmt, ...) {
         }
         i++;
     }
+	va_end(argv);
     /* padding */
 	i = _cmd_offset & 3;  /* equivalent to _cmd_offset % 4 */
     if (i) {
@@ -232,12 +234,11 @@ void eve_cmd(uint32_t cmd, const char *fmt, ...) {
         _cmd_inc(i);
 
     	while (i > 0) {
-            eve_spi_xchg8(0, EVE_SPI_FLAG_BSWAP | flags);
+            eve_spi_xchg8(0, flags);
     		i--;
     	}
     }
     _cmd_end();
-	va_end(argv);
 }
 
 uint32_t eve_cmd_result(uint16_t offset) {
@@ -403,7 +404,7 @@ void eve_handle_touch(void) {
                     if (touch->tracker.tag && !(_tag_opt[touch->tracker.tag] & EVE_TOUCH_OPT_TRACK_XY)) {
                         touch->tracker.track = 1;
                         touch->evt |= EVE_TOUCH_ETYPE_TRACK_START;
-                        if (!touch->t && (_tag_opt[touch->tracker.tag] & EVE_TOUCH_OPT_INERT)) touch->t = now;
+                        touch->t = now;
                     }
                     if (!_tag0 && ((_tag_opt[touch_tag] | _tag_opt[EVE_TAG_SCREEN]) & EVE_TOUCH_OPT_TIMER_MASK)) {
                         _touch_timer.tag = _tag_opt[touch_tag] & EVE_TOUCH_OPT_TIMER_MASK ? touch_tag : EVE_TAG_SCREEN;
@@ -444,7 +445,7 @@ void eve_handle_touch(void) {
                         }
                         touch->tracker.track = 1;
                         touch->evt |= EVE_TOUCH_ETYPE_TRACK_START;
-                        if (!touch->t && (_tag_opt[touch->tracker.tag] & EVE_TOUCH_OPT_INERT)) touch->t = now;
+                        touch->t = now;
                     }
                 }
                 if (_touch_timer.tag && ((dx > EVE_THRESHOLD_X) || (dy > EVE_THRESHOLD_Y))) {
@@ -653,6 +654,7 @@ EVETouch *eve_touch_evt(uint8_t tag0, int touch_idx, uint8_t tag_min, uint8_t ta
 
     *evt = 0;
     if ((touch_idx < 0) || (touch_idx > 4)) return ret;
+    if ((tag_min == 0) || (tag_max == 0)) return ret;
     if ((tag0 < tag_min) || (tag0 > tag_max)) return ret;
 
     ret = &_touch[touch_idx];
@@ -666,6 +668,10 @@ EVETouch *eve_touch_evt(uint8_t tag0, int touch_idx, uint8_t tag_min, uint8_t ta
     if (_evt & EVE_TOUCH_ETYPE_TAG_UP) {
         _tag = ret->tag_up;
         if ((_tag >= tag_min) && (_tag <= tag_max)) *evt |= EVE_TOUCH_ETYPE_TAG_UP;
+    }
+    if (_evt & EVE_TOUCH_ETYPE_TRACK_REG) {
+        _tag = ret->tracker.tag;
+        if ((_tag >= tag_min) && (_tag <= tag_max)) *evt |= EVE_TOUCH_ETYPE_TRACK_REG;
     }
     if (_evt & EVE_TOUCH_ETYPE_TRACK_MASK) {
         _tag = ret->tracker.tag;
@@ -681,6 +687,14 @@ EVETouch *eve_touch_evt(uint8_t tag0, int touch_idx, uint8_t tag_min, uint8_t ta
 
 void eve_touch_set_opt(uint8_t tag, uint8_t opt) {
     _tag_opt[tag] = opt;
+}
+
+uint8_t eve_touch_get_opt(uint8_t tag) {
+    return _tag_opt[tag];
+}
+
+void eve_touch_clear_opt(void) {
+    memset(_tag_opt, 0, sizeof(_tag_opt));
 }
 
 EVETouchTimer *eve_touch_get_timer(void) {

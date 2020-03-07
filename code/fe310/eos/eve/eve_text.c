@@ -17,7 +17,7 @@ static void scroll1(EVEText *box) {
     box->dirty = 1;
 }
 
-void eve_text_init(EVEText *box, uint16_t x, uint16_t y, uint16_t w, uint16_t h, double scale_x, double scale_y, uint8_t tag, uint16_t line_size, uint32_t mem_addr, uint32_t *mem_next) {
+void eve_text_init(EVEText *box, int16_t x, int16_t y, uint16_t w, uint16_t h, double scale_x, double scale_y, uint8_t tag, uint16_t line_size, uint32_t mem_addr, uint32_t *mem_next) {
     box->x = x;
     box->y = y;
     box->w = w;
@@ -51,9 +51,11 @@ void eve_text_init(EVEText *box, uint16_t x, uint16_t y, uint16_t w, uint16_t h,
 }
 
 int eve_text_touch(EVEText *box, uint8_t tag0, int touch_idx) {
+    EVETouch *t;
     uint16_t evt;
-    EVETouch *t = eve_touch_evt(tag0, touch_idx, box->tag, box->tag, &evt);
+    int ret = 0;
 
+    t = eve_touch_evt(tag0, touch_idx, box->tag, box->tag, &evt);
     if (t && evt) {
         if ((evt & EVE_TOUCH_ETYPE_TRACK_START) && (box->line_top < 0)) {
             box->line_top = box->line0;
@@ -69,13 +71,13 @@ int eve_text_touch(EVEText *box, uint8_t tag0, int touch_idx) {
         if (evt & EVE_TOUCH_ETYPE_TRACK_STOP) {
             box->line_top0 = box->line_top;
         }
-        return 1;
+        ret = 1;
     } else if (box->line_top >= 0) {
         box->line_top = -1;
         box->line_top0 = -1;
         box->dirty = 1;
     }
-    return 0;
+    return ret;
 }
 
 uint8_t eve_text_draw(EVEText *box) {

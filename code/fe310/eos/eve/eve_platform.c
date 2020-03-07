@@ -22,8 +22,6 @@ static void handle_time(unsigned char type) {
 }
 
 static void handle_evt(unsigned char type, unsigned char *buffer, uint16_t len) {
-    uint8_t flags;
-
     eos_spi_dev_start(EOS_DEV_DISP);
     eve_handle_touch();
     eos_spi_dev_stop();

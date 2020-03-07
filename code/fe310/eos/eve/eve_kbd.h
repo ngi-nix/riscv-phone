@@ -3,6 +3,8 @@
 typedef void (*eve_kbd_input_handler_t) (void *, int);
 
 typedef struct EVEKbd {
+    uint16_t w;
+    uint16_t h;
     uint32_t mem_addr;
     uint16_t mem_size;
     uint8_t key_count;
@@ -10,9 +12,11 @@ typedef struct EVEKbd {
     uint8_t key_modifier;
     uint8_t key_modifier_sticky;
     uint8_t key_modifier_lock;
+    char active;
     eve_kbd_input_handler_t putc;
 } EVEKbd;
 
-void eve_kbd_init(EVEKbd *kbd, eve_kbd_input_handler_t putc_f, uint32_t mem_addr, uint32_t *mem_next);
+void eve_kbd_init(EVEKbd *kbd, uint32_t mem_addr, uint32_t *mem_next);
+void eve_kbd_set_handler(EVEKbd *kbd, eve_kbd_input_handler_t putc);
 int eve_kbd_touch(EVEKbd *kbd, uint8_t tag0, int touch_idx, void *w);
-uint8_t eve_kbd_draw(EVEKbd *kbd, char active);
+uint8_t eve_kbd_draw(EVEKbd *kbd);

@@ -1,3 +1,5 @@
+#include <stdlib.h>
+
 #include "eve.h"
 #include "eve_kbd.h"
 
@@ -17,29 +19,39 @@
 #define KEY_BS      0x08
 #define KEY_RET     0x0a
 
-void eve_kbd_init(EVEKbd *kbd, eve_kbd_input_handler_t putc, uint32_t mem_addr, uint32_t *mem_next) {
+void eve_kbd_init(EVEKbd *kbd, uint32_t mem_addr, uint32_t *mem_next) {
     uint16_t mem_size;
 
-    eve_write16(REG_CMD_DL, 0);
-    eve_kbd_draw(kbd, 1);
-    eve_cmd_exec(1);
-    mem_size = eve_read16(REG_CMD_DL);
-    eve_cmd(CMD_MEMCPY, "www", mem_addr, EVE_RAM_DL, mem_size);
-    eve_cmd_exec(1);
-
+    kbd->w = 480;
+    kbd->h = 225;
     kbd->mem_addr = mem_addr;
     kbd->mem_size = mem_size;
     kbd->key_modifier = 0;
     kbd->key_count = 0;
     kbd->key_down = 0;
-    kbd->putc = putc;
+    kbd->putc = NULL;
+
+    kbd->active = 1;
+    eve_write16(REG_CMD_DL, 0);
+    eve_kbd_draw(kbd);
+    eve_cmd_exec(1);
+    mem_size = eve_read16(REG_CMD_DL);
+    eve_cmd(CMD_MEMCPY, "www", mem_addr, EVE_RAM_DL, mem_size);
+    eve_cmd_exec(1);
+    kbd->active = 0;
+
     *mem_next = kbd->mem_addr + kbd->mem_size;
 }
 
-int eve_kbd_touch(EVEKbd *kbd, uint8_t tag0, int touch_idx, void *w) {
-    uint16_t evt;
-    EVETouch *t = eve_touch_evt(tag0, touch_idx, 1, 0x7e, &evt);
+void eve_kbd_set_handler(EVEKbd *kbd, eve_kbd_input_handler_t putc) {
+    kbd->putc = putc;
+}
 
+int eve_kbd_touch(EVEKbd *kbd, uint8_t tag0, int touch_idx, void *w) {
+    EVETouch *t;
+    uint16_t evt;
+
+    t = eve_touch_evt(tag0, touch_idx, 1, 0x7e, &evt);
     if (t && evt) {
         if (evt & EVE_TOUCH_ETYPE_TAG) {
             uint8_t _tag = t->tag;
@@ -91,14 +103,15 @@ int eve_kbd_touch(EVEKbd *kbd, uint8_t tag0, int touch_idx, void *w) {
                 }
             }
         }
-        return 1;
+        kbd->active = 1;
     } else {
-        return 0;
+        kbd->active = 0;
     }
+    return kbd->active;
 }
 
-uint8_t eve_kbd_draw(EVEKbd *kbd, char active) {
-    if (active) {
+uint8_t eve_kbd_draw(EVEKbd *kbd) {
+    if (kbd->active) {
         eve_cmd_dl(SAVE_CONTEXT());
         eve_cmd(CMD_KEYS, "hhhhhhs", 0, KEYS_Y + KEYS_RSIZE * 0, 480, KEYS_HEIGHT, KEYS_FSIZE, kbd->key_down, kbd->key_modifier & (FLAG_FN | FLAG_SHIFT) ? "!@#$%^&*()" : (kbd->key_modifier & FLAG_CTRL ? " @[\\]^_?  " : "1234567890"));
         eve_cmd(CMD_KEYS, "hhhhhhs", 0, KEYS_Y + KEYS_RSIZE * 1, 480, KEYS_HEIGHT, KEYS_FSIZE, kbd->key_down, kbd->key_modifier & FLAG_FN ? "-_=+[]{}\\|" : kbd->key_modifier & (FLAG_SHIFT | FLAG_CTRL) ? "QWERTYUIOP" : "qwertyuiop");

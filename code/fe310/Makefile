@@ -2,7 +2,7 @@ include common.mk
 
 CFLAGS += -I./include
 
-subdirs = drivers gloss metal eos eos/eve eos/eve/widget
+subdirs = drivers gloss metal eos eos/eve eos/eve/screen eos/eve/widget
 
 all: libeos.a
 

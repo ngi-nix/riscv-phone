@@ -24,7 +24,7 @@
 
 #define EVE_TOUCH_ETYPE_TAG_MASK        (EVE_TOUCH_ETYPE_TAG        | EVE_TOUCH_ETYPE_TAG_UP)
 #define EVE_TOUCH_ETYPE_TAP_MASK        (EVE_TOUCH_ETYPE_TAP1       | EVE_TOUCH_ETYPE_TAP2)
-#define EVE_TOUCH_ETYPE_TRACK_MASK      (EVE_TOUCH_ETYPE_TRACK      | EVE_TOUCH_ETYPE_TRACK_REG | EVE_TOUCH_ETYPE_TRACK_START | EVE_TOUCH_ETYPE_TRACK_STOP)
+#define EVE_TOUCH_ETYPE_TRACK_MASK      (EVE_TOUCH_ETYPE_TRACK      | EVE_TOUCH_ETYPE_TRACK_START | EVE_TOUCH_ETYPE_TRACK_STOP)
 #define EVE_TOUCH_ETYPE_POINT_MASK      (EVE_TOUCH_ETYPE_POINT      | EVE_TOUCH_ETYPE_POINT_UP)
 
 /* extended events */
@@ -112,5 +112,7 @@ int eve_init(uint32_t *touch_transform);
 void eve_touch_set_handler(eve_touch_handler_t handler, void *handler_param);
 EVETouch *eve_touch_evt(uint8_t tag0, int touch_idx, uint8_t tag_min, uint8_t tag_max, uint16_t *evt);
 void eve_touch_set_opt(uint8_t tag, uint8_t opt);
+uint8_t eve_touch_get_opt(uint8_t tag);
+void eve_touch_clear_opt(void);
 
 EVETouchTimer *eve_touch_get_timer(void);

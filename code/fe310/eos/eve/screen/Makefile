@@ -2,7 +2,7 @@ include ../../../common.mk
 
 CFLAGS += -I. -I.. -I../.. -I../../../include -I../../../drivers
 
-obj = widget.o page.o text.o
+obj = font.o screen.o tile.o page.o form.o
 
 
 %.o: %.c %.h
