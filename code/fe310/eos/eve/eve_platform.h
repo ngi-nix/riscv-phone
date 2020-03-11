@@ -1,8 +1,12 @@
 #include <stdint.h>
 
-#include "spi.h"
+#include "../spi.h"
+#include "../timer.h"
 
-#define EVE_RTC_FREQ        32768
+#define EVE_ETYPE_INTR      1
+#define EVE_PIN_INTR        0
+
+#define EVE_RTC_FREQ        EOS_TIMER_RTC_FREQ
 
 #define EVE_SPI_FLAG_BSWAP  EOS_SPI_FLAG_BSWAP
 #define EVE_SPI_FLAG_TX     EOS_SPI_FLAG_TX
@@ -18,6 +22,6 @@
 void eve_sleep(uint32_t ms);
 void eve_timer_set(uint32_t ms);
 void eve_timer_clear(void);
-uint64_t eve_timer_get_tick(void);
+uint64_t eve_time_get_tick(void);
 
 void eve_init_platform(void);

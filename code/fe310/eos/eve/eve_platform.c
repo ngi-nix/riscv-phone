@@ -1,19 +1,14 @@
 #include <stdlib.h>
 
-#include "encoding.h"
 #include "platform.h"
 
 #include "eos.h"
 #include "interrupt.h"
 #include "event.h"
-#include "timer.h"
-#include "spi.h"
 #include "eve.h"
 #include "eve_platform.h"
 
 #include "irq_def.h"
-
-#define EVE_PIN_INTR            0
 
 static void handle_time(unsigned char type) {
     eos_spi_dev_start(EOS_DEV_DISP);
@@ -37,20 +32,19 @@ static void handle_intr(void) {
 }
 
 void eve_sleep(uint32_t ms) {
-    eos_timer_sleep(ms);
+    eos_time_sleep(ms);
 }
 
 void eve_timer_set(uint32_t ms) {
-    eos_timer_set(ms, EOS_TIMER_ETYPE_UI, 0);
+    eos_timer_set(ms, EOS_TIMER_ETYPE_UI);
 }
 
 void eve_timer_clear(void) {
     eos_timer_clear(EOS_TIMER_ETYPE_UI);
 }
 
-uint64_t eve_timer_get_tick(void) {
-    volatile uint64_t *mtime = (uint64_t *) (CLINT_CTRL_ADDR + CLINT_MTIME);
-    return *mtime;
+uint64_t eve_time_get_tick(void) {
+    return eos_time_get_tick();
 }
 
 void eve_init_platform(void) {

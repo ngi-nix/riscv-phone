@@ -3,6 +3,8 @@
 typedef void (*eve_kbd_input_handler_t) (void *, int);
 
 typedef struct EVEKbd {
+    int16_t x;
+    int16_t y;
     uint16_t w;
     uint16_t h;
     uint32_t mem_addr;

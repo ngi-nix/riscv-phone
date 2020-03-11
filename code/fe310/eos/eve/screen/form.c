@@ -24,7 +24,7 @@ int eve_form_touch(EVECanvas *c, uint8_t tag0, int touch_idx) {
     EVEForm *form = (EVEForm *)c;
     EVEWidget *widget = form->widget;
     int a, i, ret = 0;
-    EVEPageFocus focus = { NULL, {0,0,0,0}};
+    EVEPageFocus focus = {NULL, {0,0,0,0}};
 
     for (i=0; i<form->widget_size; i++) {
         a = widget->touch(widget, &form->p, tag0, touch_idx, &focus);
@@ -61,7 +61,7 @@ uint8_t eve_form_draw(EVECanvas *c, uint8_t tag0) {
         tagN = widget->draw(widget, &form->p, tag0);
         if (tagN) {
             for (j=tag0; j<=tagN; j++) {
-                eve_touch_set_opt(j, eve_touch_get_opt(j) | EVE_TOUCH_OPT_TRACK | EVE_TOUCH_OPT_TRACK_XY | EVE_TOUCH_OPT_INERT);
+                eve_touch_set_opt(j, eve_touch_get_opt(j) | EVE_TOUCH_OPT_TRACK | EVE_TOUCH_OPT_TRACK_XY | EVE_TOUCH_OPT_TRACK_EXT);
             }
             if (tagN < 0xfe) {
                 tag0 = tagN + 1;
