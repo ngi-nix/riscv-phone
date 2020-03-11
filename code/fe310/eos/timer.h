@@ -6,12 +6,17 @@
 
 #define EOS_TIMER_MAX_ETYPE     4
 
+#define EOS_TIMER_NONE          0xffffffff
+#define EOS_TIMER_RTC_FREQ      32768
+
 typedef void (*eos_timer_handler_t) (unsigned char);
 
 void eos_timer_init(void);
 void eos_timer_set_handler(unsigned char evt, eos_timer_handler_t handler);
 
-uint64_t eos_timer_get(unsigned char evt);
-void eos_timer_set(uint32_t msec, unsigned char evt, unsigned char b);
+uint32_t eos_timer_get(unsigned char evt);
+void eos_timer_set(uint32_t msec, unsigned char evt);
 void eos_timer_clear(unsigned char evt);
-void eos_timer_sleep(uint32_t msec);
+
+void eos_time_sleep(uint32_t msec);
+uint64_t eos_time_get_tick(void);
