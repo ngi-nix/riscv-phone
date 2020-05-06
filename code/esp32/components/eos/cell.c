@@ -7,6 +7,8 @@
 #include "net.h"
 #include "cell.h"
 
+static uint8_t cell_mode;
+
 static void cell_handler(unsigned char _mtype, unsigned char *buffer, uint16_t size) {
     uint8_t mtype = buffer[0];
 
@@ -15,10 +17,11 @@ static void cell_handler(unsigned char _mtype, unsigned char *buffer, uint16_t s
             eos_modem_write(buffer+1, size-1);
             break;
         case EOS_CELL_MTYPE_DATA_START:
+            cell_mode = eos_modem_get_mode();
             eos_modem_set_mode(EOS_CELL_UART_MODE_RELAY);
             break;
         case EOS_CELL_MTYPE_DATA_STOP:
-            eos_modem_set_mode(0);
+            eos_modem_set_mode(cell_mode);
             break;
         case EOS_CELL_MTYPE_AUDIO:
             eos_pcm_push(buffer+1, size-1);

@@ -1,7 +1,10 @@
 #define EOS_OK                      0
 #define EOS_ERR                     -1
+#define EOS_ERR_TIMEOUT             -2
+
 #define EOS_ERR_FULL                -10
 #define EOS_ERR_EMPTY               -11
+#define EOS_ERR_NOTFOUND            -12
 
 #define EOS_TASK_PRIORITY_UART      1
 #define EOS_TASK_PRIORITY_UART_RI   1
