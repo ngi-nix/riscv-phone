@@ -6,6 +6,8 @@
 #define EOS_ERR_EMPTY               -11
 #define EOS_ERR_NOTFOUND            -12
 
+#define EOS_ERR_BUSY                -20
+
 #define EOS_TASK_PRIORITY_UART      1
 #define EOS_TASK_PRIORITY_UART_RI   1
 #define EOS_TASK_PRIORITY_I2S       1
