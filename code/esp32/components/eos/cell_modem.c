@@ -16,6 +16,8 @@
 #include "at_urc.h"
 #include "cell.h"
 
+// XXX: Modem init, reconnect on failure
+
 #define MIN(X, Y)               (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y)               (((X) > (Y)) ? (X) : (Y))
 
@@ -444,7 +446,7 @@ void eos_modem_init(void) {
     io_conf.pull_up_en = 0;
     io_conf.pull_down_en = 0;
     gpio_config(&io_conf);
-    gpio_set_level(UART_GPIO_DTR, 1);
+    gpio_set_level(UART_GPIO_DTR, 0);
 
     io_conf.intr_type = GPIO_PIN_INTR_ANYEDGE;
     io_conf.mode = GPIO_MODE_INPUT;
@@ -609,4 +611,41 @@ void eos_modem_give(void) {
         xSemaphoreGive(uart_mutex);
     }
     xSemaphoreGive(mutex);
+}
+
+void eos_modem_sleep(void) {
+    gpio_set_level(UART_GPIO_DTR, 1);
+}
+
+void eos_modem_wake(void) {
+    gpio_set_level(UART_GPIO_DTR, 0);
+}
+
+void eos_ppp_set_apn(char *apn) {
+    xSemaphoreTake(mutex, portMAX_DELAY);
+    strncpy(ppp_apn, apn, sizeof(ppp_apn) - 1);
+    xSemaphoreGive(mutex);
+}
+
+void eos_ppp_set_auth(char *user, char *pass) {
+    xSemaphoreTake(mutex, portMAX_DELAY);
+    strncpy(ppp_user, user, sizeof(ppp_user) - 1);
+    strncpy(ppp_pass, pass, sizeof(ppp_pass) - 1);
+    xSemaphoreGive(mutex);
+}
+
+int eos_ppp_connect(void) {
+    return eos_modem_set_mode(EOS_CELL_UART_MODE_PPP);
+}
+
+int eos_ppp_disconnect(void) {
+    int rv = eos_modem_set_mode(EOS_CELL_UART_MODE_ATCMD);
+
+    xSemaphoreTake(mutex, portMAX_DELAY);
+    memset(ppp_apn, 0, sizeof(ppp_apn));
+    memset(ppp_user, 0, sizeof(ppp_user));
+    memset(ppp_pass, 0, sizeof(ppp_pass));
+    xSemaphoreGive(mutex);
+
+    return rv;
 }

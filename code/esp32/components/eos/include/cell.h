@@ -10,8 +10,8 @@
 #define EOS_CELL_MTYPE_AUDIO_STOP   5
 
 #define EOS_CELL_UART_MODE_NONE     0
-#define EOS_CELL_UART_MODE_PPP      1
-#define EOS_CELL_UART_MODE_ATCMD    2
+#define EOS_CELL_UART_MODE_ATCMD    1
+#define EOS_CELL_UART_MODE_PPP      2
 #define EOS_CELL_UART_MODE_RELAY    3
 
 void eos_pcm_init(void);
@@ -33,5 +33,14 @@ uint8_t eos_modem_get_mode(void);
 int eos_modem_set_mode(uint8_t mode);
 int eos_modem_take(void);
 void eos_modem_give(void);
+
+void eos_modem_sleep(void);
+void eos_modem_wake(void);
+
+void eos_ppp_set_apn(char *apn);
+void eos_ppp_set_auth(char *user, char *pass);
+
+int eos_ppp_connect(void);
+int eos_ppp_disconnect(void);
 
 void eos_cell_init(void);
