@@ -1,3 +1,4 @@
+#include <tcpip_adapter.h>
 #include <driver/gpio.h>
 
 #include "i2c.h"
@@ -9,14 +10,18 @@
 
 // Main application
 void app_main() {
-    eos_i2c_init();
+    tcpip_adapter_init();
+
     eos_pcm_init();
     gpio_install_isr_service(0);
     eos_modem_init();
+
     eos_net_init();
     eos_cell_init();
     eos_wifi_init();
     eos_sock_init();
+
+    eos_i2c_init();
     eos_bq25895_set_ilim();
 }
 
