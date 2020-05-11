@@ -79,7 +79,7 @@ static void i2s_event_task(void *pvParameters) {
 
                     buf = NULL;
                     xSemaphoreTake(mutex, portMAX_DELAY);
-                    if (pcm_hold_tx && (eos_msgq_size(&pcm_evt_q) == PCM_HOLD_CNT_TX)) pcm_hold_tx = 0;
+                    if (pcm_hold_tx && (eos_msgq_len(&pcm_evt_q) == PCM_HOLD_CNT_TX)) pcm_hold_tx = 0;
                     if (!pcm_hold_tx) eos_msgq_pop(&pcm_evt_q, &_type, &buf, &bytes_e, NULL);
                     xSemaphoreGive(mutex);
 
@@ -200,7 +200,7 @@ int eos_pcm_push(unsigned char *data, size_t size) {
     if (size > PCM_MIC_WM) return EOS_ERR;
 
     xSemaphoreTake(mutex, portMAX_DELAY);
-    if (pcm_hold_tx && (eos_msgq_size(&pcm_evt_q) == PCM_HOLD_CNT_TX)) {
+    if (pcm_hold_tx && (eos_msgq_len(&pcm_evt_q) == PCM_HOLD_CNT_TX)) {
         unsigned char _type;
         uint16_t _len;
 

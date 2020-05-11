@@ -40,7 +40,7 @@ void eos_msgq_pop(EOSMsgQ *msgq, unsigned char *type, unsigned char **buffer, ui
     }
 }
 
-uint8_t eos_msgq_size(EOSMsgQ *msgq) {
+uint8_t eos_msgq_len(EOSMsgQ *msgq) {
     return (uint8_t)(msgq->idx_w - msgq->idx_r);
 }
 
@@ -64,6 +64,6 @@ unsigned char *eos_bufq_pop(EOSBufQ *bufq) {
     return bufq->array[IDX_MASK(bufq->idx_r++, bufq->size)];
 }
 
-uint8_t eos_bufq_size(EOSBufQ *bufq) {
+uint8_t eos_bufq_len(EOSBufQ *bufq) {
     return (uint8_t)(bufq->idx_w - bufq->idx_r);
 }

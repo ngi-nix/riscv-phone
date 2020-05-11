@@ -18,8 +18,8 @@
 
 // XXX: No DHCP server
 
-#define WIFI_CONNECT_MAX_ATTEMPTS   3
-#define WIFI_SCAN_MAX_RECORDS       20
+#define WIFI_MAX_SCAN_RECORDS       20
+#define WIFI_MAX_CONNECT_ATTEMPTS   3
 
 #define WIFI_STATE_STOPPED          0
 #define WIFI_STATE_SCANNING         1
@@ -49,8 +49,8 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event) {
     char _disconnect;
     uint8_t _action, _state;
     unsigned char *rbuf;
-    wifi_ap_record_t scan_r[WIFI_SCAN_MAX_RECORDS];
-    uint16_t scan_n = WIFI_SCAN_MAX_RECORDS;
+    wifi_ap_record_t scan_r[WIFI_MAX_SCAN_RECORDS];
+    uint16_t scan_n = WIFI_MAX_SCAN_RECORDS;
 
     switch(event->event_id) {
         case WIFI_EVENT_SCAN_DONE:
@@ -95,7 +95,7 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event) {
             xSemaphoreTake(mutex, portMAX_DELAY);
             wifi_state = WIFI_STATE_CONNECTED;
             wifi_action = WIFI_ACTION_NONE;
-            wifi_connect_cnt = WIFI_CONNECT_MAX_ATTEMPTS;
+            wifi_connect_cnt = WIFI_MAX_CONNECT_ATTEMPTS;
             xSemaphoreGive(mutex);
             break;
 
@@ -111,7 +111,7 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event) {
                 rbuf = eos_net_alloc();
                 if (_action == WIFI_ACTION_CONNECT) {
                     rbuf[0] = EOS_WIFI_MTYPE_CONNECT;
-                    rbuf[1] = 0;
+                    rbuf[1] = EOS_ERR;
                     eos_net_send(EOS_NET_MTYPE_WIFI, rbuf, 2, 0);
                 } else {
                     rbuf[0] = EOS_WIFI_MTYPE_DISCONNECT;
@@ -130,7 +130,7 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event) {
             } else {
                 rbuf = eos_net_alloc();
                 rbuf[0] = EOS_WIFI_MTYPE_CONNECT;
-                rbuf[1] = 1;
+                rbuf[1] = EOS_OK;
                 eos_net_send(EOS_NET_MTYPE_WIFI, rbuf, 2, 0);
             }
             break;
@@ -252,7 +252,7 @@ int eos_wifi_connect(void) {
 
         wifi_action = WIFI_ACTION_CONNECT;
         wifi_state = WIFI_STATE_CONNECTING;
-        wifi_connect_cnt = WIFI_CONNECT_MAX_ATTEMPTS;
+        wifi_connect_cnt = WIFI_MAX_CONNECT_ATTEMPTS;
     } else {
         rv = EOS_ERR_BUSY;
     }
