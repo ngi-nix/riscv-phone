@@ -9,21 +9,18 @@
 #include "sock.h"
 
 static eos_evt_handler_t evt_handler[EOS_SOCK_MAX_SOCK];
-static uint16_t evt_handler_flags_buf_free = 0;
-static uint16_t evt_handler_flags_buf_acq = 0;
 
 static void sock_handle_evt(unsigned char type, unsigned char *buffer, uint16_t len) {
     unsigned char sock;
     if ((buffer == NULL) || (len < 2)) {
-        eos_evtq_bad_handler(type, buffer, len);
-        eos_net_free(buffer, 0);
+        eos_net_bad_handler(type, buffer, len);
         return;
     }
 
     sock = buffer[1];
     if ((sock == 0) || (sock > EOS_SOCK_MAX_SOCK)) {
-        eos_evtq_bad_handler(type, buffer, len);
-        eos_net_free(buffer, 0);
+        eos_net_bad_handler(type, buffer, len);
+        return;
     }
 
     sock--;
@@ -32,8 +29,7 @@ static void sock_handle_evt(unsigned char type, unsigned char *buffer, uint16_t 
             evt_handler[sock](type, buffer, len);
             break;
         default:
-            eos_evtq_bad_handler(type, buffer, len);
-            eos_net_free(buffer, 0);
+            eos_net_bad_handler(type, buffer, len);
             break;
     }
 }
@@ -42,13 +38,13 @@ void eos_sock_init(void) {
     int i;
 
     for (i=0; i<EOS_SOCK_MAX_SOCK; i++) {
-        evt_handler[i] = eos_evtq_bad_handler;
+        evt_handler[i] = eos_net_bad_handler;
     }
     eos_net_set_handler(EOS_NET_MTYPE_SOCK, sock_handle_evt);
 }
 
 void eos_sock_set_handler(unsigned char sock, eos_evt_handler_t handler) {
-    if (handler == NULL) handler = eos_evtq_bad_handler;
+    if (handler == NULL) handler = eos_net_bad_handler;
     if (sock && (sock <= EOS_SOCK_MAX_SOCK)) evt_handler[sock - 1] = handler;
 }
 
@@ -62,7 +58,7 @@ int eos_sock_open_udp(void) {
     rv = eos_net_send(EOS_NET_MTYPE_SOCK, buffer, 1, 0);
     if (rv) return rv;
 
-    eos_evtq_get(EOS_NET_MTYPE_SOCK, &type, 1, &buffer, &buf_size);
+    eos_evtq_wait(EOS_NET_MTYPE_SOCK, &type, 1, &buffer, &buf_size);
     if (buf_size < 2) {
         eos_net_free(buffer, 0);
         return EOS_ERR_NET;

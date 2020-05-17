@@ -31,7 +31,7 @@ static void handle_intr(void) {
     return;
 }
 
-void eve_sleep(uint32_t ms) {
+void eve_time_sleep(uint32_t ms) {
     eos_time_sleep(ms);
 }
 

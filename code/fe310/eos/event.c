@@ -51,24 +51,11 @@ void eos_evtq_pop(unsigned char *type, unsigned char **buffer, uint16_t *len) {
     set_csr(mstatus, MSTATUS_MIE);
 }
 
-void eos_evtq_bad_handler(unsigned char type, unsigned char *buffer, uint16_t len) {
-    printf("evt bad handler:%d\n", type);
+void eos_evtq_pop_isr(unsigned char *type, unsigned char **buffer, uint16_t *len) {
+    eos_msgq_pop(&_eos_event_q, type, buffer, len);
 }
 
-void eos_evtq_set_handler(unsigned char type, eos_evt_handler_t handler) {
-    unsigned char idx = (type & EOS_EVT_MASK) >> 4;
-
-    if (idx <= EOS_EVT_MAX_EVT) evt_handler[idx] = handler;
-}
-
-eos_evt_handler_t eos_evtq_get_handler(unsigned char type) {
-    unsigned char idx = (type & EOS_EVT_MASK) >> 4;
-
-    if (idx <= EOS_EVT_MAX_EVT) return evt_handler[idx];
-    return NULL;
-}
-
-void eos_evtq_get(unsigned char type, unsigned char *selector, uint16_t sel_len, unsigned char **buffer, uint16_t *len) {
+void eos_evtq_wait(unsigned char type, unsigned char *selector, uint16_t sel_len, unsigned char **buffer, uint16_t *len) {
     int rv = 0;
 
     while(!rv) {
@@ -93,6 +80,27 @@ void eos_evtq_get(unsigned char type, unsigned char *selector, uint16_t sel_len,
     }
 }
 
+void eos_evtq_flush(void) {
+    clear_csr(mstatus, MSTATUS_MIE);
+    eos_evtq_flush_isr();
+    set_csr(mstatus, MSTATUS_MIE);
+}
+
+void eos_evtq_flush_isr(void) {
+    unsigned char type;
+    unsigned char *buffer;
+    uint16_t len;
+
+    do {
+        eos_msgq_pop(&_eos_event_q, &type, &buffer, &len);
+        if (type) {
+            set_csr(mstatus, MSTATUS_MIE);
+            evt_handler[0](type, buffer, len);
+            clear_csr(mstatus, MSTATUS_MIE);
+        }
+    } while (type);
+}
+
 void eos_evtq_loop(void) {
     unsigned char type;
     unsigned char *buffer;
@@ -112,4 +120,19 @@ void eos_evtq_loop(void) {
     }
 }
 
+void eos_evtq_bad_handler(unsigned char type, unsigned char *buffer, uint16_t len) {
+    printf("evt bad handler:0x%x\n", type);
+}
 
+void eos_evtq_set_handler(unsigned char type, eos_evt_handler_t handler) {
+    unsigned char idx = (type & EOS_EVT_MASK) >> 4;
+
+    if (idx <= EOS_EVT_MAX_EVT) evt_handler[idx] = handler;
+}
+
+eos_evt_handler_t eos_evtq_get_handler(unsigned char type) {
+    unsigned char idx = (type & EOS_EVT_MASK) >> 4;
+
+    if (idx <= EOS_EVT_MAX_EVT) return evt_handler[idx];
+    return NULL;
+}

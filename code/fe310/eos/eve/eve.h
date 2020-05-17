@@ -18,9 +18,6 @@ void eve_write8(uint32_t addr, uint8_t data);
 void eve_write16(uint32_t addr, uint16_t data);
 void eve_write32(uint32_t addr, uint32_t data);
 
-void eve_active(void);
-void eve_brightness(uint8_t b);
-
 void eve_dl_start(uint32_t addr);
 void eve_dl_write(uint32_t dl);
 void eve_dl_swap(void);
@@ -33,4 +30,12 @@ int eve_cmd_done(void);
 int eve_cmd_exec(int w);
 void eve_cmd_burst_start(void);
 void eve_cmd_burst_end(void);
-int eve_init(uint32_t *touch_transform);
+
+void eve_active(void);
+void eve_standby(void);
+void eve_sleep(void);
+void eve_wake(void);
+void eve_brightness(uint8_t b);
+void eve_set_touch_calibration(uint32_t *matrix);
+
+int eve_init(int pwr_on);

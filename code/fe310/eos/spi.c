@@ -20,7 +20,7 @@
 
 static uint8_t spi_dev;
 static uint8_t spi_dev_cs_pin;
-static uint8_t spi_state_flags;
+static volatile uint8_t spi_state_flags;
 static unsigned char spi_in_xchg;
 
 static uint32_t spi_state_len = 0;
@@ -82,7 +82,7 @@ void eos_spi_stop(void) {
 
 void eos_spi_set_handler(unsigned char dev, eos_evt_handler_t handler) {
     if (handler == NULL) handler = eos_evtq_bad_handler;
-    if (dev && (dev <= EOS_NET_MAX_MTYPE)) evt_handler[dev - 1] = handler;
+    if (dev && (dev <= EOS_SPI_MAX_DEV)) evt_handler[dev - 1] = handler;
 }
 
 void _eos_spi_xchg_init(unsigned char *buffer, uint16_t len, uint8_t flags) {
@@ -95,7 +95,7 @@ void _eos_spi_xchg_init(unsigned char *buffer, uint16_t len, uint8_t flags) {
 }
 
 static void spi_xchg_finish(void) {
-    volatile uint8_t done = 0;
+    uint8_t done = 0;
 
     while (!done) {
         clear_csr(mstatus, MSTATUS_MIE);

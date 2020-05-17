@@ -19,7 +19,7 @@
 #define eve_spi_xchg24      eos_spi_xchg24
 #define eve_spi_xchg32      eos_spi_xchg32
 
-void eve_sleep(uint32_t ms);
+void eve_time_sleep(uint32_t ms);
 void eve_timer_set(uint32_t ms);
 void eve_timer_clear(void);
 uint64_t eve_time_get_tick(void);
