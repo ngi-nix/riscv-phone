@@ -16,6 +16,7 @@
 #define PWR_RTC_SFREQ   (EOS_TIMER_RTC_FREQ >> PWR_RTC_SCALE)
 
 static eos_evt_handler_t evt_handler[EOS_PWR_MAX_MTYPE];
+static unsigned char power_btn_down;
 
 static void power_handle_evt(unsigned char type, unsigned char *buffer, uint16_t len) {
     if ((buffer == NULL) || (len < 1)) {
@@ -32,8 +33,16 @@ static void power_handle_evt(unsigned char type, unsigned char *buffer, uint16_t
 }
 
 static void power_handle_btn(unsigned char type, unsigned char *buffer, uint16_t len) {
-    // Do nothing
+    unsigned char level = buffer[1];
+
     eos_net_free(buffer, 0);
+    if (!level) {
+        power_btn_down = 1;
+        return;
+    }
+    if (!power_btn_down) return;
+
+    eos_power_sleep();
 }
 
 void eos_power_init(void) {
@@ -63,6 +72,11 @@ uint8_t eos_power_cause_rst(void) {
 }
 
 void eos_power_sleep(void) {
+    eos_spi_dev_start(EOS_DEV_DISP);
+    eve_sleep();
+    eos_spi_dev_stop();
+    eos_net_sleep(1000);
+
     AON_REG(AON_PMUKEY) = 0x51F15E;
     AON_REG(AON_PMUSLEEP) = 1;
 }

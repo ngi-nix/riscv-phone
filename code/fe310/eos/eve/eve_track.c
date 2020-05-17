@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include <math.h>
-#include <stdio.h>
 
 #include "eve.h"
 #include "eve_platform.h"

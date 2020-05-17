@@ -11,6 +11,7 @@ static uint16_t _cmd_offset;
 static uint32_t _dl_addr;
 static uint32_t *_touch_calib;
 static uint8_t _brigtness;
+static char _sleep;
 
 void eve_command(uint8_t command, uint8_t parameter) {
     eve_spi_cs_set();
@@ -243,6 +244,9 @@ void eve_standby(void) {
 }
 
 void eve_sleep(void) {
+    if (_sleep) return;
+
+    _sleep = 1;
     _brigtness = eve_read8(REG_PWM_DUTY);
     eve_write8(REG_PWM_DUTY, 0x0);
 
@@ -261,6 +265,7 @@ void eve_wake(void) {
     eve_write8(REG_CTOUCH_EXTENDED, 0x00);
 
     eve_write8(REG_PWM_DUTY, _brigtness);
+    _sleep = 0;
 }
 
 void eve_brightness(uint8_t b) {
@@ -368,15 +373,13 @@ int eve_init(int pwr_on) {
         int rv = _init();
         if (rv) return rv;
     } else {
+        _sleep = 1;
         eve_wake();
     }
 
     eve_init_touch();
     eve_init_track();
     eve_init_platform();
-
-    eve_time_sleep(500);
-    eve_command(EVE_STANDBY, 0);
 
     return EVE_OK;
 }
