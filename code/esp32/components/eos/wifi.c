@@ -16,7 +16,7 @@
 #include "net.h"
 #include "wifi.h"
 
-// XXX: No DHCP server
+// XXX: WiFi fail due to no DHCP server
 
 #define WIFI_MAX_SCAN_RECORDS       20
 #define WIFI_MAX_CONNECT_ATTEMPTS   3
@@ -45,7 +45,7 @@ static uint8_t wifi_action;
 static uint8_t wifi_state;
 
 static esp_err_t wifi_event_handler(void *ctx, system_event_t *event) {
-    esp_err_t ret;
+    esp_err_t ret = ESP_OK;
     char _disconnect;
     uint8_t _action, _state;
     unsigned char *rbuf;
@@ -188,6 +188,9 @@ void eos_wifi_init(void) {
     ret = esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_sta_config);
     assert(ret == ESP_OK);
 
+    ret = esp_wifi_stop();
+    assert(ret == ESP_OK);
+
     mutex = xSemaphoreCreateBinary();
     xSemaphoreGive(mutex);
 
@@ -259,7 +262,6 @@ int eos_wifi_connect(void) {
     xSemaphoreGive(mutex);
 
     if (rv) return rv;
-
 
     esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_sta_config);
 

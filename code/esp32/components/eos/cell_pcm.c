@@ -54,7 +54,7 @@ static void i2s_event_task(void *pvParameters) {
 
     while (1) {
         // Waiting for I2S event.
-        if (xQueueReceive(i2s_queue, (void * )&event, (portTickType)portMAX_DELAY)) {
+        if (xQueueReceive(i2s_queue, &event, portMAX_DELAY)) {
             switch (event.type) {
                 case I2S_EVENT_RX_DONE:
                     // Event of I2S receiving data
@@ -248,7 +248,7 @@ void eos_pcm_start(void) {
     xSemaphoreGive(mutex);
 
     evt.type = I2S_EVENT_MAX;   /* my type */
-    xQueueSend(i2s_queue, (void *)&evt, portMAX_DELAY);
+    xQueueSend(i2s_queue, &evt, portMAX_DELAY);
     i2s_zero_dma_buffer(I2S_NUM_0);
     i2s_start(I2S_NUM_0);
 }

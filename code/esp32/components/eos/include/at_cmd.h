@@ -12,6 +12,8 @@
 
 typedef int (*at_urc_cb_t) (char *, regmatch_t[]);
 
+void at_init(void);
 int at_urc_process(char *urc);
 int at_urc_insert(char *pattern, at_urc_cb_t cb, int flags);
 int at_urc_delete(char *pattern);
+int at_expect(char *str_ok, char *str_err, uint32_t timeout);

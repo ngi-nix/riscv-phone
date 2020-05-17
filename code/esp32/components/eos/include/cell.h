@@ -1,13 +1,14 @@
 #include <sys/types.h>
 
-#define EOS_CELL_MTYPE_DATA         0
-#define EOS_CELL_MTYPE_AUDIO        1
+#define EOS_CELL_MTYPE_READY        0
+#define EOS_CELL_MTYPE_DATA         1
+#define EOS_CELL_MTYPE_AUDIO        2
 
-#define EOS_CELL_MTYPE_DATA_START   2
-#define EOS_CELL_MTYPE_DATA_STOP    3
+#define EOS_CELL_MTYPE_DATA_START   4
+#define EOS_CELL_MTYPE_DATA_STOP    5
 
-#define EOS_CELL_MTYPE_AUDIO_START  4
-#define EOS_CELL_MTYPE_AUDIO_STOP   5
+#define EOS_CELL_MTYPE_AUDIO_START  6
+#define EOS_CELL_MTYPE_AUDIO_STOP   7
 
 #define EOS_CELL_UART_MODE_NONE     0
 #define EOS_CELL_UART_MODE_ATCMD    1
@@ -31,11 +32,11 @@ int eos_modem_resp(char *ok_str, char *err_str, uint32_t timeout);
 
 uint8_t eos_modem_get_mode(void);
 int eos_modem_set_mode(uint8_t mode);
-int eos_modem_take(void);
+int eos_modem_take(uint32_t timeout);
 void eos_modem_give(void);
 
 void eos_modem_sleep(void);
-void eos_modem_wake(void);
+void eos_modem_wake(uint8_t source);
 
 void eos_ppp_set_apn(char *apn);
 void eos_ppp_set_auth(char *user, char *pass);

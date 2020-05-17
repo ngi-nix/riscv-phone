@@ -13,13 +13,12 @@
 
 #include "eos.h"
 #include "net.h"
-#include "at_urc.h"
+#include "power.h"
+
+#include "at_cmd.h"
 #include "cell.h"
 
-// XXX: Modem init, reconnect on failure
-
-#define MIN(X, Y)               (((X) < (Y)) ? (X) : (Y))
-#define MAX(X, Y)               (((X) > (Y)) ? (X) : (Y))
+// XXX: PPP reconnect on failure
 
 #define UART_SIZE_BUF       1024
 #define UART_SIZE_URC_BUF   128
@@ -29,16 +28,22 @@
 #define UART_GPIO_DTR       32
 #define UART_GPIO_RI        35
 
-static QueueHandle_t uart_queue;
-static QueueHandle_t uart_ri_queue;
+#define MODEM_ETYPE_INIT    1
+#define MODEM_ETYPE_RI      2
+
+#define MIN(X, Y)           (((X) < (Y)) ? (X) : (Y))
+#define MAX(X, Y)           (((X) > (Y)) ? (X) : (Y))
 
 static const char *TAG = "EOS MODEM";
 
 static SemaphoreHandle_t mutex;
 
-static char at_resp[128];
+static QueueHandle_t modem_queue;
+static QueueHandle_t uart_queue;
+
 static char uart_buf[UART_SIZE_URC_BUF];
 static unsigned int uart_buf_len;
+
 static uint8_t uart_mode = EOS_CELL_UART_MODE_NONE;
 static SemaphoreHandle_t uart_mutex;
 
@@ -53,6 +58,10 @@ static struct netif ppp_netif;
 typedef enum {
     UART_EEVT_MODE = UART_EVENT_MAX
 } uart_eevt_type_t;
+
+typedef struct {
+    uint8_t type;
+} modem_event_t;
 
 static void modem_atcmd_read(size_t bsize);
 
@@ -105,7 +114,7 @@ static void uart_event_task(void *pvParameters) {
     while (1) {
         /* Waiting for UART event.
          */
-        if (xQueueReceive(uart_queue, (void *)&event, (portTickType)portMAX_DELAY)) {
+        if (xQueueReceive(uart_queue, &event, portMAX_DELAY)) {
             switch (event.type) {
                 case UART_DATA:
                     /* Event of UART receiving data
@@ -139,26 +148,66 @@ static void uart_event_task(void *pvParameters) {
     vTaskDelete(NULL);
 }
 
-static void uart_ri_event_task(void *pvParameters) {
-    int level;
+static void IRAM_ATTR uart_ri_isr_handler(void *arg) {
+    modem_event_t evt;
 
-    while (1) {
-        if (xQueueReceive(uart_ri_queue, (void *)&level, (portTickType)portMAX_DELAY) && (level == 0)) {
-            uint64_t t_start = esp_timer_get_time();
-            if (xQueueReceive(uart_ri_queue, (void *)&level, 200 / portTICK_RATE_MS) && (level == 1)) {
-                uint64_t t_end = esp_timer_get_time();
-                ESP_LOGI(TAG, "URC:%u", (uint32_t)(t_end - t_start));
-            } else {
-                ESP_LOGI(TAG, "RING");
-            }
-        }
-    }
-    vTaskDelete(NULL);
+    evt.type = MODEM_ETYPE_RI;
+    xQueueSendFromISR(modem_queue, &evt, NULL);
 }
 
-static void IRAM_ATTR uart_ri_isr_handler(void *arg) {
-    int level = gpio_get_level(UART_GPIO_RI);
-    xQueueSendFromISR(uart_ri_queue, &level, NULL);
+static int modem_atcmd_init(void) {
+    unsigned char *buf;
+    int echo_on = 0;
+    int tries = 3;
+    int r;
+    int rv = EOS_OK;
+
+    rv = eos_modem_take(1000);
+    if (rv) return rv;
+
+    do {
+        eos_modem_write("AT\r", 3);
+        r = at_expect("^AT", "^OK", 1000);
+        if (r >= 0) {
+            echo_on = r;
+            if (echo_on) {
+                r = at_expect("^OK", NULL, 1000);
+            }
+            break;
+        }
+        tries--;
+    } while (tries);
+
+    if (tries == 0) {
+        eos_modem_give();
+        return EOS_ERR_TIMEOUT;
+    }
+
+    if (echo_on) {
+        eos_modem_write("AT&F\r", 5);
+        r = at_expect("^AT&F", NULL, 1000);
+        r = at_expect("^OK", NULL, 1000);
+    } else {
+        r = eos_modem_write("AT&F\r", 5);
+        r = at_expect("^OK", NULL, 1000);
+
+    }
+    eos_modem_write("ATE0\r", 5);
+    r = at_expect("^ATE0", NULL, 1000);
+    r = at_expect("^OK", "^ERROR", 1000);
+
+    eos_modem_write("AT+CSCLK=1\r", 11);
+    r = at_expect("^OK", "^ERROR", 1000);
+    eos_modem_write("AT+CFGRI=1\r", 11);
+    r = at_expect("^OK", "^ERROR", 1000);
+
+    buf = eos_net_alloc();
+    buf[0] = EOS_CELL_MTYPE_READY;
+    eos_net_send(EOS_NET_MTYPE_CELL, buf, 1, 0);
+
+    eos_modem_give();
+
+    return EOS_OK;
 }
 
 static void modem_atcmd_read(size_t bsize) {
@@ -175,8 +224,13 @@ static void modem_atcmd_read(size_t bsize) {
         while ((ln_end = strchr(ln_next, '\n'))) {
             ln_end--;
             if ((ln_end > ln_begin) && (*ln_end == '\r')) {
+                int r;
+
                 *ln_end = '\0';
-                at_urc_process(ln_begin);
+                r = at_urc_process(ln_begin);
+                if (!r) {
+                    ESP_LOGD(TAG, "unhandled URC: %s", ln_begin);
+                }
             }
             ln_next = ln_end + 2;
             ln_begin = ln_next;
@@ -191,12 +245,54 @@ static void modem_atcmd_read(size_t bsize) {
     } while (rd != bsize);
 }
 
+int modem_urc_init_handler(char *urc, regmatch_t *m) {
+    modem_event_t evt;
+
+    evt.type = MODEM_ETYPE_INIT;
+    xQueueSend(modem_queue, &evt, portMAX_DELAY);
+
+    return AT_URC_OK;
+}
+
 static void modem_set_mode(uint8_t mode) {
     uart_event_t evt;
 
     evt.type = UART_EEVT_MODE;
     evt.size = mode;
-    xQueueSend(uart_queue, (void *)&evt, portMAX_DELAY);
+    xQueueSend(uart_queue, &evt, portMAX_DELAY);
+}
+
+static void modem_event_task(void *pvParameters) {
+    modem_event_t evt;
+
+    while (1) {
+        if (xQueueReceive(modem_queue, &evt, portMAX_DELAY)) {
+            switch (evt.type) {
+                case MODEM_ETYPE_INIT:
+                    modem_atcmd_init();
+                    break;
+
+                case MODEM_ETYPE_RI:
+                    ESP_LOGI(TAG, "URC from RI");
+                    break;
+
+                default:
+                    break;
+            }
+
+            /* Obsolete!!!
+            uint64_t t_start = esp_timer_get_time();
+            if (xQueueReceive(modem_queue, &level, 200 / portTICK_RATE_MS) && (level == 1)) {
+                uint64_t t_end = esp_timer_get_time();
+                ESP_LOGI(TAG, "URC:%u", (uint32_t)(t_end - t_start));
+            } else {
+                ESP_LOGI(TAG, "RING");
+            }
+            */
+
+        }
+    }
+    vTaskDelete(NULL);
 }
 
 static char *memstr(char *mem, size_t size, char *str) {
@@ -296,15 +392,14 @@ static void ppp_status_cb(ppp_pcb *pcb, int err_code, void *ctx) {
     }
 }
 
-static int ppp_pause(void) {
+static int ppp_pause(uint32_t timeout, uint8_t retries) {
     int done = 0;
     int len = 0;
-    int ret = EOS_OK;
+    int rv = EOS_OK;
     char *ok_str = NULL;
     uint64_t t_start;
-    uint32_t timeout = 500;
-    uint8_t retries = 1;
 
+    timeout += 1000;
     xSemaphoreTake(ppp_mutex, portMAX_DELAY);
     eos_modem_flush();
     vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -336,11 +431,11 @@ static int ppp_pause(void) {
         }
         if (timeout && !done && ((uint32_t)((esp_timer_get_time() - t_start) / 1000) > timeout)) {
             if (!retries) {
-                ret = EOS_ERR_TIMEOUT;
-                done = 1;
                 modem_set_mode(EOS_CELL_UART_MODE_PPP);
                 xSemaphoreGive(uart_mutex);
                 xSemaphoreGive(ppp_mutex);
+                rv = EOS_ERR_TIMEOUT;
+                done = 1;
             } else {
                 retries--;
                 eos_modem_write("+++", 3);
@@ -349,7 +444,7 @@ static int ppp_pause(void) {
         }
     } while (!done);
 
-    return ret;
+    return rv;
 }
 
 static int ppp_resume(void) {
@@ -357,7 +452,7 @@ static int ppp_resume(void) {
     int rv = EOS_OK;
 
     eos_modem_write("ATO\r", 4);
-    r = eos_modem_resp("^CONNECT", "^(ERROR|NO CARRIER)", 1000);
+    r = at_expect("^CONNECT", "^(ERROR|NO CARRIER)", 1000);
     if (r <= 0) rv = EOS_ERR;
 
     modem_set_mode(EOS_CELL_UART_MODE_PPP);
@@ -375,10 +470,14 @@ static int ppp_setup(void) {
     if ((cmd_len < 0) || (cmd_len >= sizeof(cmd))) return EOS_ERR;
 
     modem_set_mode(EOS_CELL_UART_MODE_NONE);
-    xSemaphoreTake(uart_mutex, portMAX_DELAY);
+    r = xSemaphoreTake(uart_mutex, 1000 / portTICK_PERIOD_MS);
+    if (r == pdFALSE) {
+        modem_set_mode(uart_mode);
+        return EOS_ERR_TIMEOUT;
+    }
 
     eos_modem_write(cmd, cmd_len);
-    r = eos_modem_resp("^OK", "^ERROR", 1000);
+    r = at_expect("^OK", "^ERROR", 1000);
     if (r <= 0) {
         modem_set_mode(uart_mode);
         xSemaphoreGive(uart_mutex);
@@ -386,7 +485,7 @@ static int ppp_setup(void) {
     }
 
     eos_modem_write("AT+CGDATA=\"PPP\",1\r", 18);
-    r = eos_modem_resp("^CONNECT", "^(ERROR|\\+CME ERROR|NO CARRIER)", 1000);
+    r = at_expect("^CONNECT", "^(ERROR|\\+CME ERROR|NO CARRIER)", 1000);
     if (r <= 0) {
         modem_set_mode(uart_mode);
         xSemaphoreGive(uart_mutex);
@@ -410,11 +509,11 @@ static int ppp_disconnect(void) {
 
     pppapi_close(ppp_handle, 0);
 
-    rv = ppp_pause();
+    rv = ppp_pause(1000, 2);
     if (rv) return rv;
 
     eos_modem_write("ATH\r", 4);
-    eos_modem_resp("^OK", NULL, 1000);
+    at_expect("^OK", NULL, 1000);
 
     xSemaphoreGive(uart_mutex);
     xSemaphoreGive(ppp_mutex);
@@ -448,7 +547,7 @@ void eos_modem_init(void) {
     gpio_config(&io_conf);
     gpio_set_level(UART_GPIO_DTR, 0);
 
-    io_conf.intr_type = GPIO_PIN_INTR_ANYEDGE;
+    io_conf.intr_type = GPIO_INTR_NEGEDGE;
     io_conf.mode = GPIO_MODE_INPUT;
     io_conf.pin_bit_mask = ((uint64_t)1 << UART_GPIO_RI);
     io_conf.pull_up_en = 0;
@@ -464,12 +563,16 @@ void eos_modem_init(void) {
     ppp_mutex = xSemaphoreCreateBinary();
     xSemaphoreGive(ppp_mutex);
 
-    uart_ri_queue = xQueueCreate(4, sizeof(int));
-    // Create a task to handle uart event from ISR
+    modem_queue = xQueueCreate(4, sizeof(modem_event_t));
     xTaskCreate(uart_event_task, "uart_event", EOS_TASK_SSIZE_UART, NULL, EOS_TASK_PRIORITY_UART, NULL);
-    xTaskCreate(uart_ri_event_task, "uart_ri_event", EOS_TASK_SSIZE_UART_RI, NULL, EOS_TASK_PRIORITY_UART_RI, NULL);
+    xTaskCreate(modem_event_task, "modem_event", EOS_TASK_SSIZE_MODEM, NULL, EOS_TASK_PRIORITY_MODEM, NULL);
 
     gpio_isr_handler_add(UART_GPIO_RI, uart_ri_isr_handler, NULL);
+
+    at_init();
+    at_urc_insert("^PB DONE", modem_urc_init_handler, REG_EXTENDED);
+    eos_modem_set_mode(EOS_CELL_UART_MODE_ATCMD);
+
     ESP_LOGI(TAG, "INIT");
 }
 
@@ -488,10 +591,11 @@ size_t eos_modem_read(void *data, size_t size, uint32_t timeout) {
 int eos_modem_readln(char *buf, size_t buf_size, uint32_t timeout) {
     int done = 0;
     int len = 0;
-    int ret = EOS_OK;
+    int rv = EOS_OK;
     char *ln_end = NULL;
     uint64_t t_start = esp_timer_get_time();
 
+    uart_buf[uart_buf_len] = '\0';
     ln_end = strchr(uart_buf, '\n');
 
     do {
@@ -506,12 +610,13 @@ int eos_modem_readln(char *buf, size_t buf_size, uint32_t timeout) {
         if (ln_end) {
             ln_end--;
             if ((ln_end >= uart_buf) && (*ln_end == '\r')) {
-                if (buf_size > ln_end - uart_buf) {
-                    memcpy(buf, uart_buf, ln_end - uart_buf);
-                    buf[ln_end - uart_buf] = '\0';
-                    ret = EOS_OK;
-                } else {
-                    ret = EOS_ERR;
+                if (buf) {
+                    if (buf_size > ln_end - uart_buf) {
+                        memcpy(buf, uart_buf, ln_end - uart_buf);
+                        buf[ln_end - uart_buf] = '\0';
+                    } else {
+                        rv = EOS_ERR;
+                    }
                 }
                 done = 1;
             }
@@ -524,40 +629,12 @@ int eos_modem_readln(char *buf, size_t buf_size, uint32_t timeout) {
             uart_buf_len = sizeof(uart_buf) / 2;
         }
         if (timeout && !done && ((uint32_t)((esp_timer_get_time() - t_start) / 1000) > timeout)) {
-            ret = EOS_ERR_TIMEOUT;
+            rv = EOS_ERR_TIMEOUT;
             done = 1;
         }
     } while (!done);
 
-    return ret;
-}
-
-int eos_modem_resp(char *ok_str, char *err_str, uint32_t timeout) {
-    int rv;
-    regex_t re;
-    uint32_t e = 0;
-    uint64_t t_start = esp_timer_get_time();
-
-    do {
-        rv = eos_modem_readln(at_resp, sizeof(at_resp), timeout - e);
-        if (rv) return EOS_ERR;
-
-        if (ok_str) {
-            rv = regcomp(&re, ok_str, REG_EXTENDED | REG_NOSUB);
-            if (rv) return EOS_ERR;
-            if (regexec(&re, at_resp, 0, NULL, 0) == 0) return 1;
-        }
-
-        if (err_str) {
-            rv = regcomp(&re, err_str, REG_EXTENDED | REG_NOSUB);
-            if (rv) return EOS_ERR;
-            if (regexec(&re, at_resp, 0, NULL, 0) == 0) return 0;
-        }
-
-        at_urc_process(at_resp);
-        e = (uint32_t)(esp_timer_get_time() - t_start) / 1000;
-        if (e >= timeout) return EOS_ERR;
-    } while (1);
+    return rv;
 }
 
 uint8_t eos_modem_get_mode(void) {
@@ -590,22 +667,32 @@ int eos_modem_set_mode(uint8_t mode) {
     return rv;
 }
 
-int eos_modem_take(void) {
+int eos_modem_take(uint32_t timeout) {
     int rv = EOS_OK;
 
     xSemaphoreTake(mutex, portMAX_DELAY);
     if (uart_mode == EOS_CELL_UART_MODE_PPP) {
-        rv = ppp_pause();
+        rv = ppp_pause(timeout, 0);
     } else {
+        int r;
+
         modem_set_mode(EOS_CELL_UART_MODE_NONE);
-        xSemaphoreTake(uart_mutex, portMAX_DELAY);
+        r = xSemaphoreTake(uart_mutex, timeout ? timeout / portTICK_PERIOD_MS : portMAX_DELAY);
+        if (r == pdFALSE) {
+            modem_set_mode(uart_mode);
+            rv = EOS_ERR_TIMEOUT;
+        }
     }
+
+    if (rv) xSemaphoreGive(mutex);
+
     return rv;
 }
 
 void eos_modem_give(void) {
     if (uart_mode == EOS_CELL_UART_MODE_PPP) {
-        ppp_resume();
+        int rv = ppp_resume();
+        if (rv) ESP_LOGW(TAG, "PPP resume failed");
     } else {
         modem_set_mode(uart_mode);
         xSemaphoreGive(uart_mutex);
@@ -614,11 +701,31 @@ void eos_modem_give(void) {
 }
 
 void eos_modem_sleep(void) {
+    int r;
+
+    xSemaphoreTake(mutex, portMAX_DELAY);
+    modem_set_mode(EOS_CELL_UART_MODE_NONE);
+    r = xSemaphoreTake(uart_mutex, 1000 / portTICK_PERIOD_MS);
+    if (r == pdFALSE) {
+        ESP_LOGE(TAG, "Obtaining mutex before sleep failed");
+    }
     gpio_set_level(UART_GPIO_DTR, 1);
 }
 
-void eos_modem_wake(void) {
+void eos_modem_wake(uint8_t source) {
+    if (source == EOS_PWR_WAKE_UART) {
+        modem_event_t evt;
+
+        evt.type = MODEM_ETYPE_RI;
+        xQueueSend(modem_queue, &evt, portMAX_DELAY);
+    }
+    gpio_set_intr_type(UART_GPIO_RI, GPIO_INTR_NEGEDGE);
+    gpio_isr_handler_add(UART_GPIO_RI, uart_ri_isr_handler, NULL);
+
     gpio_set_level(UART_GPIO_DTR, 0);
+    modem_set_mode(uart_mode);
+    xSemaphoreGive(uart_mutex);
+    xSemaphoreGive(mutex);
 }
 
 void eos_ppp_set_apn(char *apn) {
