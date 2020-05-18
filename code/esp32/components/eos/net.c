@@ -130,7 +130,7 @@ static void net_xchg_task(void *pvParameters) {
         // ESP_LOGD(TAG, "RECV:%d", buf_recv[0]);
 
         if (wake) {
-            eos_power_1v8rdy();
+            eos_power_net_ready();
             wake = 0;
         }
         if (buf_recv[0] == 0x00) continue;

@@ -20,7 +20,7 @@
 #define POWER_ETYPE_BTN       1
 #define POWER_ETYPE_SLEEP     2
 #define POWER_ETYPE_WAKE      3
-#define POWER_ETYPE_1V8RDY    4
+#define POWER_ETYPE_NETRDY    4
 
 typedef struct {
     uint8_t type;
@@ -165,7 +165,7 @@ static void power_event_task(void *pvParameters) {
                     }
                     break;
 
-                case POWER_ETYPE_1V8RDY:
+                case POWER_ETYPE_NETRDY:
                     if (sleep && source) {
                         power_wake_stage2(source);
                         sleep = 0;
@@ -247,10 +247,10 @@ void eos_power_wake(uint8_t source) {
     xQueueSend(power_queue, &evt, portMAX_DELAY);
 }
 
-void eos_power_1v8rdy(void) {
+void eos_power_net_ready(void) {
     power_event_t evt;
 
-    evt.type = POWER_ETYPE_1V8RDY;
+    evt.type = POWER_ETYPE_NETRDY;
     evt.source = 0;
 
     xQueueSend(power_queue, &evt, portMAX_DELAY);

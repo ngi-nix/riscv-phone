@@ -10,4 +10,4 @@
 void eos_power_init(void);
 void eos_power_sleep(void);
 void eos_power_wake(uint8_t source);
-void eos_power_1v8rdy(void);
+void eos_power_net_ready(void);
