@@ -27,7 +27,7 @@
 
 #define SPI_SIZE_BUF        (EOS_NET_SIZE_BUF + 8)
 
-static volatile char net_sleep;
+static volatile char net_sleep = 0;
 
 static EOSBufQ net_buf_q;
 static unsigned char *net_bufq_array[EOS_NET_SIZE_BUFQ];
@@ -94,6 +94,12 @@ static void net_xchg_task(void *pvParameters) {
     spi_tr.tx_buffer = buf_send;
     spi_tr.rx_buffer = buf_recv;
 
+    if (eos_power_wakeup_cause()) {
+        wake = 1;
+        repeat = 1;
+    }
+
+    eos_power_wait4init();
     while (1) {
         if (!repeat) {
             xSemaphoreTake(mutex, portMAX_DELAY);
@@ -127,7 +133,7 @@ static void net_xchg_task(void *pvParameters) {
         buf_recv[1] = 0;
         buf_recv[2] = 0;
         spi_slave_transmit(VSPI_HOST, &spi_tr, portMAX_DELAY);
-        // ESP_LOGD(TAG, "RECV:%d", buf_recv[0]);
+        ESP_LOGD(TAG, "RECV:%d", buf_recv[0]);
 
         if (wake) {
             eos_power_net_ready();
@@ -154,9 +160,9 @@ static void net_xchg_task(void *pvParameters) {
                 net_sleep = 0;
                 xSemaphoreGive(mutex);
 
+                spi_slave_initialize(VSPI_HOST, &spi_bus_cfg, &spi_slave_cfg, 1);
                 wake = 1;
                 repeat = 1;
-                spi_slave_initialize(VSPI_HOST, &spi_bus_cfg, &spi_slave_cfg, 1);
             }
             continue;
         }
@@ -258,15 +264,16 @@ void eos_net_set_handler(unsigned char mtype, eos_net_fptr_t handler) {
     mtype_handler[mtype-1] = handler;
 }
 
-void eos_net_sleep_done(void) {
+void eos_net_sleep_done(uint8_t mode) {
     gpio_set_level(SPI_GPIO_CTS, 1);
     vTaskDelay(200 / portTICK_PERIOD_MS);
     gpio_set_level(SPI_GPIO_CTS, 0);
 }
 
-void eos_net_wake(uint8_t source) {
+void eos_net_wake(uint8_t source, uint8_t mode) {
     int sleep;
 
+    if (mode == EOS_PWR_SMODE_DEEP) return;
     do {
         vTaskResume(net_xchg_task_handle);
         vTaskDelay(10 / portTICK_PERIOD_MS);

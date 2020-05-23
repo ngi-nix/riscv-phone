@@ -35,8 +35,8 @@ int eos_modem_set_mode(uint8_t mode);
 int eos_modem_take(uint32_t timeout);
 void eos_modem_give(void);
 
-void eos_modem_sleep(void);
-void eos_modem_wake(uint8_t source);
+void eos_modem_sleep(uint8_t mode);
+void eos_modem_wake(uint8_t source, uint8_t mode);
 
 void eos_ppp_set_apn(char *apn);
 void eos_ppp_set_auth(char *user, char *pass);

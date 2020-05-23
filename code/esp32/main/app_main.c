@@ -1,5 +1,9 @@
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+
 #include <tcpip_adapter.h>
 #include <driver/gpio.h>
+#include <esp_sleep.h>
 
 #include "i2c.h"
 #include "cell.h"
@@ -15,11 +19,12 @@
 void app_main() {
     tcpip_adapter_init();
 
+    eos_net_init();
+
     eos_pcm_init();
     gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
     eos_modem_init();
 
-    eos_net_init();
     eos_cell_init();
     eos_wifi_init();
     eos_sock_init();

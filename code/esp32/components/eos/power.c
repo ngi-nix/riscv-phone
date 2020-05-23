@@ -13,14 +13,14 @@
 #include "cell.h"
 #include "power.h"
 
-#define POWER_GPIO_BTN        0
-#define POWER_GPIO_NET        5
-#define POWER_GPIO_UART       35
+#define POWER_GPIO_BTN      0
+#define POWER_GPIO_NET      5
+#define POWER_GPIO_UART     35
 
-#define POWER_ETYPE_BTN       1
-#define POWER_ETYPE_SLEEP     2
-#define POWER_ETYPE_WAKE      3
-#define POWER_ETYPE_NETRDY    4
+#define POWER_ETYPE_BTN     1
+#define POWER_ETYPE_SLEEP   2
+#define POWER_ETYPE_WAKE    3
+#define POWER_ETYPE_NETRDY  4
 
 typedef struct {
     uint8_t type;
@@ -37,6 +37,8 @@ static esp_pm_lock_handle_t power_lock_no_sleep;
 static const char *TAG = "EOS POWER";
 
 static QueueHandle_t power_queue;
+
+static volatile int init_done = 0;
 
 static void IRAM_ATTR btn_handler(void *arg) {
     power_event_t evt;
@@ -77,51 +79,71 @@ static void IRAM_ATTR uart_wake_handler(void *arg) {
     xQueueSendFromISR(power_queue, &evt, NULL);
 }
 
-void power_sleep(void) {
+void power_sleep(uint8_t mode) {
     gpio_config_t io_conf;
 
-    eos_modem_sleep();
+    eos_modem_sleep(mode);
+    eos_net_sleep_done(mode);
 
-    io_conf.intr_type = GPIO_INTR_DISABLE;
-    io_conf.mode = GPIO_MODE_INPUT;
-    io_conf.pin_bit_mask = ((uint64_t)1 << POWER_GPIO_NET);
-    io_conf.pull_up_en = 0;
-    io_conf.pull_down_en = 0;
-    gpio_config(&io_conf);
+    switch (mode) {
+        case EOS_PWR_SMODE_LIGHT:
+            io_conf.intr_type = GPIO_INTR_DISABLE;
+            io_conf.mode = GPIO_MODE_INPUT;
+            io_conf.pin_bit_mask = ((uint64_t)1 << POWER_GPIO_NET);
+            io_conf.pull_up_en = 0;
+            io_conf.pull_down_en = 0;
+            gpio_config(&io_conf);
 
-    gpio_isr_handler_add(POWER_GPIO_BTN, btn_wake_handler, NULL);
-    gpio_isr_handler_add(POWER_GPIO_NET, net_wake_handler, NULL);
-    gpio_isr_handler_add(POWER_GPIO_UART, uart_wake_handler, NULL);
+            gpio_isr_handler_add(POWER_GPIO_BTN, btn_wake_handler, NULL);
+            gpio_isr_handler_add(POWER_GPIO_NET, net_wake_handler, NULL);
+            gpio_isr_handler_add(POWER_GPIO_UART, uart_wake_handler, NULL);
 
-    gpio_wakeup_enable(POWER_GPIO_BTN, GPIO_INTR_LOW_LEVEL);
-    gpio_wakeup_enable(POWER_GPIO_NET, GPIO_INTR_LOW_LEVEL);
-    gpio_wakeup_enable(POWER_GPIO_UART, GPIO_INTR_LOW_LEVEL);
+            esp_sleep_enable_gpio_wakeup();
+            gpio_wakeup_enable(POWER_GPIO_BTN, GPIO_INTR_LOW_LEVEL);
+            gpio_wakeup_enable(POWER_GPIO_NET, GPIO_INTR_LOW_LEVEL);
+            gpio_wakeup_enable(POWER_GPIO_UART, GPIO_INTR_LOW_LEVEL);
 
-    eos_net_sleep_done();
+            ESP_LOGD(TAG, "SLEEP");
 
-    ESP_LOGD(TAG, "SLEEP");
+            esp_pm_lock_release(power_lock_apb_freq);
+            esp_pm_lock_release(power_lock_no_sleep);
 
-    esp_pm_lock_release(power_lock_apb_freq);
-    esp_pm_lock_release(power_lock_no_sleep);
+            break;
+
+        case EOS_PWR_SMODE_DEEP:
+            gpio_deep_sleep_hold_en();
+            esp_sleep_enable_ext0_wakeup(POWER_GPIO_BTN, 0);
+            esp_sleep_enable_ext1_wakeup((uint64_t)1 << POWER_GPIO_UART, ESP_EXT1_WAKEUP_ALL_LOW);
+
+            ESP_LOGD(TAG, "SLEEP");
+
+            esp_deep_sleep_start();
+            break;
+
+        default:
+            break;
+    }
 }
 
-void power_wake_stage1(uint8_t source) {
+void power_wake_stage1(uint8_t source, uint8_t mode) {
     gpio_config_t io_conf;
 
-    esp_pm_lock_acquire(power_lock_apb_freq);
-    esp_pm_lock_acquire(power_lock_no_sleep);
+    if (mode == EOS_PWR_SMODE_LIGHT) {
+        esp_pm_lock_acquire(power_lock_apb_freq);
+        esp_pm_lock_acquire(power_lock_no_sleep);
 
-    gpio_wakeup_disable(POWER_GPIO_BTN);
-    gpio_wakeup_disable(POWER_GPIO_NET);
-    gpio_wakeup_disable(POWER_GPIO_UART);
+        gpio_wakeup_disable(POWER_GPIO_BTN);
+        gpio_wakeup_disable(POWER_GPIO_NET);
+        gpio_wakeup_disable(POWER_GPIO_UART);
 
-    gpio_isr_handler_remove(POWER_GPIO_NET);
-    io_conf.intr_type = GPIO_INTR_DISABLE;
-    io_conf.mode = GPIO_MODE_DISABLE;
-    io_conf.pin_bit_mask = ((uint64_t)1 << POWER_GPIO_NET);
-    io_conf.pull_up_en = 0;
-    io_conf.pull_down_en = 0;
-    gpio_config(&io_conf);
+        gpio_isr_handler_remove(POWER_GPIO_NET);
+        io_conf.intr_type = GPIO_INTR_DISABLE;
+        io_conf.mode = GPIO_MODE_DISABLE;
+        io_conf.pin_bit_mask = ((uint64_t)1 << POWER_GPIO_NET);
+        io_conf.pull_up_en = 0;
+        io_conf.pull_down_en = 0;
+        gpio_config(&io_conf);
+    }
 
     gpio_intr_disable(POWER_GPIO_BTN);
     if ((source != EOS_PWR_WAKE_BTN) && (source != EOS_PWR_WAKE_NET)) {
@@ -130,11 +152,12 @@ void power_wake_stage1(uint8_t source) {
         vTaskDelay(200 / portTICK_PERIOD_MS);
         gpio_set_direction(POWER_GPIO_BTN, GPIO_MODE_INPUT);
     }
-    eos_net_wake(source);
+
+    eos_net_wake(source, mode);
 }
 
-void power_wake_stage2(uint8_t source) {
-    eos_modem_wake(source);
+void power_wake_stage2(uint8_t source, uint8_t mode) {
+    eos_modem_wake(source, mode);
 
     gpio_set_intr_type(POWER_GPIO_BTN, GPIO_INTR_ANYEDGE);
     gpio_isr_handler_add(POWER_GPIO_BTN, btn_handler, NULL);
@@ -145,15 +168,28 @@ void power_wake_stage2(uint8_t source) {
 static void power_event_task(void *pvParameters) {
     unsigned char *buf;
     power_event_t evt;
-    uint8_t source = 0;
-    int sleep = 0;
+    uint8_t source;
+    uint8_t wakeup_cause;
+    uint8_t mode;
+    int sleep;
+
+    source = 0;
+    wakeup_cause = eos_power_wakeup_cause();
+    if (wakeup_cause) {
+        mode = EOS_PWR_SMODE_DEEP;
+        sleep = 1;
+    } else {
+        mode = EOS_PWR_SMODE_LIGHT;
+        sleep = 0;
+    }
 
     while (1) {
         if (xQueueReceive(power_queue, &evt, portMAX_DELAY)) {
             switch (evt.type) {
                 case POWER_ETYPE_SLEEP:
                     if (!sleep) {
-                        power_sleep();
+                        mode = EOS_PWR_SMODE_DEEP;
+                        power_sleep(mode);
                         sleep = 1;
                     }
                     break;
@@ -161,13 +197,13 @@ static void power_event_task(void *pvParameters) {
                 case POWER_ETYPE_WAKE:
                     if (sleep) {
                         source = evt.source;
-                        power_wake_stage1(source);
+                        power_wake_stage1(source, mode);
                     }
                     break;
 
                 case POWER_ETYPE_NETRDY:
                     if (sleep && source) {
-                        power_wake_stage2(source);
+                        power_wake_stage2(source, mode);
                         sleep = 0;
                         source = 0;
                     }
@@ -192,6 +228,7 @@ void eos_power_init(void) {
     esp_err_t ret;
     gpio_config_t io_conf;
     esp_pm_config_esp32_t pwr_conf;
+    uint8_t wakeup_cause;
 
     io_conf.intr_type = GPIO_INTR_ANYEDGE;
     io_conf.mode = GPIO_MODE_INPUT;
@@ -201,8 +238,14 @@ void eos_power_init(void) {
     gpio_config(&io_conf);
     gpio_isr_handler_add(POWER_GPIO_BTN, btn_handler, NULL);
 
-    ret = esp_sleep_enable_gpio_wakeup();
+    /*
+    ret = esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);
     assert(ret == ESP_OK);
+    ret = esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_FAST_MEM, ESP_PD_OPTION_ON);
+    assert(ret == ESP_OK);
+    ret = esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_SLOW_MEM, ESP_PD_OPTION_ON);
+    assert(ret == ESP_OK);
+    */
 
     ret = esp_pm_lock_create(ESP_PM_CPU_FREQ_MAX, 0, NULL, &power_lock_cpu_freq);
     assert(ret == ESP_OK);
@@ -227,7 +270,32 @@ void eos_power_init(void) {
 
     power_queue = xQueueCreate(4, sizeof(power_event_t));
     xTaskCreate(power_event_task, "power_event", EOS_TASK_SSIZE_PWR, NULL, EOS_TASK_PRIORITY_PWR, NULL);
+
+    wakeup_cause = eos_power_wakeup_cause();
+    if (wakeup_cause) eos_power_wake(wakeup_cause);
+
+    init_done = 1;
     ESP_LOGI(TAG, "INIT");
+}
+
+void eos_power_wait4init(void) {
+    while (!init_done);
+}
+
+uint8_t eos_power_wakeup_cause(void) {
+    esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
+
+    switch (cause) {
+        case ESP_SLEEP_WAKEUP_EXT0:
+            return EOS_PWR_WAKE_BTN;
+
+        case ESP_SLEEP_WAKEUP_EXT1:
+            return EOS_PWR_WAKE_UART;
+
+        default:
+        case ESP_SLEEP_WAKEUP_UNDEFINED:
+            return EOS_PWR_WAKE_RST;
+    }
 }
 
 void eos_power_sleep(void) {

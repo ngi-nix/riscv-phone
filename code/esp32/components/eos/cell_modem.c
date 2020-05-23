@@ -9,6 +9,7 @@
 #include <netif/ppp/pppapi.h>
 #include <driver/uart.h>
 #include <driver/gpio.h>
+#include <esp_sleep.h>
 #include <esp_log.h>
 
 #include "eos.h"
@@ -44,7 +45,7 @@ static QueueHandle_t uart_queue;
 static char uart_buf[UART_SIZE_URC_BUF];
 static unsigned int uart_buf_len;
 
-static uint8_t uart_mode = EOS_CELL_UART_MODE_NONE;
+static uint8_t uart_mode = EOS_CELL_UART_MODE_ATCMD;
 static SemaphoreHandle_t uart_mutex;
 
 static char ppp_apn[64];
@@ -107,10 +108,11 @@ static void uart_data_read(uint8_t mode) {
 }
 
 static void uart_event_task(void *pvParameters) {
-    char mode = EOS_CELL_UART_MODE_NONE;
-    char _mode = EOS_CELL_UART_MODE_NONE;
+    char mode = EOS_CELL_UART_MODE_ATCMD;
+    char _mode = EOS_CELL_UART_MODE_ATCMD;
     uart_event_t event;
 
+    xSemaphoreTake(uart_mutex, portMAX_DELAY);
     while (1) {
         /* Waiting for UART event.
          */
@@ -196,9 +198,9 @@ static int modem_atcmd_init(void) {
     r = at_expect("^ATE0", NULL, 1000);
     r = at_expect("^OK", "^ERROR", 1000);
 
-    eos_modem_write("AT+CSCLK=1\r", 11);
-    r = at_expect("^OK", "^ERROR", 1000);
     eos_modem_write("AT+CFGRI=1\r", 11);
+    r = at_expect("^OK", "^ERROR", 1000);
+    eos_modem_write("AT+CSCLK=1\r", 11);
     r = at_expect("^OK", "^ERROR", 1000);
 
     buf = eos_net_alloc();
@@ -700,7 +702,7 @@ void eos_modem_give(void) {
     xSemaphoreGive(mutex);
 }
 
-void eos_modem_sleep(void) {
+void eos_modem_sleep(uint8_t mode) {
     int r;
 
     xSemaphoreTake(mutex, portMAX_DELAY);
@@ -710,22 +712,30 @@ void eos_modem_sleep(void) {
         ESP_LOGE(TAG, "Obtaining mutex before sleep failed");
     }
     gpio_set_level(UART_GPIO_DTR, 1);
+    if (mode == EOS_PWR_SMODE_DEEP) {
+        gpio_hold_en(UART_GPIO_DTR);
+    }
 }
 
-void eos_modem_wake(uint8_t source) {
+void eos_modem_wake(uint8_t source, uint8_t mode) {
     if (source == EOS_PWR_WAKE_UART) {
         modem_event_t evt;
 
         evt.type = MODEM_ETYPE_RI;
         xQueueSend(modem_queue, &evt, portMAX_DELAY);
     }
-    gpio_set_intr_type(UART_GPIO_RI, GPIO_INTR_NEGEDGE);
-    gpio_isr_handler_add(UART_GPIO_RI, uart_ri_isr_handler, NULL);
 
-    gpio_set_level(UART_GPIO_DTR, 0);
-    modem_set_mode(uart_mode);
-    xSemaphoreGive(uart_mutex);
-    xSemaphoreGive(mutex);
+    if (mode != EOS_PWR_SMODE_DEEP) {
+        gpio_set_intr_type(UART_GPIO_RI, GPIO_INTR_NEGEDGE);
+        gpio_isr_handler_add(UART_GPIO_RI, uart_ri_isr_handler, NULL);
+        gpio_set_level(UART_GPIO_DTR, 0);
+
+        modem_set_mode(uart_mode);
+        xSemaphoreGive(uart_mutex);
+        xSemaphoreGive(mutex);
+    } else {
+        gpio_hold_dis(UART_GPIO_DTR);
+    }
 }
 
 void eos_ppp_set_apn(char *apn) {
