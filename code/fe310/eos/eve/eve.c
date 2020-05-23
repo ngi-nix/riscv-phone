@@ -11,7 +11,7 @@ static uint16_t _cmd_offset;
 static uint32_t _dl_addr;
 static uint32_t *_touch_calib;
 static uint8_t _brigtness;
-static char _sleep;
+static uint8_t _power_state;
 
 void eve_command(uint8_t command, uint8_t parameter) {
     eve_spi_cs_set();
@@ -235,18 +235,31 @@ void eve_cmd_burst_end(void) {
     _cmd_burst = 0;
 }
 
-void eve_active(void){
+void eve_active(void) {
     eve_command(EVE_ACTIVE, 0);
+    if (_power_state == EVE_PSTATE_SLEEP) eve_time_sleep(40);
+
+    eve_write8(REG_PWM_DUTY, _brigtness);
+    if (_power_state != EVE_PSTATE_SLEEP) return;
+
+    eve_write8(REG_TOUCH_MODE, EVE_TMODE_CONTINUOUS);
+    eve_write8(REG_CTOUCH_EXTENDED, 0x00);
+
+    _power_state = EVE_PSTATE_ACTIVE;
 }
 
 void eve_standby(void) {
+    if (_power_state != EVE_PSTATE_ACTIVE) return;
+
+    _brigtness = eve_read8(REG_PWM_DUTY);
     eve_command(EVE_STANDBY, 0);
+
+    _power_state = EVE_PSTATE_STANDBY;
 }
 
 void eve_sleep(void) {
-    if (_sleep) return;
+    if (_power_state != EVE_PSTATE_ACTIVE) return;
 
-    _sleep = 1;
     _brigtness = eve_read8(REG_PWM_DUTY);
     eve_write8(REG_PWM_DUTY, 0x0);
 
@@ -255,17 +268,8 @@ void eve_sleep(void) {
 
     eve_time_sleep(500);
     eve_command(EVE_SLEEP, 0);
-}
 
-void eve_wake(void) {
-    eve_command(EVE_ACTIVE, 0);         /* start EVE */
-    eve_time_sleep(40);
-
-    eve_write8(REG_TOUCH_MODE, EVE_TMODE_CONTINUOUS);
-    eve_write8(REG_CTOUCH_EXTENDED, 0x00);
-
-    eve_write8(REG_PWM_DUTY, _brigtness);
-    _sleep = 0;
+    _power_state = EVE_PSTATE_SLEEP;
 }
 
 void eve_brightness(uint8_t b) {
@@ -373,8 +377,8 @@ int eve_init(int pwr_on) {
         int rv = _init();
         if (rv) return rv;
     } else {
-        _sleep = 1;
-        eve_wake();
+        _power_state = EVE_PSTATE_SLEEP;
+        eve_active();
     }
 
     eve_init_touch();

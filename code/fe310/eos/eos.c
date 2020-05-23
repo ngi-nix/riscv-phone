@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #include "event.h"
 #include "interrupt.h"
 #include "timer.h"
@@ -13,10 +15,11 @@
 
 #include "eos.h"
 
-uint32_t eve_touch[6] = {0xfa46,0xfffffcf6,0x422fe,0xffffff38,0x10002,0xf3cb0};
+static uint32_t eve_touch[6] = {0xfa46,0xfffffcf6,0x422fe,0xffffff38,0x10002,0xf3cb0};
 
 void eos_init(void) {
-    uint8_t wake_src = eos_power_cause_wake();
+    uint8_t wakeup_cause = eos_power_wakeup_cause();
+    printf("WAKE:%d\n", wakeup_cause);
 
     eos_evtq_init();
     eos_intr_init();
@@ -31,10 +34,10 @@ void eos_init(void) {
     eos_sock_init();
     eos_spi_dev_init();
 
-    eos_net_wake(wake_src);
+    eos_net_wake(wakeup_cause);
 
     eve_set_touch_calibration(eve_touch);
     eos_spi_dev_start(EOS_DEV_DISP);
-    eve_init(wake_src == EOS_PWR_WAKE_RESET);
+    eve_init(wakeup_cause == EOS_PWR_WAKE_RST);
     eos_spi_dev_stop();
 }

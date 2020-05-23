@@ -63,11 +63,11 @@ void eos_power_init(void) {
     AON_REG(AON_RTCLO) = 0;
 }
 
-uint8_t eos_power_cause_wake(void) {
+uint8_t eos_power_wakeup_cause(void) {
     return AON_REG(AON_PMUCAUSE) & 0xff;
 }
 
-uint8_t eos_power_cause_rst(void) {
+uint8_t eos_power_reset_cause(void) {
     return (AON_REG(AON_PMUCAUSE) >> 8) & 0xff;
 }
 
