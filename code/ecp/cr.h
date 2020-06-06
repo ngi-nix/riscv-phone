@@ -1,4 +1,4 @@
-int ecp_cr_dh_mkpair(ecp_dh_public_t *pub, ecp_dh_private_t *priv, ecp_rng_t *rand_buf);
+int ecp_cr_dh_mkpair(ecp_dh_public_t *pub, ecp_dh_private_t *priv, ecp_rng_t rand_buf);
 int ecp_cr_dh_shsec(ecp_aead_key_t *shared, ecp_dh_public_t *pub, ecp_dh_private_t *priv);
 unsigned char *ecp_cr_dh_pub_get_buf(ecp_dh_public_t *p);
 void ecp_cr_dh_pub_to_buf(unsigned char *b, ecp_dh_public_t *p);
@@ -8,6 +8,6 @@ unsigned int ecp_cr_dh_pub_hash_fn(unsigned char *p);
 int ecp_cr_dh_pub_hash_eq(unsigned char *p1, unsigned char *p2);
 ssize_t ecp_cr_aead_enc(unsigned char *ct, size_t cl, unsigned char *pt, size_t pl, ecp_aead_key_t *k, unsigned char *n);
 ssize_t ecp_cr_aead_dec(unsigned char *pt, size_t pl, unsigned char *ct, size_t cl, ecp_aead_key_t *k, unsigned char *n) ;
-int ecp_cr_dsa_mkpair(ecp_dsa_public_t *pub, ecp_dsa_private_t *priv, ecp_rng_t *rand_buf);
+int ecp_cr_dsa_mkpair(ecp_dsa_public_t *pub, ecp_dsa_private_t *priv, ecp_rng_t rand_buf);
 int ecp_cr_dsa_sign(unsigned char *sig, unsigned char *m, size_t ml, ecp_dsa_public_t *p, ecp_dsa_private_t *s) ;
 int ecp_cr_dsa_verify(unsigned char *m, size_t ml, unsigned char *sig, ecp_dsa_public_t *p);

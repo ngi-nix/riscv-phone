@@ -3,7 +3,7 @@
 
 #include <curve25519.h>
 
-int ecp_cr_dh_mkpair(ecp_dh_public_t *pub, ecp_dh_private_t *priv, ecp_rng_t *rand_buf) {
+int ecp_cr_dh_mkpair(ecp_dh_public_t *pub, ecp_dh_private_t *priv, ecp_rng_t rand_buf) {
     int rv = X25519_keypair(*pub, *priv, rand_buf);
     if (!rv) return ECP_ERR;
     return ECP_OK;
@@ -53,7 +53,7 @@ ssize_t ecp_cr_aead_dec(unsigned char *pt, size_t pl, unsigned char *ct, size_t 
     return ol;
 }
 
-int ecp_cr_dsa_mkpair(ecp_dsa_public_t *pub, ecp_dsa_private_t *priv, ecp_rng_t *rand_buf) {
+int ecp_cr_dsa_mkpair(ecp_dsa_public_t *pub, ecp_dsa_private_t *priv, ecp_rng_t rand_buf) {
     unsigned char key[2*ECP_DSA_SIZE_KEY];    
 
     int rv = ED25519_keypair(*pub, key, rand_buf);
