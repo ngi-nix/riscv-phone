@@ -156,10 +156,10 @@ typedef ssize_t (*ecp_conn_handler_msg_t) (struct ECPConnection *c, ecp_seq_t s,
 
 typedef struct ECPConnection * (*ecp_conn_alloc_t) (unsigned char t);
 typedef void (*ecp_conn_free_t) (struct ECPConnection *c);
-typedef int ecp_conn_create_t (struct ECPConnection *c, unsigned char *msg, size_t sz);
-typedef void ecp_conn_destroy_t (struct ECPConnection *c);
-typedef ssize_t ecp_conn_open_t (struct ECPConnection *c);
-typedef void ecp_conn_close_t (struct ECPConnection *c);
+typedef int (*ecp_conn_create_t) (struct ECPConnection *c, unsigned char *msg, size_t sz);
+typedef void (*ecp_conn_destroy_t) (struct ECPConnection *c);
+typedef ssize_t (*ecp_conn_open_t) (struct ECPConnection *c);
+typedef void (*ecp_conn_close_t) (struct ECPConnection *c);
 
 typedef struct ECPBuffer {
     unsigned char *buffer;
@@ -218,10 +218,10 @@ typedef struct ECPFragIter {
 
 typedef struct ECPConnHandler {
     ecp_conn_handler_msg_t msg[ECP_MAX_MTYPE];
-    ecp_conn_create_t *conn_create;
-    ecp_conn_destroy_t *conn_destroy;
-    ecp_conn_open_t *conn_open;
-    ecp_conn_close_t *conn_close;
+    ecp_conn_create_t conn_create;
+    ecp_conn_destroy_t conn_destroy;
+    ecp_conn_open_t conn_open;
+    ecp_conn_close_t conn_close;
 } ECPConnHandler;
 
 typedef struct ECPSockCTable {

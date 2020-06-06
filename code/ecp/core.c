@@ -593,10 +593,10 @@ int ecp_conn_close(ECPConnection *conn, ecp_cts_t timeout) {
 #endif
 
     if (conn->out) {
-        ecp_conn_close_t *handler = conn->sock->ctx->handler[conn->type] ? conn->sock->ctx->handler[conn->type]->conn_close : NULL;
+        ecp_conn_close_t handler = conn->sock->ctx->handler[conn->type] ? conn->sock->ctx->handler[conn->type]->conn_close : NULL;
         if (handler) handler(conn);
     } else {
-        ecp_conn_destroy_t *handler = conn->sock->ctx->handler[conn->type] ? conn->sock->ctx->handler[conn->type]->conn_destroy : NULL;
+        ecp_conn_destroy_t handler = conn->sock->ctx->handler[conn->type] ? conn->sock->ctx->handler[conn->type]->conn_destroy : NULL;
         if (handler) handler(conn);
         if (conn->parent) {
 #ifdef ECP_WITH_PTHREAD
@@ -691,8 +691,8 @@ int ecp_conn_handle_new(ECPSocket *sock, ECPConnection *parent, unsigned char *p
     ECPConnection *conn = NULL;
     int rv = ECP_OK;
     unsigned char ctype = 0;
-    ecp_conn_create_t *handle_create = NULL;
-    ecp_conn_destroy_t *handle_destroy = NULL;
+    ecp_conn_create_t handle_create = NULL;
+    ecp_conn_destroy_t handle_destroy = NULL;
 
     if (payload_size < 1) return ECP_ERR;
 
@@ -814,7 +814,7 @@ ssize_t ecp_conn_handle_kget(ECPConnection *conn, ecp_seq_t seq, unsigned char m
 
         int rv = ecp_conn_dhkey_new_pub(conn, msg[0], msg+1);
         if (!rv && !is_open) {
-            ecp_conn_open_t *conn_open = ctx->handler[conn->type] ? ctx->handler[conn->type]->conn_open : NULL;
+            ecp_conn_open_t conn_open = ctx->handler[conn->type] ? ctx->handler[conn->type]->conn_open : NULL;
             if (conn_open) {
                 ssize_t _rv = conn_open(conn);
                 if (_rv < 0) rv = _rv;
