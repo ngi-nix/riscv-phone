@@ -154,8 +154,8 @@ typedef int (*ecp_rng_t) (void *, size_t);
 typedef int (*ecp_conn_handler_new_t) (struct ECPSocket *s, struct ECPConnection *p, unsigned char *msg, size_t sz, struct ECPConnection **c);
 typedef ssize_t (*ecp_conn_handler_msg_t) (struct ECPConnection *c, ecp_seq_t s, unsigned char t, unsigned char *msg, ssize_t sz, struct ECP2Buffer *b);
 
-typedef struct ECPConnection * ecp_conn_alloc_t (unsigned char t);
-typedef void ecp_conn_free_t (struct ECPConnection *c);
+typedef struct ECPConnection * (*ecp_conn_alloc_t) (unsigned char t);
+typedef void (*ecp_conn_free_t) (struct ECPConnection *c);
 typedef int ecp_conn_create_t (struct ECPConnection *c, unsigned char *msg, size_t sz);
 typedef void ecp_conn_destroy_t (struct ECPConnection *c);
 typedef ssize_t ecp_conn_open_t (struct ECPConnection *c);
@@ -238,8 +238,8 @@ typedef struct ECPSockCTable {
 
 typedef struct ECPContext {
     ecp_rng_t rng;
-    ecp_conn_alloc_t *conn_alloc;
-    ecp_conn_free_t *conn_free;
+    ecp_conn_alloc_t conn_alloc;
+    ecp_conn_free_t conn_free;
     ECPConnHandler *handler[ECP_MAX_CTYPE];
 } ECPContext;
 
