@@ -151,7 +151,7 @@ struct ECPFragIter;
 
 typedef int (*ecp_rng_t) (void *, size_t);
 
-typedef int ecp_conn_handler_new_t (struct ECPSocket *s, struct ECPConnection *p, unsigned char *msg, size_t sz, struct ECPConnection **c);
+typedef int (*ecp_conn_handler_new_t) (struct ECPSocket *s, struct ECPConnection *p, unsigned char *msg, size_t sz, struct ECPConnection **c);
 typedef ssize_t ecp_conn_handler_msg_t (struct ECPConnection *c, ecp_seq_t s, unsigned char t, unsigned char *msg, ssize_t sz, struct ECP2Buffer *b);
 
 typedef struct ECPConnection * ecp_conn_alloc_t (unsigned char t);
@@ -253,7 +253,7 @@ typedef struct ECPSocket {
     unsigned char key_curr;
     ECPSockCTable conn;
     ECPTimer timer;
-    ecp_conn_handler_new_t *conn_new;
+    ecp_conn_handler_new_t conn_new;
 #ifdef ECP_WITH_PTHREAD
     pthread_t rcvr_thd;
     pthread_mutex_t mutex;
