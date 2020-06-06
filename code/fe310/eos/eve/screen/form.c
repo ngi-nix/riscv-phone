@@ -5,7 +5,7 @@
 #include "eve_kbd.h"
 
 #include "screen.h"
-#include "tile.h"
+#include "window.h"
 #include "page.h"
 #include "form.h"
 
@@ -13,33 +13,33 @@
 
 #define CH_EOF              0x1a
 
-int eve_form_init(EVEForm *form, EVETile *tile, eve_page_open_t open, eve_page_close_t close, EVEWidget *widget, uint16_t widget_size) {
+int eve_form_init(EVEForm *form, EVEWidget *widget, uint16_t widget_size, eve_page_open_t open, eve_page_close_t close, EVEWindow *window) {
     memset(form, 0, sizeof(EVEForm));
-    eve_page_init(&form->p, tile, eve_form_touch, eve_form_draw, open, close);
+    eve_page_init(&form->p, eve_form_touch, eve_form_draw, open, close, window);
     form->widget = widget;
     form->widget_size = widget_size;
-
 }
-int eve_form_touch(EVECanvas *c, uint8_t tag0, int touch_idx) {
-    EVEForm *form = (EVEForm *)c;
+
+int eve_form_touch(EVEView *v, uint8_t tag0, int touch_idx) {
+    EVEForm *form = (EVEForm *)v;
     EVEWidget *widget = form->widget;
     int a, i, ret = 0;
-    EVEPageFocus focus = {NULL, {0,0,0,0}};
+    EVERect focus = {0,0,0,0};
 
     for (i=0; i<form->widget_size; i++) {
         a = widget->touch(widget, &form->p, tag0, touch_idx, &focus);
         ret = ret || a;
-        if (focus.w && (form->widget_f != focus.w)) {
-            EVEKbd *kbd = eve_screen_get_kbd(form->p.tile->screen);
+        if (focus.w && focus.h && (form->widget_f != widget)) {
+            EVEKbd *kbd = eve_screen_get_kbd(form->p.window->screen);
 
             if (kbd) {
                 if (form->widget_f && form->widget_f->putc) {
-                    eve_screen_hide_kbd(form->p.tile->screen);
+                    eve_screen_hide_kbd(form->p.window->screen);
                     form->widget_f->putc(form->widget_f, CH_EOF);
                 }
                 eve_kbd_set_handler(kbd, widget->putc);
                 if (widget && widget->putc) {
-                    eve_screen_show_kbd(form->p.tile->screen);
+                    eve_screen_show_kbd(form->p.window->screen);
                 }
             }
             form->widget_f = widget;
@@ -51,8 +51,8 @@ int eve_form_touch(EVECanvas *c, uint8_t tag0, int touch_idx) {
     return ret;
 }
 
-uint8_t eve_form_draw(EVECanvas *c, uint8_t tag0) {
-    EVEForm *form = (EVEForm *)c;
+uint8_t eve_form_draw(EVEView *v, uint8_t tag0) {
+    EVEForm *form = (EVEForm *)v;
     EVEWidget *widget = form->widget;
     int i, j;
     uint8_t tagN, _tagN = 0;

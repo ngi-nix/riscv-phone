@@ -5,21 +5,21 @@
 #include "eve_kbd.h"
 
 #include "screen/screen.h"
-#include "screen/tile.h"
+#include "screen/window.h"
 #include "screen/page.h"
 
 #include "widget.h"
 #include "page.h"
 
-void eve_pagew_init(EVEPageWidget *widget, int16_t x, int16_t y, uint16_t w, uint16_t h, uint8_t font_id, char *title, EVEPage *page) {
+void eve_pagew_init(EVEPageWidget *widget, EVERect *g, uint8_t font_id, char *title, EVEPage *page) {
     memset(widget, 0, sizeof(EVEPageWidget));
-    eve_widget_init(&widget->w, EVE_WIDGET_TYPE_PAGE, x, y, w, h, eve_pagew_touch, eve_pagew_draw, NULL);
+    eve_widget_init(&widget->w, EVE_WIDGET_TYPE_PAGE, g, eve_pagew_touch, eve_pagew_draw, NULL);
     widget->font_id = font_id;
     widget->title = title;
     widget->page = page;
 }
 
-int eve_pagew_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_idx, EVEPageFocus *focus) {
+int eve_pagew_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_idx, EVERect *focus) {
     EVEPageWidget *widget = (EVEPageWidget *)_widget;
     EVETouch *t;
     uint16_t evt;
@@ -33,7 +33,7 @@ int eve_pagew_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_i
             if (page && page->handle_evt) page->handle_evt(page, _widget, t, evt, tag0, touch_idx);
         } else if (evt & EVE_TOUCH_ETYPE_TAG_UP) {
             widget->page->open(widget->page, page);
-            if (focus) eve_page_widget_focus(focus, _widget);
+            if (focus) *focus = _widget->g;
         }
         ret = 1;
     }
@@ -48,7 +48,7 @@ uint8_t eve_pagew_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0) {
     if (draw) {
         widget->tag = tag0;
         if (widget->tag) eve_cmd_dl(TAG(widget->tag));
-        eve_cmd(CMD_TEXT, "hhhhs", _widget->x, _widget->y, widget->font_id, 0, widget->title);
+        eve_cmd(CMD_TEXT, "hhhhs", _widget->g.x, _widget->g.y, widget->font_id, 0, widget->title);
     }
 
     return widget->tag;

@@ -30,8 +30,8 @@ typedef struct EVETextWidget {
     } track;
 } EVETextWidget;
 
-void eve_textw_init(EVETextWidget *widget, int16_t x, int16_t y, uint16_t w, uint16_t h, EVEFont *font, char *text, uint64_t text_size, uint16_t *line, uint16_t line_size);
-int eve_textw_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_idx, EVEPageFocus *focus);
+void eve_textw_init(EVETextWidget *widget, EVERect *g, EVEFont *font, char *text, uint64_t text_size, uint16_t *line, uint16_t line_size);
+int eve_textw_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_idx, EVERect *focus);
 uint8_t eve_textw_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0);
 void eve_textw_putc(void *_w, int c);
 int eve_textw_update(EVETextWidget *widget, uint16_t line);

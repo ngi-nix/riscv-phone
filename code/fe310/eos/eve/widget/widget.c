@@ -1,10 +1,11 @@
 #include <stdlib.h>
+#include <string.h>
 
 #include "eve.h"
 #include "eve_kbd.h"
 
 #include "screen/screen.h"
-#include "screen/tile.h"
+#include "screen/window.h"
 #include "screen/page.h"
 #include "screen/font.h"
 
@@ -18,12 +19,9 @@ static const size_t _eve_wsize[] = {
     sizeof(EVEPageWidget)
 };
 
-void eve_widget_init(EVEWidget *widget, uint8_t type, int16_t x, int16_t y, uint16_t w, uint16_t h, eve_widget_touch_t touch, eve_widget_draw_t draw, eve_kbd_input_handler_t putc) {
+void eve_widget_init(EVEWidget *widget, uint8_t type, EVERect *g, eve_widget_touch_t touch, eve_widget_draw_t draw, eve_kbd_input_handler_t putc) {
     widget->type = type;
-    widget->x = x;
-    widget->y = y;
-    widget->w = w;
-    widget->h = h;
+    if (g) widget->g = *g;
     widget->touch = touch;
     widget->draw = draw;
     widget->putc = putc;

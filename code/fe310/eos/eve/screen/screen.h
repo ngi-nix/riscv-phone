@@ -1,22 +1,20 @@
 #include <stdint.h>
 
-#define EVE_MAX_TILES   8
+struct EVEWindow;
 
-struct EVETile;
-
-typedef struct EVEWindow {
-    uint16_t x;
-    uint16_t y;
+typedef struct EVERect {
+    int16_t x;
+    int16_t y;
     uint16_t w;
     uint16_t h;
-} EVEWindow;
+} EVERect;
 
 typedef struct EVEScreen {
     uint16_t w;
     uint16_t h;
     EVEKbd *kbd;
-    struct EVETile *tile[EVE_MAX_TILES];
-    uint8_t tile_size;
+    struct EVEWindow *win_head;
+    struct EVEWindow *win_tail;
     char kbd_active;
 } EVEScreen;
 
@@ -26,5 +24,8 @@ EVEKbd *eve_screen_get_kbd(EVEScreen *screen);
 void eve_screen_show_kbd(EVEScreen *screen);
 void eve_screen_hide_kbd(EVEScreen *screen);
 
-void eve_screen_add_tile(EVEScreen *screen, struct EVETile *tile);
+int eve_screen_win_insert(EVEScreen *screen, struct EVEWindow *window, int idx);
+int eve_screen_win_remove(EVEScreen *screen, struct EVEWindow *window);
+void eve_screen_win_append(EVEScreen *screen, struct EVEWindow *window);
+
 void eve_screen_handle_touch(EVEScreen *screen, uint8_t tag0, int touch_idx);

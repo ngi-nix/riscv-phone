@@ -2,7 +2,7 @@ include ../../../common.mk
 
 CFLAGS += -I. -I.. -I../..
 
-obj = font.o screen.o tile.o page.o form.o
+obj = font.o screen.o window.o page.o form.o
 
 
 %.o: %.c %.h
