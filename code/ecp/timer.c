@@ -184,7 +184,7 @@ ecp_cts_t ecp_timer_exe(ECPSocket *sock) {
         ECPConnection *conn = to_exec[i].conn;
         unsigned char mtype = to_exec[i].mtype;
         ecp_timer_retry_t retry = to_exec[i].retry;
-        ecp_conn_handler_msg_t *handler = conn->sock->ctx->handler[conn->type] ? conn->sock->ctx->handler[conn->type]->msg[mtype & ECP_MTYPE_MASK] : NULL;
+        ecp_conn_handler_msg_t handler = conn->sock->ctx->handler[conn->type] ? conn->sock->ctx->handler[conn->type]->msg[mtype & ECP_MTYPE_MASK] : NULL;
 
         if (to_exec[i].cnt > 0) {
             ssize_t _rv = 0;

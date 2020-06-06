@@ -805,7 +805,7 @@ ssize_t ecp_conn_handle_kget(ECPConnection *conn, ecp_seq_t seq, unsigned char m
 #endif
 
         if ((size < 0) && !is_open) {
-            ecp_conn_handler_msg_t *handler = ctx->handler[conn->type] ? ctx->handler[conn->type]->msg[ECP_MTYPE_OPEN] : NULL;
+            ecp_conn_handler_msg_t handler = ctx->handler[conn->type] ? ctx->handler[conn->type]->msg[ECP_MTYPE_OPEN] : NULL;
             return handler ? handler(conn, seq, mtype, msg, size, b) : size;
         }
 
@@ -1475,7 +1475,7 @@ int ecp_msg_defrag(ECPFragIter *iter, ecp_seq_t seq, unsigned char *msg_in, size
 }
 
 ssize_t ecp_msg_handle(ECPConnection *conn, ecp_seq_t seq, unsigned char *msg, size_t msg_size, ECP2Buffer *bufs) {
-    ecp_conn_handler_msg_t *handler = NULL;
+    ecp_conn_handler_msg_t handler = NULL;
     ssize_t rv = 0;
     unsigned char mtype = 0;
     unsigned char *content = NULL;

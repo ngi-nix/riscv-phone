@@ -106,7 +106,7 @@ static ssize_t vconn_handle_open(ECPConnection *conn, ecp_seq_t seq, unsigned ch
     if (mtype & ECP_MTYPE_FLAG_REP) {
         if (!conn->out) return ECP_ERR;
         if (size < 0) {
-            ecp_conn_handler_msg_t *handler = NULL;
+            ecp_conn_handler_msg_t handler = NULL;
             while (conn->type == ECP_CTYPE_VCONN) {
                 ECPVConnection *conn_v = (ECPVConnection *)conn;
                 conn = conn_v->next;

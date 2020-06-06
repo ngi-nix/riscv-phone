@@ -152,7 +152,7 @@ struct ECPFragIter;
 typedef int (*ecp_rng_t) (void *, size_t);
 
 typedef int (*ecp_conn_handler_new_t) (struct ECPSocket *s, struct ECPConnection *p, unsigned char *msg, size_t sz, struct ECPConnection **c);
-typedef ssize_t ecp_conn_handler_msg_t (struct ECPConnection *c, ecp_seq_t s, unsigned char t, unsigned char *msg, ssize_t sz, struct ECP2Buffer *b);
+typedef ssize_t (*ecp_conn_handler_msg_t) (struct ECPConnection *c, ecp_seq_t s, unsigned char t, unsigned char *msg, ssize_t sz, struct ECP2Buffer *b);
 
 typedef struct ECPConnection * ecp_conn_alloc_t (unsigned char t);
 typedef void ecp_conn_free_t (struct ECPConnection *c);
@@ -217,7 +217,7 @@ typedef struct ECPFragIter {
 } ECPFragIter;
 
 typedef struct ECPConnHandler {
-    ecp_conn_handler_msg_t *msg[ECP_MAX_MTYPE];
+    ecp_conn_handler_msg_t msg[ECP_MAX_MTYPE];
     ecp_conn_create_t *conn_create;
     ecp_conn_destroy_t *conn_destroy;
     ecp_conn_open_t *conn_open;
