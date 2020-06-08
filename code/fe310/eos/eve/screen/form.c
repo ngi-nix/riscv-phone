@@ -45,6 +45,7 @@ int eve_form_touch(EVEView *v, uint8_t tag0, int touch_idx) {
             form->widget_f = widget;
         }
         widget = eve_widget_next(widget);
+        memset(&focus, 0, sizeof(focus));
     }
 
     eve_page_focus(&form->p, &focus);
@@ -54,24 +55,17 @@ int eve_form_touch(EVEView *v, uint8_t tag0, int touch_idx) {
 uint8_t eve_form_draw(EVEView *v, uint8_t tag0) {
     EVEForm *form = (EVEForm *)v;
     EVEWidget *widget = form->widget;
-    int i, j;
-    uint8_t tagN, _tagN = 0;
+    int i;
+    uint8_t tagN = tag0;
 
     for (i=0; i<form->widget_size; i++) {
-        tagN = widget->draw(widget, &form->p, tag0);
-        if (tagN) {
-            for (j=tag0; j<=tagN; j++) {
-                eve_touch_set_opt(j, eve_touch_get_opt(j) | EVE_TOUCH_OPT_TRACK | EVE_TOUCH_OPT_TRACK_XY | EVE_TOUCH_OPT_TRACK_EXT);
-            }
-            if (tagN < 0xfe) {
-                tag0 = tagN + 1;
-            } else {
-                tag0 = 0;
-            }
-            _tagN = tagN;
-        }
+        tagN = widget->draw(widget, &form->p, tagN);
         widget = eve_widget_next(widget);
     }
 
-    return _tagN;
+    for (i=tag0; i<tagN; i++) {
+        eve_touch_set_opt(i, eve_touch_get_opt(i) | EVE_TOUCH_OPT_TRACK | EVE_TOUCH_OPT_TRACK_XY | EVE_TOUCH_OPT_TRACK_EXT);
+    }
+
+    return tagN;
 }

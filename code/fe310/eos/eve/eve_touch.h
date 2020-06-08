@@ -79,7 +79,7 @@ void eve_handle_time(void);
 
 void eve_touch_init(void);
 void eve_touch_set_handler(eve_touch_handler_t handler, void *handler_param);
-EVETouch *eve_touch_evt(uint8_t tag0, int touch_idx, uint8_t tag_min, uint8_t tag_max, uint16_t *evt);
+EVETouch *eve_touch_evt(uint8_t tag0, int touch_idx, uint8_t tag_min, uint8_t tag_n, uint16_t *evt);
 void eve_touch_set_opt(uint8_t tag, uint8_t opt);
 uint8_t eve_touch_get_opt(uint8_t tag);
 void eve_touch_clear_opt(void);

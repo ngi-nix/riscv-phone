@@ -27,7 +27,7 @@ int eve_pagew_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_i
 
     if (touch_idx > 0) return 0;
 
-    t = eve_touch_evt(tag0, touch_idx, widget->tag, widget->tag, &evt);
+    t = eve_touch_evt(tag0, touch_idx, widget->tag, 1, &evt);
     if (t && evt) {
         if (evt & EVE_TOUCH_ETYPE_TRACK_MASK) {
             if (page && page->handle_evt) page->handle_evt(page, _widget, t, evt, tag0, touch_idx);
@@ -44,12 +44,14 @@ uint8_t eve_pagew_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0) {
     EVEPageWidget *widget = (EVEPageWidget *)_widget;
     char draw = page ? eve_page_widget_visible(page, _widget) : 1;
 
-    widget->tag = 0;
+    widget->tag = tag0;
     if (draw) {
-        widget->tag = tag0;
-        if (widget->tag) eve_cmd_dl(TAG(widget->tag));
+        if (tag0 != EVE_TAG_NOTAG) {
+            eve_cmd_dl(TAG(tag0));
+            tag0++;
+        }
         eve_cmd(CMD_TEXT, "hhhhs", _widget->g.x, _widget->g.y, widget->font_id, 0, widget->title);
     }
 
-    return widget->tag;
+    return tag0;
 }

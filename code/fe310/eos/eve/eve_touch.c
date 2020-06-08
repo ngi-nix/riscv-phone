@@ -12,7 +12,6 @@
 #define EVE_NOTOUCH             0x80000000
 
 #define EVE_MAX_TOUCH           5
-#define EVE_TAG_SCREEN          0xff
 
 static int _intr_mask = EVE_INT_TAG | EVE_INT_TOUCH;
 static int _multitouch;
@@ -24,7 +23,7 @@ static EVEExtTracker _ext_tracker;
 
 static eve_touch_handler_t _touch_handler;
 static void *_touch_handler_param;
-static uint8_t _tag_opt[255];
+static uint8_t _tag_opt[256];
 
 static const uint32_t _reg_touch[] = {
     REG_CTOUCH_TOUCH0_XY,
@@ -166,20 +165,18 @@ void eve_handle_touch(void) {
                     touch->tag0 = touch_tag;
                     if (_tag_opt[touch_tag] & EVE_TOUCH_OPT_TRACK_MASK) {
                         touch->tracker.tag = touch_tag;
-                    } else if (_tag_opt[EVE_TAG_SCREEN] & EVE_TOUCH_OPT_TRACK_MASK) {
-                        touch->tracker.tag = EVE_TAG_SCREEN;
                     }
                     if (touch->tracker.tag && !(_tag_opt[touch->tracker.tag] & EVE_TOUCH_OPT_TRACK_XY)) {
                         touch->tracker.track = 1;
                         touch->evt |= EVE_TOUCH_ETYPE_TRACK_START;
                         touch->t = now;
                     }
-                    if (!_tag0 && ((_tag_opt[touch_tag] | _tag_opt[EVE_TAG_SCREEN]) & EVE_TOUCH_OPT_TIMER_MASK)) {
-                        uint8_t _tag = _tag_opt[touch_tag] & EVE_TOUCH_OPT_TIMER_MASK ? touch_tag : EVE_TAG_SCREEN;
+                    if (!_tag0 && (_tag_opt[touch_tag] & EVE_TOUCH_OPT_TIMER_MASK)) {
                         uint16_t _evt = 0;
-                        if (_tag_opt[_tag] & EVE_TOUCH_OPT_LPRESS) _evt |= EVE_TOUCH_ETYPE_LPRESS;
-                        if (_tag_opt[_tag] & EVE_TOUCH_OPT_DTAP) _evt |= EVE_TOUCH_ETYPE_TAP1;
-                        _touch_timer_set(_tag, 0, _evt, 0, 0, EVE_TIMEOUT_TAP);
+
+                        if (_tag_opt[touch_tag] & EVE_TOUCH_OPT_LPRESS) _evt |= EVE_TOUCH_ETYPE_LPRESS;
+                        if (_tag_opt[touch_tag] & EVE_TOUCH_OPT_DTAP) _evt |= EVE_TOUCH_ETYPE_TAP1;
+                        _touch_timer_set(touch_tag, 0, _evt, 0, 0, EVE_TIMEOUT_TAP);
                     }
                 }
                 if (!_tag0) _tag0 = tag0 = touch_tag;
@@ -312,15 +309,19 @@ void eve_touch_set_handler(eve_touch_handler_t handler, void *param) {
     _touch_handler_param = param;
 }
 
-EVETouch *eve_touch_evt(uint8_t tag0, int touch_idx, uint8_t tag_min, uint8_t tag_max, uint16_t *evt) {
+EVETouch *eve_touch_evt(uint8_t tag0, int touch_idx, uint8_t tag_min, uint8_t tag_n, uint16_t *evt) {
+    int tag_max;
     uint8_t _tag;
     uint16_t _evt;
     EVETouch *ret = NULL;
 
     *evt = 0;
+
     if ((touch_idx < 0) || (touch_idx > 4)) return ret;
-    if ((tag_min == 0) || (tag_max == 0)) return ret;
-    if ((tag0 < tag_min) || (tag0 > tag_max)) return ret;
+    if (tag_min == EVE_TAG_NOTAG) return ret;
+
+    tag_max = tag_min + tag_n;
+    if ((tag0 < tag_min) || (tag0 >= tag_max)) return ret;
 
     ret = &_touch[touch_idx];
     _evt = ret->evt;
@@ -328,23 +329,23 @@ EVETouch *eve_touch_evt(uint8_t tag0, int touch_idx, uint8_t tag_min, uint8_t ta
     *evt |= _evt & EVE_TOUCH_ETYPE_POINT_MASK;
     if (_evt & EVE_TOUCH_ETYPE_TAG) {
         _tag = ret->tag;
-        if ((_tag >= tag_min) && (_tag <= tag_max)) *evt |= EVE_TOUCH_ETYPE_TAG;
+        if ((_tag >= tag_min) && (_tag < tag_max)) *evt |= EVE_TOUCH_ETYPE_TAG;
     }
     if (_evt & EVE_TOUCH_ETYPE_TAG_UP) {
         _tag = ret->tag_up;
-        if ((_tag >= tag_min) && (_tag <= tag_max)) *evt |= EVE_TOUCH_ETYPE_TAG_UP;
+        if ((_tag >= tag_min) && (_tag < tag_max)) *evt |= EVE_TOUCH_ETYPE_TAG_UP;
     }
     if (_evt & EVE_TOUCH_ETYPE_TRACK_REG) {
         _tag = ret->tracker.tag;
-        if ((_tag >= tag_min) && (_tag <= tag_max)) *evt |= EVE_TOUCH_ETYPE_TRACK_REG;
+        if ((_tag >= tag_min) && (_tag < tag_max)) *evt |= EVE_TOUCH_ETYPE_TRACK_REG;
     }
     if (_evt & EVE_TOUCH_ETYPE_TRACK_MASK) {
         _tag = ret->tracker.tag;
-        if ((_tag >= tag_min) && (_tag <= tag_max)) *evt |= _evt & (EVE_TOUCH_ETYPE_TRACK_MASK | EVE_TOUCH_ETYPE_TRACK_XY);
+        if ((_tag >= tag_min) && (_tag < tag_max)) *evt |= _evt & (EVE_TOUCH_ETYPE_TRACK_MASK | EVE_TOUCH_ETYPE_TRACK_XY);
     }
     if (_evt & (EVE_TOUCH_ETYPE_LPRESS | EVE_TOUCH_ETYPE_TAP1 | EVE_TOUCH_ETYPE_TAP2)) {
         _tag = _touch_timer.tag;
-        if ((_tag >= tag_min) && (_tag <= tag_max)) *evt |= _evt & (EVE_TOUCH_ETYPE_LPRESS | EVE_TOUCH_ETYPE_TAP1 | EVE_TOUCH_ETYPE_TAP2);
+        if ((_tag >= tag_min) && (_tag < tag_max)) *evt |= _evt & (EVE_TOUCH_ETYPE_LPRESS | EVE_TOUCH_ETYPE_TAP1 | EVE_TOUCH_ETYPE_TAP2);
     }
 
     return ret;

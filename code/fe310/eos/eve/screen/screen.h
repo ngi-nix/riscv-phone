@@ -2,20 +2,13 @@
 
 struct EVEWindow;
 
-typedef struct EVERect {
-    int16_t x;
-    int16_t y;
-    uint16_t w;
-    uint16_t h;
-} EVERect;
-
 typedef struct EVEScreen {
     uint16_t w;
     uint16_t h;
     struct EVEWindow *win_head;
     struct EVEWindow *win_tail;
     EVEKbd *kbd;
-    char kbd_active;
+    struct EVEWindow *kbd_win;
 } EVEScreen;
 
 int eve_screen_init(EVEScreen *screen, uint16_t w, uint16_t h);

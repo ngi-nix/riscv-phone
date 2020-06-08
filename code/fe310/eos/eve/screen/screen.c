@@ -22,11 +22,11 @@ EVEKbd *eve_screen_get_kbd(EVEScreen *screen) {
 }
 
 void eve_screen_show_kbd(EVEScreen *screen) {
-    screen->kbd_active = 1;
+    if (screen->kbd && screen->kbd_win) screen->kbd_win->g.y = screen->h - screen->kbd->g.h;
 }
 
 void eve_screen_hide_kbd(EVEScreen *screen) {
-    screen->kbd_active = 0;
+    if (screen->kbd && screen->kbd_win) screen->kbd_win->g.y = screen->h;
 }
 
 int eve_screen_win_insert(EVEScreen *screen, EVEWindow *window, int idx) {
@@ -69,5 +69,21 @@ void eve_screen_win_append(EVEScreen *screen, EVEWindow *window) {
 }
 
 void eve_screen_handle_touch(EVEScreen *screen, uint8_t tag0, int touch_idx) {
+    EVEWindow *w;
+    int a;
+    uint8_t tagN = 0x80;
+
     eve_touch_clear_opt();
+
+    w = screen->win_head;
+    while(w) {
+        if (eve_window_visible(w)) a = w->view->touch(w->view, tag0, touch_idx);
+        w = w->next;
+    }
+
+    w = screen->win_head;
+    while(w) {
+        if (eve_window_visible(w)) tagN = w->view->draw(w->view, tagN);
+        w = w->next;
+    }
 }

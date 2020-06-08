@@ -1,36 +1,41 @@
 #include <stdlib.h>
+#include <string.h>
 
 #include "eve.h"
 #include "eve_kbd.h"
 
-#define KBD_X       0
-#define KBD_Y       575
-#define KBD_W       480
-#define KBD_H       225
+#define KBD_X           0
+#define KBD_Y           575
+#define KBD_W           480
+#define KBD_H           225
 
-#define KEY_SPACERX 3
-#define KEY_SPACERY 5
-#define KEY_FONT    29
-#define MOD_FONT    21
+#define KEY_SPACERX     3
+#define KEY_SPACERY     5
+#define KEY_FONT        29
+#define MOD_FONT        21
 
-#define KEY_BS      0x08
-#define KEY_RET     0x0a
+#define KEY_BS          0x08
+#define KEY_RET         0x0a
 
-#define FLAG_SHIFT  0x01
-#define FLAG_CTRL   0x02
-#define FLAG_FN     0x04
+#define FLAG_SHIFT      0x01
+#define FLAG_CTRL       0x02
+#define FLAG_FN         0x04
 
-#define TAG_SHIFT   0x11
-#define TAG_CTRL    0x12
-#define TAG_FN      0x13
+#define TAG_SHIFT       0x11
+#define TAG_CTRL        0x12
+#define TAG_FN          0x13
 
-void eve_kbd_init(EVEKbd *kbd, uint32_t mem_addr, uint32_t *mem_next) {
+void eve_kbd_init(EVEKbd *kbd, EVERect *g, uint32_t mem_addr, uint32_t *mem_next) {
     uint16_t mem_size;
 
-    kbd->x = KBD_X;
-    kbd->y = KBD_Y;
-    kbd->w = KBD_W;
-    kbd->h = KBD_H;
+    if (g) {
+        kbd->g = *g;
+    } else {
+        kbd->g.x = KBD_X;
+        kbd->g.y = KBD_Y;
+        kbd->g.w = KBD_W;
+        kbd->g.h = KBD_H;
+    }
     kbd->mem_addr = mem_addr;
     kbd->key_modifier = 0;
     kbd->key_count = 0;
@@ -60,7 +65,7 @@ int eve_kbd_touch(EVEKbd *kbd, uint8_t tag0, int touch_idx) {
     EVETouch *t;
     uint16_t evt;
 
-    t = eve_touch_evt(tag0, touch_idx, 1, 0x7e, &evt);
+    t = eve_touch_evt(tag0, touch_idx, 1, 126, &evt);
     if (t && evt) {
         if (evt & EVE_TOUCH_ETYPE_TAG) {
             uint8_t _tag = t->tag;
@@ -116,15 +121,16 @@ int eve_kbd_touch(EVEKbd *kbd, uint8_t tag0, int touch_idx) {
     } else {
         kbd->active = 0;
     }
+
     return kbd->active;
 }
 
 uint8_t eve_kbd_draw(EVEKbd *kbd) {
     if (kbd->active) {
-        int x = kbd->x;
-        int y = kbd->y;
-        int w = kbd->w;
-        int row_h = kbd->h / 5;
+        int x = kbd->g.x;
+        int y = kbd->g.y;
+        int w = kbd->g.w;
+        int row_h = kbd->g.h / 5;
         int key_w = (w - 9 * KEY_SPACERX) / 10 + 1;
         int mod_w = key_w + key_w / 2;
         int key_h = row_h - KEY_SPACERY;
@@ -151,5 +157,6 @@ uint8_t eve_kbd_draw(EVEKbd *kbd) {
     } else {
         eve_cmd(CMD_APPEND, "ww", kbd->mem_addr, kbd->mem_size);
     }
-    return 0x7e;
+
+    return 0x80;
 }

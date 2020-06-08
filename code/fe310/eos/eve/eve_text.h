@@ -1,8 +1,7 @@
 #include <stdint.h>
 
 typedef struct EVEText {
-    int16_t x;
-    int16_t y;
+    EVERect g;
     uint16_t w;
     uint16_t h;
     uint32_t mem_addr;
@@ -20,7 +19,7 @@ typedef struct EVEText {
     char dirty;
 } EVEText;
 
-void eve_text_init(EVEText *box, int16_t x, int16_t y, uint16_t w, uint16_t h, double scale_x, double scale_y, uint8_t tag, uint16_t line_size, uint32_t mem_addr, uint32_t *mem_next);
+void eve_text_init(EVEText *box, EVERect *g, uint16_t w, uint16_t h, uint8_t tag, uint16_t line_size, uint32_t mem_addr, uint32_t *mem_next);
 int eve_text_touch(EVEText *box, uint8_t tag0, int touch_idx);
 uint8_t eve_text_draw(EVEText *box);
 int eve_text_putc(EVEText *box, int c);

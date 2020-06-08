@@ -18,4 +18,5 @@ typedef struct EVEWindow {
 } EVEWindow;
 
 void eve_window_init(EVEWindow *window, EVERect *g, EVEView *view, EVEScreen *screen);
-void eve_window_get_visible(EVEWindow *window, EVERect *g);
+int eve_window_visible(EVEWindow *window);
+void eve_window_visible_g(EVEWindow *window, EVERect *g);

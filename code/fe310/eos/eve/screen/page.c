@@ -23,7 +23,7 @@ void eve_page_init(EVEPage *page, eve_view_touch_t touch, eve_view_draw_t draw, 
 void eve_page_focus(EVEPage *page, EVERect *f) {
     EVERect g;
 
-    eve_window_get_visible(page->window, &g);
+    eve_window_visible_g(page->window, &g);
     g.x -= page->window->g.x;
     g.y -= page->window->g.y;
 

@@ -1,3 +1,6 @@
+#include <stdlib.h>
+#include <string.h>
+
 #include "eve.h"
 #include "eve_text.h"
 
@@ -17,14 +20,24 @@ static void scroll1(EVEText *box) {
     box->dirty = 1;
 }
 
-void eve_text_init(EVEText *box, int16_t x, int16_t y, uint16_t w, uint16_t h, double scale_x, double scale_y, uint8_t tag, uint16_t line_size, uint32_t mem_addr, uint32_t *mem_next) {
-    box->x = x;
-    box->y = y;
+void eve_text_init(EVEText *box, EVERect *g, uint16_t w, uint16_t h, uint8_t tag, uint16_t line_size, uint32_t mem_addr, uint32_t *mem_next) {
+    double scale_x, scale_y;
+
+    if (g->w == 0) {
+        g->w = w * 8;
+    }
+    if (g->h == 0) {
+        g->h = h * 16;
+    }
+
+    scale_x = (double)g->w / (w * 8);
+    scale_y = (double)g->h / (h * 16);
+    box->g = *g;
     box->w = w;
     box->h = h;
     box->tag = tag;
-    box->transform_a = 256/scale_x;
-    box->transform_e = 256/scale_y;
+    box->transform_a = 256 / scale_x;
+    box->transform_e = 256 / scale_y;
     box->ch_w = scale_x * 8;
     box->ch_h = scale_y * 16;
     box->dl_size = 17;
@@ -55,7 +68,7 @@ int eve_text_touch(EVEText *box, uint8_t tag0, int touch_idx) {
     uint16_t evt;
     int ret = 0;
 
-    t = eve_touch_evt(tag0, touch_idx, box->tag, box->tag, &evt);
+    t = eve_touch_evt(tag0, touch_idx, box->tag, 1, &evt);
     if (t && evt) {
         if ((evt & EVE_TOUCH_ETYPE_TRACK_START) && (box->line_top < 0)) {
             box->line_top = box->line0;
@@ -145,14 +158,14 @@ void eve_text_update(EVEText *box) {
     eve_dl_write(BITMAP_LAYOUT(EVE_TEXTVGA, box->w * 2, text_h1));
     eve_dl_write(BITMAP_SIZE(EVE_NEAREST, EVE_BORDER, EVE_BORDER, box->w * box->ch_w, text_h1 * box->ch_h));
     eve_dl_write(BITMAP_SIZE_H(box->w * box->ch_w, text_h1 * box->ch_h));
-    eve_dl_write(VERTEX2F(box->x, box->y));
+    eve_dl_write(VERTEX2F(box->g.x, box->g.y));
 
     if (text_h2) {
         eve_dl_write(BITMAP_SOURCE(box->mem_addr));
         eve_dl_write(BITMAP_LAYOUT(EVE_TEXTVGA, box->w * 2, text_h2));
         eve_dl_write(BITMAP_SIZE(EVE_NEAREST, EVE_BORDER, EVE_BORDER, box->w * box->ch_w, text_h2 * box->ch_h));
         eve_dl_write(BITMAP_SIZE_H(box->w * box->ch_w, text_h2 * box->ch_h));
-        eve_dl_write(VERTEX2F(box->x, box->y + text_h1 * box->ch_h));
+        eve_dl_write(VERTEX2F(box->g.x, box->g.y + text_h1 * box->ch_h));
     } else {
         eve_dl_write(NOP());
         eve_dl_write(NOP());

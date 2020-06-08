@@ -13,6 +13,15 @@
 #define EVE_PSTATE_STANDBY  1
 #define EVE_PSTATE_SLEEP    3
 
+#define EVE_TAG_NOTAG       0
+
+typedef struct EVERect {
+    int16_t x;
+    int16_t y;
+    uint16_t w;
+    uint16_t h;
+} EVERect;
+
 void eve_command(uint8_t command, uint8_t parameter);
 
 uint8_t eve_read8(uint32_t addr);
