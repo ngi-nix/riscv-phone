@@ -37,7 +37,7 @@ int eve_form_touch(EVEView *v, uint8_t tag0, int touch_idx) {
                     eve_screen_hide_kbd(form->p.window->screen);
                     form->widget_f->putc(form->widget_f, CH_EOF);
                 }
-                eve_kbd_set_handler(kbd, widget->putc);
+                eve_kbd_set_handler(kbd, widget->putc, widget);
                 if (widget && widget->putc) {
                     eve_screen_show_kbd(form->p.window->screen);
                 }
@@ -75,4 +75,3 @@ uint8_t eve_form_draw(EVEView *v, uint8_t tag0) {
 
     return _tagN;
 }
-

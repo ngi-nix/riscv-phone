@@ -36,6 +36,7 @@ void eve_kbd_init(EVEKbd *kbd, uint32_t mem_addr, uint32_t *mem_next) {
     kbd->key_count = 0;
     kbd->key_down = 0;
     kbd->putc = NULL;
+    kbd->param = NULL;
 
     kbd->active = 1;
     eve_write16(REG_CMD_DL, 0);
@@ -50,11 +51,12 @@ void eve_kbd_init(EVEKbd *kbd, uint32_t mem_addr, uint32_t *mem_next) {
     *mem_next = kbd->mem_addr + kbd->mem_size;
 }
 
-void eve_kbd_set_handler(EVEKbd *kbd, eve_kbd_input_handler_t putc) {
+void eve_kbd_set_handler(EVEKbd *kbd, eve_kbd_input_handler_t putc, void *param) {
     kbd->putc = putc;
+    kbd->param = param;
 }
 
-int eve_kbd_touch(EVEKbd *kbd, uint8_t tag0, int touch_idx, void *w) {
+int eve_kbd_touch(EVEKbd *kbd, uint8_t tag0, int touch_idx) {
     EVETouch *t;
     uint16_t evt;
 
@@ -86,7 +88,7 @@ int eve_kbd_touch(EVEKbd *kbd, uint8_t tag0, int touch_idx, void *w) {
                     int c = _tag;
 
                     if ((kbd->key_modifier & FLAG_CTRL) && (_tag >= '?') && (_tag <= '_')) c = (_tag - '@') & 0x7f;
-                    kbd->putc(w, c);
+                    kbd->putc(kbd->param, c);
                 }
             }
         }

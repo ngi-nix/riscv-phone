@@ -71,5 +71,3 @@ void eve_screen_win_append(EVEScreen *screen, EVEWindow *window) {
 void eve_screen_handle_touch(EVEScreen *screen, uint8_t tag0, int touch_idx) {
     eve_touch_clear_opt();
 }
-
-

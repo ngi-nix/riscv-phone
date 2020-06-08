@@ -58,4 +58,3 @@ void eve_page_handle_evt(EVEPage *page, EVEWidget *widget, EVETouch *touch, uint
     }
     */
 }
-

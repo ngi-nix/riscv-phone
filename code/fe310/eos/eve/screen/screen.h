@@ -12,9 +12,9 @@ typedef struct EVERect {
 typedef struct EVEScreen {
     uint16_t w;
     uint16_t h;
-    EVEKbd *kbd;
     struct EVEWindow *win_head;
     struct EVEWindow *win_tail;
+    EVEKbd *kbd;
     char kbd_active;
 } EVEScreen;
 
