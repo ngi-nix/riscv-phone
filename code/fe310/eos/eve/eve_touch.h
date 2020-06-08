@@ -44,6 +44,8 @@
 #define EVE_TOUCH_OPT_TRACK_MASK        (EVE_TOUCH_OPT_TRACK        | EVE_TOUCH_OPT_TRACK_REG)
 #define EVE_TOUCH_OPT_TIMER_MASK        (EVE_TOUCH_OPT_LPRESS       | EVE_TOUCH_OPT_DTAP)
 
+typedef void (*eve_touch_handler_t) (void *, uint8_t, int);
+
 typedef struct EVETouch {
     int x;
     int y;
@@ -72,15 +74,27 @@ typedef struct EVETouchTimer {
     void *p;
 } EVETouchTimer;
 
-typedef void (*eve_touch_handler_t) (void *, uint8_t, int);
-
-void eve_init_touch(void);
 void eve_handle_touch(void);
 void eve_handle_time(void);
 
+void eve_touch_init(void);
 void eve_touch_set_handler(eve_touch_handler_t handler, void *handler_param);
 EVETouch *eve_touch_evt(uint8_t tag0, int touch_idx, uint8_t tag_min, uint8_t tag_max, uint16_t *evt);
 void eve_touch_set_opt(uint8_t tag, uint8_t opt);
 uint8_t eve_touch_get_opt(uint8_t tag);
 void eve_touch_clear_opt(void);
 EVETouchTimer *eve_touch_get_timer(void);
+
+typedef void (*eve_etrack_init_t) (EVETouchTimer *, EVETouch *);
+typedef int  (*eve_etrack_tick_t) (EVETouchTimer *, EVETouch *);
+typedef void (*eve_etrack_stop_t) (EVETouchTimer *, EVETouch *);
+
+typedef struct EVEExtTracker {
+    eve_etrack_init_t init;
+    eve_etrack_tick_t tick;
+    eve_etrack_stop_t stop;
+} EVEExtTracker;
+
+void eve_etrack_set(eve_etrack_init_t init, eve_etrack_tick_t tick, eve_etrack_stop_t stop, void *param);
+void eve_etrack_start(int i);
+void eve_etrack_stop(void);

@@ -24,4 +24,4 @@ void eve_timer_set(uint32_t ms);
 void eve_timer_clear(void);
 uint64_t eve_time_get_tick(void);
 
-void eve_init_platform(void);
+void eve_platform_init(void);

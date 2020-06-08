@@ -47,7 +47,7 @@ uint64_t eve_time_get_tick(void) {
     return eos_time_get_tick();
 }
 
-void eve_init_platform(void) {
+void eve_platform_init(void) {
     eos_evtq_set_handler(EOS_EVT_UI, handle_evt);
     eos_timer_set_handler(EOS_TIMER_ETYPE_UI, handle_time);
 

@@ -2,44 +2,23 @@
 #include <math.h>
 
 #include "eve.h"
-#include "eve_platform.h"
 
-static EVETracker _tracker;
-
-void eve_init_track(void) {
-    eve_track_set_handler(eve_track_inert_init, eve_track_inert_tick, eve_track_stop, NULL);
-}
-
-EVETracker *eve_track_get_tracker(void) {
-    return &_tracker;
-}
-
-void eve_track_set_handler(eve_track_init_t init, eve_track_tick_t tick, eve_track_stop_t stop, void *param) {
-    if (stop == NULL) stop = eve_track_stop;
-
-    _tracker.init = init;
-    _tracker.tick = tick;
-    _tracker.stop = stop;
-    eve_touch_get_timer()->p = param;
+void eve_track_init(void) {
+    eve_etrack_set(eve_track_inert_init, eve_track_inert_tick, NULL, NULL);
 }
 
 void eve_track_set(uint8_t type, void *param) {
     switch (type) {
         case EVE_TRACK_TYPE_INERT:
-            eve_track_set_handler(eve_track_inert_init, eve_track_inert_tick, eve_track_stop, NULL);
+            eve_etrack_set(eve_track_inert_init, eve_track_inert_tick, NULL, NULL);
             break;
         case EVE_TRACK_TYPE_OSC:
-            eve_track_set_handler(NULL, eve_track_osc_tick, eve_track_stop, param);
+            eve_etrack_set(NULL, eve_track_osc_tick, NULL, param);
             break;
         default:
             break;
     }
 }
-
-void eve_track_stop(EVETouchTimer *timer, EVETouch *touch) {
-    touch->evt |= EVE_TOUCH_ETYPE_TRACK_STOP;
-}
-
 
 void eve_track_inert_init(EVETouchTimer *timer, EVETouch *touch) {
     double d = sqrt(touch->vx * touch->vx + touch->vy * touch->vy);
@@ -62,6 +41,19 @@ int eve_track_inert_tick(EVETouchTimer *timer, EVETouch *touch) {
     return more;
 }
 
+void eve_track_osc_init(EVETrackOsc *p, int x, int y, uint32_t T, double d, uint32_t t_max) {
+    double f0 = 2 * M_PI / (T * EVE_RTC_FREQ / 1000);
+
+    if (d < 0) d = 0;
+    if (d > 1) d = 1;
+    p->x = x;
+    p->y = y;
+    p->f = d ? f0 * sqrt(1 - d * d) : f0;
+    p->d = d;
+    p->a = -d * f0;
+    p->t_max = t_max;
+}
+
 int eve_track_osc_tick(EVETouchTimer *timer, EVETouch *touch) {
     EVETrackOsc *p = (EVETrackOsc *)timer->p;
     int dt = eve_time_get_tick() - touch->t;
@@ -82,17 +74,4 @@ int eve_track_osc_tick(EVETouchTimer *timer, EVETouch *touch) {
     touch->x = p->x + ax * cos(p->f * dt);
     touch->y = p->y + ay * cos(p->f * dt);
     return more;
-}
-
-void eve_track_osc_init(EVETrackOsc *p, int x, int y, uint32_t T, double d, uint32_t t_max) {
-    double f0 = 2 * M_PI / (T * EVE_RTC_FREQ / 1000);
-
-    if (d < 0) d = 0;
-    if (d > 1) d = 1;
-    p->x = x;
-    p->y = y;
-    p->f = d ? f0 * sqrt(1 - d * d) : f0;
-    p->d = d;
-    p->a = -d * f0;
-    p->t_max = t_max;
 }
