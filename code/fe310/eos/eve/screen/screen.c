@@ -81,9 +81,19 @@ void eve_screen_handle_touch(EVEScreen *screen, uint8_t tag0, int touch_idx) {
         w = w->next;
     }
 
+    eve_cmd_burst_start();
+	eve_cmd_dl(CMD_DLSTART);
+	eve_cmd_dl(CLEAR_COLOR_RGB(0,0,0));
+	eve_cmd_dl(CLEAR(1,1,1));
+
     w = screen->win_head;
     while(w) {
         if (eve_window_visible(w)) tagN = w->view->draw(w->view, tagN);
         w = w->next;
     }
+
+    eve_cmd_dl(DISPLAY());
+	eve_cmd_dl(CMD_SWAP);
+    eve_cmd_burst_end();
+    eve_cmd_exec(1);
 }

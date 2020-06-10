@@ -34,7 +34,7 @@ void eve_textw_init(EVETextWidget *widget, EVERect *g, EVEFont *font, char *text
 int eve_textw_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_idx, EVERect *focus);
 uint8_t eve_textw_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0);
 void eve_textw_putc(void *_w, int c);
-int eve_textw_update(EVETextWidget *widget, uint16_t line);
+int eve_textw_update(EVETextWidget *widget, EVEPage *page, uint16_t line);
 void eve_textw_cursor_update(EVETextWidget *widget, EVETextCursor *cursor);
 void eve_textw_cursor_set(EVETextWidget *widget, EVETextCursor *cursor, uint8_t tag, int16_t x);
 void eve_textw_cursor_clear(EVETextCursor *cursor);

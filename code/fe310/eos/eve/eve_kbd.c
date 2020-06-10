@@ -135,7 +135,6 @@ uint8_t eve_kbd_draw(EVEKbd *kbd) {
         int mod_w = key_w + key_w / 2;
         int key_h = row_h - KEY_SPACERY;
 
-
         eve_cmd_dl(SAVE_CONTEXT());
         eve_cmd(CMD_KEYS, "hhhhhhs", x, y + row_h * 0, w, key_h, KEY_FONT, kbd->key_down, kbd->key_modifier & (FLAG_FN | FLAG_SHIFT) ? "!@#$%^&*()" : (kbd->key_modifier & FLAG_CTRL ? " @[\\]^_?  " : "1234567890"));
         eve_cmd(CMD_KEYS, "hhhhhhs", x, y + row_h * 1, w, key_h, KEY_FONT, kbd->key_down, kbd->key_modifier & FLAG_FN ? "-_=+[]{}\\|" : kbd->key_modifier & (FLAG_SHIFT | FLAG_CTRL) ? "QWERTYUIOP" : "qwertyuiop");

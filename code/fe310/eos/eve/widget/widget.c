@@ -9,6 +9,7 @@
 #include "screen/page.h"
 #include "screen/font.h"
 
+#include "label.h"
 #include "widget.h"
 #include "page.h"
 #include "text.h"
@@ -20,11 +21,15 @@ static const size_t _eve_wsize[] = {
 };
 
 void eve_widget_init(EVEWidget *widget, uint8_t type, EVERect *g, eve_widget_touch_t touch, eve_widget_draw_t draw, eve_kbd_input_handler_t putc) {
-    widget->type = type;
     if (g) widget->g = *g;
     widget->touch = touch;
     widget->draw = draw;
     widget->putc = putc;
+    widget->type = type;
+}
+
+void eve_widget_set_label(EVEWidget *widget, EVELabel *label) {
+    widget->label = label;
 }
 
 EVEWidget *eve_widget_next(EVEWidget *widget) {

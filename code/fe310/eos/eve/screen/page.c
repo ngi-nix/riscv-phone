@@ -7,20 +7,24 @@
 #include "screen.h"
 #include "window.h"
 #include "page.h"
+#include "font.h"
 
+#include "widget/label.h"
 #include "widget/widget.h"
 
-void eve_page_init(EVEPage *page, eve_view_touch_t touch, eve_view_draw_t draw, eve_page_open_t open, eve_page_close_t close, EVEWindow *window) {
+void eve_page_init(EVEPage *page, eve_view_touch_t touch, eve_view_draw_t draw, eve_page_open_t open, eve_page_close_t close, eve_page_evt_handler_t handle_evt, eve_page_g_updater_t update_g, EVEWindow *window) {
     memset(page, 0, sizeof(EVEPage));
     page->v.touch = touch;
     page->v.draw = draw;
     page->open = open;
     page->close = close;
-    page->handle_evt = eve_page_handle_evt;
+    page->handle_evt = handle_evt;
+    page->update_g = update_g;
+    page->widget_f = NULL;
     page->window = window;
 }
 
-void eve_page_focus(EVEPage *page, EVERect *f) {
+void eve_page_set_focus(EVEPage *page, EVEWidget *widget, EVERect *f) {
     EVERect g;
 
     eve_window_visible_g(page->window, &g);
@@ -39,22 +43,17 @@ void eve_page_focus(EVEPage *page, EVERect *f) {
     if ((f->y + f->h) > (page->win_y + g.y + g.h)) {
         page->win_y = (f->y + f->h) - (g.y + g.h);
     }
+    page->widget_f = widget;
 }
 
-int eve_page_widget_visible(EVEPage *page, EVEWidget *widget) {
+EVEWidget *eve_page_get_focus(EVEPage *page) {
+    return page->widget_f;
+}
+
+int eve_page_rect_visible(EVEPage *page, EVERect *g) {
     uint16_t w = page->window->g.w;
     uint16_t h = page->window->g.h;
 
-    if (((widget->g.x + widget->g.w) >= page->win_x) && ((widget->g.y + widget->g.h) >= page->win_y) && (widget->g.x <= (page->win_x + w)) && (widget->g.y <= (page->win_y + h))) return 1;
+    if (((g->x + g->w) >= page->win_x) && ((g->y + g->h) >= page->win_y) && (g->x <= (page->win_x + w)) && (g->y <= (page->win_y + h))) return 1;
     return 0;
-}
-
-void eve_page_handle_evt(EVEPage *page, EVEWidget *widget, EVETouch *touch, uint16_t evt, uint8_t tag0, int touch_idx) {
-    /*
-    if (evt & EVE_TOUCH_ETYPE_TRACK_Y) {
-        // do scroll
-    } else {
-        // go back / forward
-    }
-    */
 }
