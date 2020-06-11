@@ -31,6 +31,9 @@ void eve_write8(uint32_t addr, uint8_t data);
 void eve_write16(uint32_t addr, uint16_t data);
 void eve_write32(uint32_t addr, uint32_t data);
 
+void eve_readb(uint32_t addr, uint8_t *b, size_t size);
+void eve_writeb(uint32_t addr, uint8_t *b, size_t size);
+
 void eve_dl_start(uint32_t addr);
 void eve_dl_write(uint32_t dl);
 void eve_dl_swap(void);

@@ -284,7 +284,7 @@ void eve_textw_putc(void *_page, int c) {
         switch (c) {
             case CH_BS:
                 if (cursor1->ch > 0) {
-                    cursor1->x -= widget->font->w[*(text - 1)];
+                    cursor1->x -= widget->font->w_ch[*(text - 1)];
                     memmove(text - 1, text, widget->text_len - cursor1->ch + 1);
                     widget->text_len--;
                     cursor1->ch--;
@@ -300,7 +300,7 @@ void eve_textw_putc(void *_page, int c) {
                 break;
             default:
                 if (widget->text_len < (widget->text_size - 1)) {
-                    cursor1->x += widget->font->w[c];
+                    cursor1->x += widget->font->w_ch[c];
                     memmove(text + 1, text, widget->text_len - cursor1->ch + 1);
                     *text = c;
                     widget->text_len++;
@@ -345,7 +345,7 @@ int eve_textw_update(EVETextWidget *widget, EVEPage *page, uint16_t line) {
     line_b = LINE_EMPTY;
     for (i=LINE_START(widget, line); i<widget->text_size; i++) {
         ch = widget->text[i];
-        ch_w = widget->font->w[ch];
+        ch_w = widget->font->w_ch[ch];
         if (ch <= 0x20) {
             if ((ch == '\n') || (ch == '\0')) {
                 if (widget->line[line] == i) return line;
@@ -406,7 +406,7 @@ void eve_textw_cursor_update(EVETextWidget *widget, EVETextCursor *cursor) {
     x = 0;
     for (i=LINE_START(widget, cursor->line); i<LINE_END(widget, cursor->line); i++) {
         if (cursor->ch == i) break;
-        x += widget->font->w[widget->text[i]];
+        x += widget->font->w_ch[widget->text[i]];
     }
     cursor->x = x;
 }
@@ -430,12 +430,12 @@ void eve_textw_cursor_set(EVETextWidget *widget, EVETextCursor *cursor, uint8_t 
     _x = 0;
     _d = x;
     for (i=LINE_START(widget, cursor->line); i<LINE_END(widget, cursor->line); i++) {
-        _x += widget->font->w[widget->text[i]];
+        _x += widget->font->w_ch[widget->text[i]];
         if (_x >= x) {
             if (_x - x < _d) {
                 i++;
             } else {
-                _x -= widget->font->w[widget->text[i]];
+                _x -= widget->font->w_ch[widget->text[i]];
             }
             break;
         } else {

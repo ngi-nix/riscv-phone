@@ -70,6 +70,28 @@ void eve_write32(uint32_t addr, uint32_t data) {
     eve_spi_cs_clear();
 }
 
+void eve_readb(uint32_t addr, uint8_t *b, size_t size) {
+    int i;
+
+    eve_spi_cs_set();
+    eve_spi_xchg32(addr << 8, 0);
+    for (i=0; i<size; i++) {
+        b[i] = eve_spi_xchg8(0, 0);
+    }
+    eve_spi_cs_clear();
+}
+
+void eve_writeb(uint32_t addr, uint8_t *b, size_t size) {
+    int i;
+
+    eve_spi_cs_set();
+    eve_spi_xchg24(addr | EVE_MEM_WRITE, 0);
+    for (i=0; i<size; i++) {
+        eve_spi_xchg8(b[i], 0);
+    }
+    eve_spi_cs_clear();
+}
+
 static void _dl_inc(uint32_t i) {
     _dl_addr += i;
 }
@@ -316,9 +338,9 @@ static int _init(void) {
     /* do not set PCLK yet - wait for just after the first display list */
 
     /* disable Audio */
-    eve_write8(REG_VOL_PB, 0x00);           /* turn recorded audio volume down */
+    eve_write16(REG_SOUND, 0x0000);         /* set synthesizer to silence */
     eve_write8(REG_VOL_SOUND, 0x00);        /* turn synthesizer volume off */
-    eve_write16(REG_SOUND, 0x6000);         /* set synthesizer to mute */
+    eve_write8(REG_VOL_PB, 0x00);           /* turn recorded audio volume off */
 
     /* write a basic display-list to get things started */
     eve_dl_start(EVE_RAM_DL);
