@@ -37,4 +37,4 @@ void eve_textw_putc(void *_w, int c);
 int eve_textw_update(EVETextWidget *widget, EVEPage *page, uint16_t line);
 void eve_textw_cursor_update(EVETextWidget *widget, EVETextCursor *cursor);
 void eve_textw_cursor_set(EVETextWidget *widget, EVETextCursor *cursor, uint8_t tag, int16_t x);
-void eve_textw_cursor_clear(EVETextCursor *cursor);
+void eve_textw_cursor_clear(EVETextWidget *widget, EVETextCursor *cursor);

@@ -21,6 +21,7 @@ uint16_t eve_font_string_width(EVEFont *font, char *s) {
         r += font->w_ch[*s];
         s++;
     }
+
     return r;
 }
 
