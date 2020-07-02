@@ -33,11 +33,10 @@ int eve_form_touch(EVEView *v, uint8_t tag0, int touch_idx) {
     for (i=0; i<form->widget_size; i++) {
         if (eve_page_rect_visible(&form->p, &widget->g)) {
             int a;
-            EVERect r = {0,0,0,0};
 
-            a = widget->touch(widget, &form->p, tag0, touch_idx, &r);
+            a = widget->touch(widget, &form->p, tag0, touch_idx, &focus);
             ret = ret || a;
-            if (r.w && r.h && (widget_f != widget)) {
+            if (focus.w && focus.h && (widget_f != widget)) {
                 EVEKbd *kbd = eve_screen_get_kbd(form->p.window->screen);
 
                 if (kbd) {
@@ -51,7 +50,6 @@ int eve_form_touch(EVEView *v, uint8_t tag0, int touch_idx) {
                     }
                 }
                 widget_f = widget;
-                focus = r;
             }
         }
         widget = eve_widget_next(widget);
