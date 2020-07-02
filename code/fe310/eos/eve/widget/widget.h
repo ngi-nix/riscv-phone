@@ -1,7 +1,8 @@
 #include <stdint.h>
 
-#define EVE_WIDGET_TYPE_TEXT    1
-#define EVE_WIDGET_TYPE_PAGE    2
+#define EVE_WIDGET_TYPE_PAGE    1
+#define EVE_WIDGET_TYPE_STR     2
+#define EVE_WIDGET_TYPE_TEXT    3
 
 struct EVEWidget;
 

@@ -13,11 +13,13 @@
 #include "widget.h"
 #include "page.h"
 #include "text.h"
+#include "str.h"
 
 static const size_t _eve_wsize[] = {
     0,
-    sizeof(EVETextWidget),
-    sizeof(EVEPageWidget)
+    sizeof(EVEPageWidget),
+    sizeof(EVEStrWidget),
+    sizeof(EVETextWidget)
 };
 
 void eve_widget_init(EVEWidget *widget, uint8_t type, EVERect *g, eve_widget_touch_t touch, eve_widget_draw_t draw, eve_kbd_input_handler_t putc) {
