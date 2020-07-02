@@ -29,7 +29,13 @@
 #define CHAR_VALID_INPUT(c)     ((c >= 0x20) && (c < 0x7f))
 
 void eve_strw_init(EVEStrWidget *widget, EVERect *g, EVEFont *font, char *str, uint16_t str_size) {
+    EVEWidget *_widget = &widget->w;
 
+    memset(widget, 0, sizeof(EVEStrWidget));
+    eve_widget_init(_widget, EVE_WIDGET_TYPE_STR, g, eve_strw_touch, eve_strw_draw, eve_strw_putc);
+    widget->font = font;
+    widget->str = str;
+    widget->str_size = str_size;
 }
 
 static EVEStrCursor *cursor_prox(EVEStrWidget *widget, EVEStrCursor *cursor, EVEPage *page, EVETouch *t, short *dx) {
@@ -142,7 +148,32 @@ int eve_strw_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_id
 }
 
 uint8_t eve_strw_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0) {
+    EVEStrWidget *widget = (EVEStrWidget *)_widget;
+    int16_t x = _widget->g.x - widget->str_g.x;
+    char cut = widget->str_g.x || (widget->str_g.w > _widget->g.w);
 
+    widget->tag = tag0;
+    if (tag0 != EVE_TAG_NOTAG) {
+        eve_cmd_dl(TAG(tag0));
+        tag0++;
+    }
+
+    if (cut && page) {
+        int16_t x = eve_page_scrx(page, _widget->g.x);
+        int16_t y = eve_page_scrx(page, _widget->g.y);
+
+        if (x < 0) x = 0;
+        if (y < 0) y = 0;
+        eve_cmd_dl(SAVE_CONTEXT());
+        eve_cmd_dl(SCISSOR_XY(x, y));
+        eve_cmd_dl(SCISSOR_SIZE(_widget->g.w, _widget->g.h));
+    }
+    eve_cmd(CMD_TEXT, "hhhhs", x, _widget->g.y, widget->font->id, 0, widget->str);
+    if (cut && page) {
+        eve_cmd_dl(RESTORE_CONTEXT());
+    }
+
+    return tag0;
 }
 
 void eve_strw_putc(void *_page, int c) {

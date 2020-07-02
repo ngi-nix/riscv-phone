@@ -25,11 +25,19 @@ void eve_page_init(EVEPage *page, eve_view_touch_t touch, eve_view_draw_t draw, 
 }
 
 int16_t eve_page_x(EVEPage *page, int16_t x) {
-    x + page->win_x - page->window->g.x;
+    return x + page->win_x - page->window->g.x;
 }
 
 int16_t eve_page_y(EVEPage *page, int16_t y) {
-    y + page->win_y - page->window->g.y;
+    return y + page->win_y - page->window->g.y;
+}
+
+int16_t eve_page_scrx(EVEPage *page, int16_t x) {
+    return x - page->win_x + page->window->g.x;
+}
+
+int16_t eve_page_scry(EVEPage *page, int16_t y) {
+    return y - page->win_y + page->window->g.y;
 }
 
 void eve_page_set_focus(EVEPage *page, EVEWidget *widget, EVERect *f) {

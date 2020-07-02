@@ -37,11 +37,11 @@ void eve_textw_init(EVETextWidget *widget, EVERect *g, EVEFont *font, char *text
 
     memset(widget, 0, sizeof(EVETextWidget));
     eve_widget_init(_widget, EVE_WIDGET_TYPE_TEXT, g, eve_textw_touch, eve_textw_draw, eve_textw_putc);
+    widget->font = font;
     widget->text = text;
     widget->text_size = text_size;
     widget->line = line;
     widget->line_size = line_size;
-    widget->font = font;
     if (text_size && line_size) eve_textw_update(widget, NULL, 0);
 }
 
