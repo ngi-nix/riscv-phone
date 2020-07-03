@@ -32,11 +32,11 @@ int16_t eve_page_y(EVEPage *page, int16_t y) {
     return y + page->win_y - page->window->g.y;
 }
 
-int16_t eve_page_scrx(EVEPage *page, int16_t x) {
+int16_t eve_page_scr_x(EVEPage *page, int16_t x) {
     return x - page->win_x + page->window->g.x;
 }
 
-int16_t eve_page_scry(EVEPage *page, int16_t y) {
+int16_t eve_page_scr_y(EVEPage *page, int16_t y) {
     return y - page->win_y + page->window->g.y;
 }
 

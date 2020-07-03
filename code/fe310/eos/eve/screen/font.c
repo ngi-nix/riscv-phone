@@ -14,7 +14,7 @@ void eve_font_init(EVEFont *font, uint8_t font_id) {
     eve_readb(p, font->w_ch, 128);
 }
 
-uint16_t eve_font_strw(EVEFont *font, char *s) {
+uint16_t eve_font_str_w(EVEFont *font, char *s) {
     uint16_t r = 0;
 
     while (*s) {
@@ -25,7 +25,7 @@ uint16_t eve_font_strw(EVEFont *font, char *s) {
     return r;
 }
 
-uint16_t eve_font_bufw(EVEFont *font, char *buf, uint16_t buf_len) {
+uint16_t eve_font_buf_w(EVEFont *font, char *buf, uint16_t buf_len) {
     int i;
     uint16_t r = 0;
 

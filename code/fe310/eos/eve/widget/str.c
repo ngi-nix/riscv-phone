@@ -147,9 +147,41 @@ int eve_strw_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_id
     return 0;
 }
 
+static void _draw_str(EVEStrWidget *widget, uint16_t ch, uint16_t len, uint16_t x1, uint16_t x2, char s) {
+    int16_t x;
+    EVEWidget *_widget = &widget->w;
+
+    x = _widget->g.x - widget->str_g.x;
+    if (x1 != x2) {
+        eve_cmd_dl(BEGIN(EVE_RECTS));
+        if (!s) eve_cmd_dl(COLOR_MASK(0 ,0 ,0 ,0));
+        eve_cmd_dl(VERTEX2F(x + x1, _widget->g.y));
+        eve_cmd_dl(VERTEX2F(x + x2, _widget->g.y + widget->font->h));
+        if (!s) eve_cmd_dl(COLOR_MASK(1 ,1 ,1 ,1));
+        eve_cmd_dl(END());
+        if (len) {
+            if (s) eve_cmd_dl(COLOR_RGB(0, 0, 0));
+            eve_cmd(CMD_TEXT, "hhhhpb", x + x1, _widget->g.y, widget->font->id, 0, widget->str + ch, len, 0);
+            if (s) eve_cmd_dl(COLOR_RGB(255, 255, 255));
+        }
+    }
+}
+
+static void _draw_cursor(EVEStrWidget *widget, EVEStrCursor *cursor) {
+    uint16_t x, y;
+    EVEWidget *_widget = &widget->w;
+
+    x = _widget->g.x - widget->str_g.x + cursor->x;
+    y = _widget->g.y;
+    eve_cmd_dl(BEGIN(EVE_LINES));
+    eve_cmd_dl(VERTEX2F(x, y));
+    eve_cmd_dl(VERTEX2F(x, y + widget->font->h));
+    eve_cmd_dl(END());
+}
+
+
 uint8_t eve_strw_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0) {
     EVEStrWidget *widget = (EVEStrWidget *)_widget;
-    int16_t x = _widget->g.x - widget->str_g.x;
     char cut = widget->str_g.x || (widget->str_g.w > _widget->g.w);
 
     widget->tag = tag0;
@@ -159,8 +191,8 @@ uint8_t eve_strw_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0) {
     }
 
     if (cut && page) {
-        int16_t x = eve_page_scrx(page, _widget->g.x);
-        int16_t y = eve_page_scrx(page, _widget->g.y);
+        int16_t x = eve_page_scr_x(page, _widget->g.x);
+        int16_t y = eve_page_scr_y(page, _widget->g.y);
 
         if (x < 0) x = 0;
         if (y < 0) y = 0;
@@ -168,7 +200,31 @@ uint8_t eve_strw_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0) {
         eve_cmd_dl(SCISSOR_XY(x, y));
         eve_cmd_dl(SCISSOR_SIZE(_widget->g.w, _widget->g.h));
     }
-    eve_cmd(CMD_TEXT, "hhhhs", x, _widget->g.y, widget->font->id, 0, widget->str);
+
+    if (widget->cursor2.on) {
+        EVEStrCursor *c1, *c2;
+        int l1, l2, l3;
+
+        if (widget->cursor1.ch <= widget->cursor2.ch) {
+            c1 = &widget->cursor1;
+            c2 = &widget->cursor2;
+        } else {
+            c1 = &widget->cursor2;
+            c2 = &widget->cursor1;
+        }
+
+
+        l1 = c1->ch;
+        l2 = c2->ch - c1->ch;
+        l3 = strlen(widget->str) - c2->ch;
+        _draw_str(widget, 0, l1, 0, c1->x, 0);
+        _draw_str(widget, c1->ch, l2, c1->x, c2->x, 1);
+        _draw_str(widget, c2->ch, l3, c2->x, widget->str_g.w, 0);
+    } else {
+        if (widget->cursor1.on) _draw_cursor(widget, &widget->cursor1);
+        _draw_str(widget, 0, strlen(widget->str), 0, widget->str_g.w, 0);
+    }
+
     if (cut && page) {
         eve_cmd_dl(RESTORE_CONTEXT());
     }
@@ -191,6 +247,8 @@ void eve_strw_putc(void *_page, int c) {
         return;
     }
 
+    if (!cursor1->on) return;
+
     if (cursor2->on) {
         EVEStrCursor *c1;
         EVEStrCursor *c2;
@@ -208,7 +266,7 @@ void eve_strw_putc(void *_page, int c) {
 
         str = widget->str + c1->ch;
         del_c = c2->ch - c1->ch;
-        del_ch_w = eve_font_bufw(widget->font, str, del_c);
+        del_ch_w = eve_font_buf_w(widget->font, str, del_c);
         if ((c == CH_CTRLX) || (c == CH_CTRLC)) {
             // eve_clipb_push(str, del_c);
             if (c == CH_CTRLC) return;
@@ -221,7 +279,7 @@ void eve_strw_putc(void *_page, int c) {
             ins_c = clipb ? strlen(clipb) : 0;
             if (ins_c) {
                 if (widget->str_len >= widget->str_size - (ins_c - del_c)) ins_c = widget->str_size - widget->str_len + del_c - 1;
-                ins_ch_w = eve_font_bufw(widget->font, clipb, ins_c);
+                ins_ch_w = eve_font_buf_w(widget->font, clipb, ins_c);
             }
         }
         if (ins_c != del_c) memmove(str + ins_c, str + del_c, widget->str_len - c2->ch + 1);
@@ -238,7 +296,7 @@ void eve_strw_putc(void *_page, int c) {
         widget->str_g.w += ins_ch_w - del_ch_w;
         if (c1 == cursor2) widget->cursor1 = widget->cursor2;
         eve_strw_cursor_clear(widget, cursor2);
-    } else if (cursor1->on) {
+    } else {
         uint8_t ch_w;
 
         str = widget->str + cursor1->ch;
@@ -277,7 +335,7 @@ void eve_strw_putc(void *_page, int c) {
         }
     }
 
-    if (cursor1->x - widget->str_g.x < w0) widget->str_g.x = cursor1->x - w0 > 0 ? cursor1->x - w0 : 0;
+    if (cursor1->x - widget->str_g.x < w0) widget->str_g.x = cursor1->x > w0 ? cursor1->x - w0 : 0;
     if (cursor1->x - widget->str_g.x > w1) widget->str_g.x = cursor1->x - w1;
 }
 

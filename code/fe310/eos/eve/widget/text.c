@@ -157,7 +157,7 @@ static void _draw_line(EVETextWidget *widget, uint16_t l, uint16_t ch, uint16_t 
         eve_cmd_dl(END());
         if (len) {
             if (s) eve_cmd_dl(COLOR_RGB(0, 0, 0));
-            eve_cmd(CMD_TEXT, "hhhhpb", _widget->g.x, _widget->g.y + l * widget->font->h, widget->font->id, 0, widget->text + ch, len, 0);
+            eve_cmd(CMD_TEXT, "hhhhpb", _widget->g.x + x1, _widget->g.y + l * widget->font->h, widget->font->id, 0, widget->text + ch, len, 0);
             if (s) eve_cmd_dl(COLOR_RGB(255, 255, 255));
         }
     }
@@ -291,6 +291,8 @@ void eve_textw_putc(void *_page, int c) {
         return;
     }
 
+    if (!cursor1->on) return;
+
     if (cursor2->on) {
         EVETextCursor *c1;
         EVETextCursor *c2;
@@ -318,7 +320,7 @@ void eve_textw_putc(void *_page, int c) {
             ins_c = clipb ? strlen(clipb) : 0;
             if (ins_c) {
                 if (widget->text_len >= widget->text_size - (ins_c - del_c)) ins_c = widget->text_size - widget->text_len + del_c - 1;
-                ch_w = eve_font_bufw(widget->font, clipb, ins_c);
+                ch_w = eve_font_buf_w(widget->font, clipb, ins_c);
             }
         }
         if (ins_c != del_c) memmove(text + ins_c, text + del_c, widget->text_len - c2->ch + 1);
@@ -332,7 +334,7 @@ void eve_textw_putc(void *_page, int c) {
         }
         if (c1 == cursor2) widget->cursor1 = widget->cursor2;
         eve_textw_cursor_clear(widget, cursor2);
-    } else if (cursor1->on) {
+    } else {
         text = widget->text + cursor1->ch;
 
         switch (c) {

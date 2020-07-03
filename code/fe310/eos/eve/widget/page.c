@@ -21,7 +21,7 @@ void eve_pagew_init(EVEPageWidget *widget, EVERect *g, char *title, EVEFont *fon
     widget->title = title;
     widget->font = font;
     widget->page = page;
-    if (_widget->g.w == 0) _widget->g.w = eve_font_strw(font, widget->title);
+    if (_widget->g.w == 0) _widget->g.w = eve_font_str_w(font, widget->title);
     if (_widget->g.h == 0) _widget->g.h = eve_font_h(font);
 }
 
