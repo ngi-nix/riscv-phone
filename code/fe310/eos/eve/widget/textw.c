@@ -45,6 +45,17 @@ void eve_textw_init(EVETextWidget *widget, EVERect *g, EVEFont *font, char *text
     if (text_size && line_size) eve_textw_update(widget, NULL, 0);
 }
 
+static void set_focus(EVETextWidget *widget, EVETextCursor *cursor, EVEPage *page) {
+    EVERect focus;
+    EVEWidget *_widget = &widget->w;
+
+    focus.x = _widget->g.x;
+    focus.y = _widget->g.y + cursor->line * widget->font->h;
+    focus.w = _widget->g.w;
+    focus.h = 2 * widget->font->h;
+    eve_page_set_focus(page, _widget, &focus);
+}
+
 static EVETextCursor *cursor_prox(EVETextWidget *widget, EVETextCursor *cursor, EVEPage *page, EVETouch *t, short *dx, short *dl) {
     EVEWidget *_widget = &widget->w;
     int x = eve_page_x(page, t->x0) - _widget->g.x;
@@ -61,7 +72,7 @@ static EVETextCursor *cursor_prox(EVETextWidget *widget, EVETextCursor *cursor, 
     return NULL;
 }
 
-int eve_textw_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_idx, EVERect *focus) {
+int eve_textw_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_idx) {
     EVETextWidget *widget = (EVETextWidget *)_widget;
     EVETouch *t;
     uint16_t evt;
@@ -119,7 +130,7 @@ int eve_textw_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_i
                 if ((evt & EVE_TOUCH_ETYPE_POINT_UP) && !(t->eevt & EVE_TOUCH_EETYPE_LPRESS)) {
                     eve_textw_cursor_set(widget, &widget->cursor1, t->tag_up, eve_page_x(page, t->x0));
                     if (widget->cursor2.on) eve_textw_cursor_clear(widget, &widget->cursor2);
-                    widget->cursor_f = &widget->cursor1;
+                    set_focus(widget, &widget->cursor1, page);
                 }
                 break;
         }
@@ -132,14 +143,6 @@ int eve_textw_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_i
         }
 
         ret = 1;
-    }
-
-    if (widget->cursor_f && focus) {
-        focus->x = _widget->g.x;
-        focus->y = _widget->g.y + widget->cursor_f->line * widget->font->h;
-        focus->w = _widget->g.w;
-        focus->h = 2 * widget->font->h;
-        widget->cursor_f = NULL;
     }
 
     return ret;
@@ -373,12 +376,12 @@ void eve_textw_putc(void *_page, int c) {
 
     if (cursor1->line && (cursor1->ch < LINE_START(widget, cursor1->line))) {
         cursor1->line--;
-        widget->cursor_f = cursor1;
         eve_textw_cursor_update(widget, cursor1);
+        set_focus(widget, cursor1, page);
     } else if (cursor1->ch > LINE_END(widget, cursor1->line)) {
         while (cursor1->ch > LINE_END(widget, cursor1->line)) cursor1->line++;
-        widget->cursor_f = cursor1;
         eve_textw_cursor_update(widget, cursor1);
+        set_focus(widget, cursor1, page);
     } else {
         cursor1->x += ch_w;
     }

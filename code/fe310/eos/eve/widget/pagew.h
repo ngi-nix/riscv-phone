@@ -9,5 +9,5 @@ typedef struct EVEPageWidget {
 } EVEPageWidget;
 
 void eve_pagew_init(EVEPageWidget *widget, EVERect *g, char *title, EVEFont *font, EVEPage *page);
-int eve_pagew_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_idx, EVERect *focus);
+int eve_pagew_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_idx);
 uint8_t eve_pagew_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0);

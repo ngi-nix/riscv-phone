@@ -41,6 +41,17 @@ void eve_strw_init(EVEStrWidget *widget, EVERect *g, EVEFont *font, char *str, u
     if (_widget->g.h == 0) _widget->g.h = eve_font_h(font);
 }
 
+static void set_focus(EVEStrWidget *widget, EVEPage *page) {
+    EVERect focus;
+    EVEWidget *_widget = &widget->w;
+
+    focus.x = _widget->g.x;
+    focus.y = _widget->g.y;
+    focus.w = _widget->g.w;
+    focus.h = 2 * widget->font->h;
+    eve_page_set_focus(page, _widget, &focus);
+}
+
 static EVEStrCursor *cursor_prox(EVEStrWidget *widget, EVEStrCursor *cursor, EVEPage *page, EVETouch *t, short *dx) {
     EVEWidget *_widget = &widget->w;
     int x = eve_page_x(page, t->x0) - _widget->g.x + widget->str_g.x;
@@ -53,7 +64,7 @@ static EVEStrCursor *cursor_prox(EVEStrWidget *widget, EVEStrCursor *cursor, EVE
     return NULL;
 }
 
-int eve_strw_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_idx, EVERect *focus) {
+int eve_strw_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_idx) {
     EVEStrWidget *widget = (EVEStrWidget *)_widget;
     EVETouch *t;
     uint16_t evt;
@@ -64,7 +75,6 @@ int eve_strw_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_id
     if (t && evt) {
         EVEStrCursor *t_cursor = NULL;
         short dx;
-        char f = 0;
 
         if (evt & (EVE_TOUCH_ETYPE_LPRESS | EVE_TOUCH_ETYPE_TRACK_START)) {
             if (widget->cursor2.on) {
@@ -126,7 +136,7 @@ int eve_strw_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_id
                 if ((evt & EVE_TOUCH_ETYPE_POINT_UP) && !(t->eevt & EVE_TOUCH_EETYPE_LPRESS)) {
                     eve_strw_cursor_set(widget, &widget->cursor1, eve_page_x(page, t->x0));
                     if (widget->cursor2.on) eve_strw_cursor_clear(widget, &widget->cursor2);
-                    f = 1;
+                    set_focus(widget, page);
                 }
                 break;
         }
@@ -135,13 +145,6 @@ int eve_strw_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_id
             widget->track.mode = 0;
             widget->track.cursor = NULL;
             widget->track.dx = 0;
-        }
-
-        if (f && focus) {
-            focus->x = _widget->g.x;
-            focus->y = _widget->g.y;
-            focus->w = _widget->g.w;
-            focus->h = 2 * widget->font->h;
         }
 
         return 1;

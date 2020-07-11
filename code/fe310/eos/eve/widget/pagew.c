@@ -25,7 +25,7 @@ void eve_pagew_init(EVEPageWidget *widget, EVERect *g, char *title, EVEFont *fon
     if (_widget->g.h == 0) _widget->g.h = eve_font_h(font);
 }
 
-int eve_pagew_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_idx, EVERect *focus) {
+int eve_pagew_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_idx) {
     EVEPageWidget *widget = (EVEPageWidget *)_widget;
     EVETouch *t;
     uint16_t evt;
@@ -39,7 +39,6 @@ int eve_pagew_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_i
             if (page && page->handle_evt) page->handle_evt(page, _widget, t, evt, tag0, touch_idx);
         } else if (evt & EVE_TOUCH_ETYPE_TAG_UP) {
             widget->page->open(widget->page, page);
-            if (focus) *focus = _widget->g;
         }
         ret = 1;
     }

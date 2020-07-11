@@ -24,8 +24,7 @@ int eve_form_init(EVEForm *form, EVEWindow *window, EVEWidget *widget, uint16_t 
 int eve_form_touch(EVEView *v, uint8_t tag0, int touch_idx) {
     EVEForm *form = (EVEForm *)v;
     EVEWidget *widget = form->widget;
-    int i, r, ret = 0;
-    EVERect focus = {0,0,0,0};
+    int i, ret = 0;
 
     if (touch_idx == 0) {
         EVETouch *t;
@@ -40,9 +39,8 @@ int eve_form_touch(EVEView *v, uint8_t tag0, int touch_idx) {
     }
     for (i=0; i<form->widget_size; i++) {
         if (eve_page_rect_visible(&form->p, &widget->g)) {
-            int r = widget->touch(widget, &form->p, tag0, touch_idx, &focus);
+            int r = widget->touch(widget, &form->p, tag0, touch_idx);
             ret = ret || r;
-            if (focus.w && focus.h) eve_page_set_focus(&form->p, widget, &focus);
         }
         widget = eve_widget_next(widget);
     }

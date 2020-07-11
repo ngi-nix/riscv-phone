@@ -6,7 +6,7 @@
 
 struct EVEWidget;
 
-typedef int (*eve_widget_touch_t) (struct EVEWidget *, EVEPage *, uint8_t, int, EVERect *);
+typedef int (*eve_widget_touch_t) (struct EVEWidget *, EVEPage *, uint8_t, int);
 typedef uint8_t (*eve_widget_draw_t) (struct EVEWidget *, EVEPage *, uint8_t);
 
 typedef struct EVEWidget {
