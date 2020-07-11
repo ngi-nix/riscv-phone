@@ -15,6 +15,9 @@
 
 #define EVE_TAG_NOTAG       0
 
+#define COLOR_RGBC(c)       ((4UL<<24)|((c)&16777215UL))
+#define CLEAR_COLOR_RGBC(c) ((2UL<<24)|((c)&16777215UL))
+
 typedef struct EVERect {
     int16_t x;
     int16_t y;

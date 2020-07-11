@@ -13,8 +13,20 @@ void eve_window_init(EVEWindow *window, EVERect *g, EVEView *view, EVEScreen *sc
     memset(window, 0, sizeof(EVEWindow));
 
     if (g) window->g = *g;
-    window->view = view;
+    if (view) {
+        window->view = view;
+        window->view->window = window;
+    }
     window->screen = screen;
+    window->color_fg = 0xffffff;
+}
+
+void eve_window_set_color_bg(EVEWindow *window, uint8_t r, uint8_t g, uint8_t b) {
+    window->color_bg = (r << 16) | (g << 8) | b;
+}
+
+void eve_window_set_color_fg(EVEWindow *window, uint8_t r, uint8_t g, uint8_t b) {
+    window->color_fg = (r << 16) | (g << 8) | b;
 }
 
 int eve_window_visible(EVEWindow *window) {
@@ -45,5 +57,60 @@ void eve_window_visible_g(EVEWindow *window, EVERect *g) {
             }
         }
         w = w->next;
+    }
+}
+
+void eve_window_append(EVEWindow *window) {
+    EVEScreen *screen = window->screen;
+
+    window->prev = screen->win_tail;
+    if (screen->win_tail) {
+        screen->win_tail->next = window;
+    } else {
+        screen->win_head = window;
+    }
+    screen->win_tail = window;
+}
+
+void eve_window_insert_above(EVEWindow *window, EVEWindow *win_prev) {
+    EVEScreen *screen = window->screen;
+
+    window->prev = win_prev;
+    window->next = win_prev->next;
+
+    if (window->next) {
+        window->next->prev = window;
+    } else {
+        screen->win_tail = window;
+    }
+    win_prev->next = window;
+}
+
+void eve_window_insert_below(EVEWindow *window, EVEWindow *win_next) {
+    EVEScreen *screen = window->screen;
+
+    window->prev = win_next->prev;
+    window->next = win_next;
+
+    win_next->prev = window;
+    if (window->prev) {
+        window->prev->next = window;
+    } else {
+        screen->win_head = window;
+    }
+}
+
+void eve_window_remove(EVEWindow *window) {
+    EVEScreen *screen = window->screen;
+
+    if (window->prev) {
+        window->prev->next = window->next;
+    } else {
+        screen->win_head = window->next;
+    }
+    if (window->next) {
+        window->next->prev = window->prev;
+    } else {
+        screen->win_tail = window->prev;
     }
 }

@@ -36,6 +36,9 @@ void eve_strw_init(EVEStrWidget *widget, EVERect *g, EVEFont *font, char *str, u
     widget->font = font;
     widget->str = str;
     widget->str_size = str_size;
+    widget->str_len = strlen(str);
+    widget->str_g.w = eve_font_str_w(font, str);
+    if (_widget->g.h == 0) _widget->g.h = eve_font_h(font);
 }
 
 static EVEStrCursor *cursor_prox(EVEStrWidget *widget, EVEStrCursor *cursor, EVEPage *page, EVETouch *t, short *dx) {
@@ -85,7 +88,7 @@ int eve_strw_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_id
 
         switch (widget->track.mode) {
             case STRW_TMODE_SCROLL_Y:
-                if (page && page->handle_evt) page->handle_evt(page, _widget, t, evt, tag0, touch_idx);
+                if (page->handle_evt) page->handle_evt(page, _widget, t, evt, tag0, touch_idx);
                 break;
 
             case STRW_TMODE_SCROLL_X:
@@ -96,8 +99,8 @@ int eve_strw_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_id
                     int x = widget->str_g.x0 + t->x0 - t->x;
                     int w1 = widget->w.g.w - widget->font->w;
 
-                    if (x < 0) x = 0;
                     if (x > widget->str_g.w - w1) x = widget->str_g.w - w1;
+                    if (x < 0) x = 0;
                     widget->str_g.x = x;
                 }
                 break;
@@ -121,7 +124,7 @@ int eve_strw_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_id
                     }
                 }
                 if ((evt & EVE_TOUCH_ETYPE_POINT_UP) && !(t->eevt & EVE_TOUCH_EETYPE_LPRESS)) {
-                    eve_strw_cursor_set(widget, &widget->cursor1, eve_page_x(page, t->x));
+                    eve_strw_cursor_set(widget, &widget->cursor1, eve_page_x(page, t->x0));
                     if (widget->cursor2.on) eve_strw_cursor_clear(widget, &widget->cursor2);
                     f = 1;
                 }
@@ -147,7 +150,7 @@ int eve_strw_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_id
     return 0;
 }
 
-static void _draw_str(EVEStrWidget *widget, uint16_t ch, uint16_t len, uint16_t x1, uint16_t x2, char s) {
+static void _draw_str(EVEStrWidget *widget, EVEWindow *window, uint16_t ch, uint16_t len, uint16_t x1, uint16_t x2, char s) {
     int16_t x;
     EVEWidget *_widget = &widget->w;
 
@@ -160,9 +163,9 @@ static void _draw_str(EVEStrWidget *widget, uint16_t ch, uint16_t len, uint16_t 
         if (!s) eve_cmd_dl(COLOR_MASK(1 ,1 ,1 ,1));
         eve_cmd_dl(END());
         if (len) {
-            if (s) eve_cmd_dl(COLOR_RGB(0, 0, 0));
+            if (s) eve_cmd_dl(COLOR_RGBC(window->color_bg));
             eve_cmd(CMD_TEXT, "hhhhpb", x + x1, _widget->g.y, widget->font->id, 0, widget->str + ch, len, 0);
-            if (s) eve_cmd_dl(COLOR_RGB(255, 255, 255));
+            if (s) eve_cmd_dl(COLOR_RGBC(window->color_fg));
         }
     }
 }
@@ -179,7 +182,6 @@ static void _draw_cursor(EVEStrWidget *widget, EVEStrCursor *cursor) {
     eve_cmd_dl(END());
 }
 
-
 uint8_t eve_strw_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0) {
     EVEStrWidget *widget = (EVEStrWidget *)_widget;
     char cut = widget->str_g.x || (widget->str_g.w > _widget->g.w);
@@ -190,15 +192,36 @@ uint8_t eve_strw_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0) {
         tag0++;
     }
 
-    if (cut && page) {
+    if (cut) {
+        EVEWindow *window = page->v.window;
+        EVEScreen *screen = window->screen;
         int16_t x = eve_page_scr_x(page, _widget->g.x);
         int16_t y = eve_page_scr_y(page, _widget->g.y);
+        uint16_t w = _widget->g.w;
+        uint16_t h = _widget->g.h;
+        int16_t win_x1 = window->g.x;
+        int16_t win_y1 = window->g.y;
+        int16_t win_x2 = win_x1 + window->g.w;
+        int16_t win_y2 = win_y1 + window->g.h;
 
-        if (x < 0) x = 0;
-        if (y < 0) y = 0;
+        if (win_x1 < 0) win_x1 = 0;
+        if (win_y1 < 0) win_y1 = 0;
+        if (win_x2 > screen->w) win_x2 = screen->w;
+        if (win_y2 > screen->h) win_y2 = screen->h;
+        if (x < win_x1) {
+            w += x - win_x1;
+            x = win_x1;
+        }
+        if (y < win_y1) {
+            h += y - win_y1;
+            y = win_y1;
+        }
+        if (x + w > win_x2) w = win_x2 - x;
+        if (y + h > win_y2) h = win_y2 - y;
+
         eve_cmd_dl(SAVE_CONTEXT());
         eve_cmd_dl(SCISSOR_XY(x, y));
-        eve_cmd_dl(SCISSOR_SIZE(_widget->g.w, _widget->g.h));
+        eve_cmd_dl(SCISSOR_SIZE(w, h));
     }
 
     if (widget->cursor2.on) {
@@ -213,19 +236,18 @@ uint8_t eve_strw_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0) {
             c2 = &widget->cursor1;
         }
 
-
         l1 = c1->ch;
         l2 = c2->ch - c1->ch;
         l3 = strlen(widget->str) - c2->ch;
-        _draw_str(widget, 0, l1, 0, c1->x, 0);
-        _draw_str(widget, c1->ch, l2, c1->x, c2->x, 1);
-        _draw_str(widget, c2->ch, l3, c2->x, widget->str_g.w, 0);
+        _draw_str(widget, page->v.window, 0, l1, 0, c1->x, 0);
+        _draw_str(widget, page->v.window, c1->ch, l2, c1->x, c2->x, 1);
+        _draw_str(widget, page->v.window, c2->ch, l3, c2->x, widget->str_g.x + _widget->g.w, 0);
     } else {
         if (widget->cursor1.on) _draw_cursor(widget, &widget->cursor1);
-        _draw_str(widget, 0, strlen(widget->str), 0, widget->str_g.w, 0);
+        _draw_str(widget, page->v.window, 0, strlen(widget->str), 0, widget->str_g.x + _widget->g.w, 0);
     }
 
-    if (cut && page) {
+    if (cut) {
         eve_cmd_dl(RESTORE_CONTEXT());
     }
 
@@ -333,6 +355,10 @@ void eve_strw_putc(void *_page, int c) {
                 }
                 break;
         }
+        if (((c == CH_BS) || (c == CH_DEL)) && (widget->str_g.w - widget->str_g.x < w1)) {
+            widget->str_g.x -= ch_w;
+            if (widget->str_g.x < 0) widget->str_g.x = 0;
+        }
     }
 
     if (cursor1->x - widget->str_g.x < w0) widget->str_g.x = cursor1->x > w0 ? cursor1->x - w0 : 0;
@@ -341,7 +367,7 @@ void eve_strw_putc(void *_page, int c) {
 
 void eve_strw_cursor_set(EVEStrWidget *widget, EVEStrCursor *cursor, int16_t x) {
     int i;
-    uint16_t _x, _d;
+    int16_t _x, _d;
     EVEWidget *_widget = &widget->w;
 
     x = x - _widget->g.x + widget->str_g.x;

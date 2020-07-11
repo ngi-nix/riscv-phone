@@ -11,7 +11,7 @@
 
 #include "label.h"
 
-void eve_label_init(EVELabel *label, EVERect *g, char *title, EVEFont *font) {
+void eve_label_init(EVELabel *label, EVERect *g, EVEFont *font, char *title) {
     memset(label, 0, sizeof(EVELabel));
     if (g) label->g = *g;
     label->title = title;

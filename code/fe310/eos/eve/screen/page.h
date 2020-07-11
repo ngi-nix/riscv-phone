@@ -17,10 +17,9 @@ typedef struct EVEPage {
     eve_page_evt_handler_t handle_evt;
     eve_page_g_updater_t update_g;
     struct EVEWidget *widget_f;
-    EVEWindow *window;
 } EVEPage;
 
-void eve_page_init(EVEPage *page, eve_view_touch_t touch, eve_view_draw_t draw, eve_page_open_t open, eve_page_close_t close, eve_page_evt_handler_t handle_evt, eve_page_g_updater_t update_g, EVEWindow *window);
+void eve_page_init(EVEPage *page, EVEWindow *window, eve_view_touch_t touch, eve_view_draw_t draw, eve_page_open_t open, eve_page_close_t close, eve_page_evt_handler_t handle_evt, eve_page_g_updater_t update_g);
 int16_t eve_page_x(EVEPage *page, int16_t x);
 int16_t eve_page_y(EVEPage *page, int16_t y);
 int16_t eve_page_scr_x(EVEPage *page, int16_t x);
