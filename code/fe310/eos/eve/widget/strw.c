@@ -12,7 +12,7 @@
 
 #include "label.h"
 #include "widget.h"
-#include "str.h"
+#include "strw.h"
 
 #define CH_BS                   0x08
 #define CH_DEL                  0x7f

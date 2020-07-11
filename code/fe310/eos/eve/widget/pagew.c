@@ -11,7 +11,7 @@
 
 #include "label.h"
 #include "widget.h"
-#include "page.h"
+#include "pagew.h"
 
 void eve_pagew_init(EVEPageWidget *widget, EVERect *g, char *title, EVEFont *font, EVEPage *page) {
     EVEWidget *_widget = &widget->w;

@@ -11,9 +11,9 @@
 
 #include "label.h"
 #include "widget.h"
-#include "page.h"
-#include "text.h"
-#include "str.h"
+#include "pagew.h"
+#include "strw.h"
+#include "textw.h"
 
 static const size_t _eve_wsize[] = {
     0,

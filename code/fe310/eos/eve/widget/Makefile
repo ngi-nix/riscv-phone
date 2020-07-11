@@ -2,7 +2,7 @@ include ../../../common.mk
 
 CFLAGS += -I. -I.. -I../..
 
-obj = label.o widget.o page.o str.o text.o
+obj = label.o widget.o pagew.o strw.o textw.o
 
 
 %.o: %.c %.h
