@@ -10,6 +10,7 @@
 #include "screen/page.h"
 #include "screen/font.h"
 
+#include "clipb.h"
 #include "label.h"
 #include "widget.h"
 #include "textw.h"
@@ -278,7 +279,9 @@ void eve_textw_putc(void *_page, int c) {
     EVETextCursor *cursor1 = &widget->cursor1;
     EVETextCursor *cursor2 = &widget->cursor2;
     char *text;
-    int i, r, ins_c = 0, del_c = 0;
+    char *clipb = NULL;
+    int i, r;
+    int ins_c = 0, del_c = 0;
     int ch_w = 0;
 
     if (c == CH_EOF) {
@@ -292,7 +295,6 @@ void eve_textw_putc(void *_page, int c) {
     if (cursor2->on) {
         EVETextCursor *c1;
         EVETextCursor *c2;
-        char *clipb = NULL;
 
         if (cursor1->ch <= cursor2->ch) {
             c1 = cursor1;
@@ -305,19 +307,17 @@ void eve_textw_putc(void *_page, int c) {
         text = widget->text + c1->ch;
         del_c = c2->ch - c1->ch;
         if ((c == CH_CTRLX) || (c == CH_CTRLC)) {
-            // eve_clipb_push(text, del_c);
+            eve_clipb_push(text, del_c);
             if (c == CH_CTRLC) return;
         }
         if (CHAR_VALID_INPUT(c) && (widget->text_len < widget->text_size + del_c - 1)) {
             ins_c = 1;
             ch_w = widget->font->w_ch[c];
         } else if (c == CH_CTRLV) {
-            // clipb = eve_clipb_pop();
+            clipb = eve_clipb_get();
             ins_c = clipb ? strlen(clipb) : 0;
-            if (ins_c) {
-                if (widget->text_len >= widget->text_size - (ins_c - del_c)) ins_c = widget->text_size - widget->text_len + del_c - 1;
-                ch_w = eve_font_buf_w(widget->font, clipb, ins_c);
-            }
+            if (widget->text_len >= widget->text_size - (ins_c - del_c)) ins_c = widget->text_size - widget->text_len + del_c - 1;
+            ch_w = eve_font_buf_w(widget->font, clipb, ins_c);
         }
         if (ins_c != del_c) memmove(text + ins_c, text + del_c, widget->text_len - c2->ch + 1);
         if (ins_c) {
@@ -347,6 +347,18 @@ void eve_textw_putc(void *_page, int c) {
                 if (cursor1->ch < widget->text_len) {
                     memmove(text, text + 1, widget->text_len - cursor1->ch);
                     del_c = 1;
+                }
+                break;
+
+            case CH_CTRLV:
+                clipb = eve_clipb_get();
+                ins_c = clipb ? strlen(clipb) : 0;
+                if (widget->text_len >= widget->text_size - ins_c) ins_c = widget->text_size - widget->text_len - 1;
+                ch_w = eve_font_buf_w(widget->font, clipb, ins_c);
+                if (ins_c) {
+                    memmove(text + ins_c, text, widget->text_len - cursor1->ch + 1);
+                    memcpy(text, clipb, ins_c);
+                    cursor1->ch += ins_c;
                 }
                 break;
 

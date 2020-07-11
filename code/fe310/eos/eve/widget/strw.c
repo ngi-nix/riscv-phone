@@ -10,6 +10,7 @@
 #include "screen/page.h"
 #include "screen/font.h"
 
+#include "clipb.h"
 #include "label.h"
 #include "widget.h"
 #include "strw.h"
@@ -192,6 +193,7 @@ uint8_t eve_strw_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0) {
     widget->tag = tag0;
     if (tag0 != EVE_TAG_NOTAG) {
         eve_cmd_dl(TAG(tag0));
+        eve_touch_set_opt(tag0, EVE_TOUCH_OPT_LPRESS);
         tag0++;
     }
 
@@ -263,6 +265,7 @@ void eve_strw_putc(void *_page, int c) {
     EVEStrCursor *cursor1 = &widget->cursor1;
     EVEStrCursor *cursor2 = &widget->cursor2;
     char *str;
+    char *clipb = NULL;
     int w0 = widget->font->w;
     int w1 = widget->w.g.w - widget->font->w;
 
@@ -277,7 +280,6 @@ void eve_strw_putc(void *_page, int c) {
     if (cursor2->on) {
         EVEStrCursor *c1;
         EVEStrCursor *c2;
-        char *clipb = NULL;
         int ins_c = 0, del_c = 0;
         int ins_ch_w = 0, del_ch_w = 0;
 
@@ -293,19 +295,17 @@ void eve_strw_putc(void *_page, int c) {
         del_c = c2->ch - c1->ch;
         del_ch_w = eve_font_buf_w(widget->font, str, del_c);
         if ((c == CH_CTRLX) || (c == CH_CTRLC)) {
-            // eve_clipb_push(str, del_c);
+            eve_clipb_push(str, del_c);
             if (c == CH_CTRLC) return;
         }
         if (CHAR_VALID_INPUT(c) && (widget->str_len < widget->str_size + del_c - 1)) {
             ins_c = 1;
             ins_ch_w = widget->font->w_ch[c];
         } else if (c == CH_CTRLV) {
-            // clipb = eve_clipb_pop();
+            clipb = eve_clipb_get();
             ins_c = clipb ? strlen(clipb) : 0;
-            if (ins_c) {
-                if (widget->str_len >= widget->str_size - (ins_c - del_c)) ins_c = widget->str_size - widget->str_len + del_c - 1;
-                ins_ch_w = eve_font_buf_w(widget->font, clipb, ins_c);
-            }
+            if (widget->str_len >= widget->str_size - (ins_c - del_c)) ins_c = widget->str_size - widget->str_len + del_c - 1;
+            ins_ch_w = eve_font_buf_w(widget->font, clipb, ins_c);
         }
         if (ins_c != del_c) memmove(str + ins_c, str + del_c, widget->str_len - c2->ch + 1);
         if (ins_c) {
@@ -322,7 +322,8 @@ void eve_strw_putc(void *_page, int c) {
         if (c1 == cursor2) widget->cursor1 = widget->cursor2;
         eve_strw_cursor_clear(widget, cursor2);
     } else {
-        uint8_t ch_w;
+        int ch_w = 0;
+        int c_len;
 
         str = widget->str + cursor1->ch;
         switch (c) {
@@ -343,6 +344,21 @@ void eve_strw_putc(void *_page, int c) {
                     memmove(str, str + 1, widget->str_len - cursor1->ch);
                     widget->str_len--;
                     widget->str_g.w -= ch_w;
+                }
+                break;
+
+            case CH_CTRLV:
+                clipb = eve_clipb_get();
+                c_len = clipb ? strlen(clipb) : 0;
+                if (widget->str_len >= widget->str_size - c_len) c_len = widget->str_size - widget->str_len - 1;
+                ch_w = eve_font_buf_w(widget->font, clipb, c_len);
+                if (c_len) {
+                    memmove(str + c_len, str, widget->str_len - cursor1->ch + 1);
+                    memcpy(str, clipb, c_len);
+                    widget->str_len += c_len;
+                    widget->str_g.w += ch_w;
+                    cursor1->ch += c_len;
+                    cursor1->x += ch_w;
                 }
                 break;
 
