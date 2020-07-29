@@ -3,9 +3,9 @@
 #include "eve.h"
 #include "clipb.h"
 
-static char _clipb[EVE_CLIPB_SIZE_BUF];
+static uint8_t _clipb[EVE_CLIPB_SIZE_BUF];
 
-int eve_clipb_push(char *str, uint16_t len) {
+int eve_clipb_push(uint8_t *str, uint16_t len) {
     if (len >= EVE_CLIPB_SIZE_BUF) return EVE_ERR;
 
     memcpy(_clipb, str, len);
@@ -14,6 +14,6 @@ int eve_clipb_push(char *str, uint16_t len) {
     return EVE_OK;
 }
 
-char *eve_clipb_get(void) {
+uint8_t *eve_clipb_get(void) {
     return _clipb;
 }

@@ -7,7 +7,6 @@
 
 #define EVE_OK              0
 #define EVE_ERR             -1
-#define EVE_ERR_TEXT        -100
 
 #define EVE_PSTATE_ACTIVE   0
 #define EVE_PSTATE_STANDBY  1

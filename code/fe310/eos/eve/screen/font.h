@@ -8,6 +8,7 @@ typedef struct EVEFont {
 } EVEFont;
 
 void eve_font_init(EVEFont *font, uint8_t font_id);
-uint16_t eve_font_str_w(EVEFont *font, char *s);
-uint16_t eve_font_buf_w(EVEFont *font, char *buf, uint16_t buf_len);
+uint8_t eve_font_ch_w(EVEFont *font, utf32_t ch);
+uint16_t eve_font_str_w(EVEFont *font, utf8_t *str);
+uint16_t eve_font_buf_w(EVEFont *font, utf8_t *buf, uint16_t buf_len);
 uint8_t eve_font_h(EVEFont *font);

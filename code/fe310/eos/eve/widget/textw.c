@@ -1,9 +1,9 @@
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 
 #include "eve.h"
 #include "eve_kbd.h"
+#include "unicode.h"
 
 #include "screen/screen.h"
 #include "screen/window.h"
@@ -33,7 +33,9 @@
 
 #define CHAR_VALID_INPUT(c)     (((c >= 0x20) && (c < 0x7f)) || (c == '\n'))
 
-void eve_textw_init(EVETextWidget *widget, EVERect *g, EVEFont *font, char *text, uint16_t text_size, uint16_t *line, uint16_t line_size) {
+#define DIVC(x,y)               ((x) / (y) + ((x) % (y) != 0))
+
+void eve_textw_init(EVETextWidget *widget, EVERect *g, EVEFont *font, utf8_t *text, uint16_t text_size, uint16_t *line, uint16_t line_size) {
     EVEWidget *_widget = &widget->w;
 
     memset(widget, 0, sizeof(EVETextWidget));
@@ -41,9 +43,11 @@ void eve_textw_init(EVETextWidget *widget, EVERect *g, EVEFont *font, char *text
     widget->font = font;
     widget->text = text;
     widget->text_size = text_size;
+    widget->text_len = utf8_verify(text, text_size);
     widget->line = line;
     widget->line_size = line_size;
-    if (text_size && line_size) eve_textw_update(widget, NULL, 0);
+    memset(widget->line, 0xff, line_size * sizeof(uint16_t));
+    eve_textw_update(widget, NULL, 0);
 }
 
 static void set_focus(EVETextWidget *widget, EVETextCursor *cursor, EVEPage *page) {
@@ -186,7 +190,7 @@ uint8_t eve_textw_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0) {
     char lineNvisible;
 
     _line0 = line0 = ((int)page->win_y - _widget->g.y) / widget->font->h;
-    _lineN = lineN = ceil((double)((int)page->win_y - _widget->g.y + page->v.window->g.h) / widget->font->h);
+    _lineN = lineN = DIVC(((int)page->win_y - _widget->g.y + page->v.window->g.h), widget->font->h);
     if (line0 < 0) line0 = 0;
     if (lineN < 0) lineN = 0;
     if (line0 > widget->line_len) line0 = widget->line_len;
@@ -278,8 +282,8 @@ void eve_textw_putc(void *_page, int c) {
     EVETextWidget *widget = (EVETextWidget *)eve_page_get_focus(page);
     EVETextCursor *cursor1 = &widget->cursor1;
     EVETextCursor *cursor2 = &widget->cursor2;
-    char *text;
-    char *clipb = NULL;
+    utf8_t *text;
+    utf8_t *clipb = NULL;
     int i, r;
     int ins_c = 0, del_c = 0;
     int ch_w = 0;
@@ -292,86 +296,72 @@ void eve_textw_putc(void *_page, int c) {
 
     if (!cursor1->on) return;
 
-    if (cursor2->on) {
-        EVETextCursor *c1;
-        EVETextCursor *c2;
+    if (!cursor2->on && ((c == CH_BS) || (c == CH_DEL))) {
+        utf32_t uc;
 
-        if (cursor1->ch <= cursor2->ch) {
-            c1 = cursor1;
-            c2 = cursor2;
-        } else {
-            c1 = cursor2;
-            c2 = cursor1;
-        }
-
-        text = widget->text + c1->ch;
-        del_c = c2->ch - c1->ch;
-        if ((c == CH_CTRLX) || (c == CH_CTRLC)) {
-            eve_clipb_push(text, del_c);
-            if (c == CH_CTRLC) return;
-        }
-        if (CHAR_VALID_INPUT(c) && (widget->text_len < widget->text_size + del_c - 1)) {
-            ins_c = 1;
-            ch_w = widget->font->w_ch[c];
-        } else if (c == CH_CTRLV) {
-            clipb = eve_clipb_get();
-            ins_c = clipb ? strlen(clipb) : 0;
-            if (widget->text_len >= widget->text_size - (ins_c - del_c)) ins_c = widget->text_size - widget->text_len + del_c - 1;
-            ch_w = eve_font_buf_w(widget->font, clipb, ins_c);
-        }
-        if (ins_c != del_c) memmove(text + ins_c, text + del_c, widget->text_len - c2->ch + 1);
-        if (ins_c) {
-            if (c == CH_CTRLV) {
-                memcpy(text, clipb, ins_c);
-            } else {
-                *text = c;
-            }
-            c1->ch += ins_c;
-        }
-        if (c1 == cursor2) widget->cursor1 = widget->cursor2;
-        eve_textw_cursor_clear(widget, cursor2);
-    } else {
         text = widget->text + cursor1->ch;
-
         switch (c) {
             case CH_BS:
                 if (cursor1->ch > 0) {
-                    ch_w = -widget->font->w_ch[*(text - 1)];
-                    memmove(text - 1, text, widget->text_len - cursor1->ch + 1);
-                    cursor1->ch--;
-                    del_c = 1;
+                    del_c = utf8_seek(text, -1, &uc);
+                    ch_w = eve_font_ch_w(widget->font, uc);
+                    memmove(text - del_c, text, widget->text_len - cursor1->ch + 1);
+                    cursor1->ch -= del_c;
                 }
                 break;
 
             case CH_DEL:
                 if (cursor1->ch < widget->text_len) {
-                    memmove(text, text + 1, widget->text_len - cursor1->ch);
-                    del_c = 1;
-                }
-                break;
-
-            case CH_CTRLV:
-                clipb = eve_clipb_get();
-                ins_c = clipb ? strlen(clipb) : 0;
-                if (widget->text_len >= widget->text_size - ins_c) ins_c = widget->text_size - widget->text_len - 1;
-                ch_w = eve_font_buf_w(widget->font, clipb, ins_c);
-                if (ins_c) {
-                    memmove(text + ins_c, text, widget->text_len - cursor1->ch + 1);
-                    memcpy(text, clipb, ins_c);
-                    cursor1->ch += ins_c;
-                }
-                break;
-
-            default:
-                if (CHAR_VALID_INPUT(c) && (widget->text_len < widget->text_size - 1)) {
-                    ch_w = widget->font->w_ch[c];
-                    memmove(text + 1, text, widget->text_len - cursor1->ch + 1);
-                    *text = c;
-                    cursor1->ch++;
-                    ins_c = 1;
+                    del_c = utf8_dec(text, &uc);
+                    ch_w = eve_font_ch_w(widget->font, uc);
+                    memmove(text, text + del_c, widget->text_len - cursor1->ch - del_c + 1);
                 }
                 break;
         }
+    } else {
+        EVETextCursor *c1 = cursor1;
+        EVETextCursor *c2 = cursor1;
+        utf8_t utf8_buf[4];
+
+        if (cursor2->on) {
+            if (cursor1->ch <= cursor2->ch) {
+                c2 = cursor2;
+            } else {
+                c1 = cursor2;
+            }
+            del_c = c2->ch - c1->ch;
+            if ((c == CH_CTRLX) || (c == CH_CTRLC)) {
+                eve_clipb_push(text, del_c);
+                if (c == CH_CTRLC) return;
+            }
+        }
+
+        text = widget->text + c1->ch;
+        if (CHAR_VALID_INPUT(c)) {
+            ins_c = utf8_enc(c, utf8_buf);
+            ch_w = eve_font_ch_w(widget->font, c);
+        } else if (c == CH_CTRLV) {
+            clipb = eve_clipb_get();
+            ins_c = clipb ? utf8_verify(clipb, EVE_CLIPB_SIZE_BUF) : 0;
+            ch_w = eve_font_str_w(widget->font, clipb);
+        }
+        if (widget->text_len + ins_c >= widget->text_size + del_c) {
+            ins_c = 0;
+            ch_w = 0;
+        }
+        if (ins_c != del_c) memmove(text + ins_c, text + del_c, widget->text_len - c2->ch + 1);
+        if (ins_c) {
+            if (c == CH_CTRLV) {
+                memcpy(text, clipb, ins_c);
+            } else if (ins_c > 1) {
+                memcpy(text, utf8_buf, ins_c);
+            } else {
+                *text = utf8_buf[0];
+            }
+            c1->ch += ins_c;
+        }
+        if (c1 == cursor2) widget->cursor1 = widget->cursor2;
+        if (cursor2->on) eve_textw_cursor_clear(widget, cursor2);
     }
 
     if ((ins_c == 0) && (del_c == 0)) return;
@@ -384,7 +374,6 @@ void eve_textw_putc(void *_page, int c) {
     r = cursor1->line;
     if (cursor1->line) r = eve_textw_update(widget, page, cursor1->line - 1);
     if ((cursor1->line == 0) || (r == cursor1->line - 1)) r = eve_textw_update(widget, page, cursor1->line);
-    if (r < 0) return;
 
     if (cursor1->line && (cursor1->ch < LINE_START(widget, cursor1->line))) {
         cursor1->line--;
@@ -399,10 +388,11 @@ void eve_textw_putc(void *_page, int c) {
     }
 }
 
-int eve_textw_update(EVETextWidget *widget, EVEPage *page, uint16_t line) {
+uint16_t eve_textw_update(EVETextWidget *widget, EVEPage *page, uint16_t line) {
     int i;
-    char ch;
+    utf32_t ch;
     uint8_t ch_w;
+    uint8_t ch_l;
     uint16_t word_w, line_w, line_b;
     uint16_t new_h;
     EVEWidget *_widget = &widget->w;
@@ -410,9 +400,18 @@ int eve_textw_update(EVETextWidget *widget, EVEPage *page, uint16_t line) {
     word_w = 0;
     line_w = 0;
     line_b = LINE_EMPTY;
-    for (i=LINE_START(widget, line); i<widget->text_size; i++) {
-        ch = widget->text[i];
-        if (ch < 128) ch_w = widget->font->w_ch[ch];
+
+    i = LINE_START(widget, line);
+    while (i < widget->text_size) {
+        ch_l = utf8_dec(widget->text + i, &ch);
+        if (!CHAR_VALID_INPUT(ch) && ch) {
+            ch = 0;
+            widget->text[i] = '\0';
+            widget->text_len = i;
+            widget->line[line] = LINE_EMPTY;
+        }
+
+        ch_w = eve_font_ch_w(widget->font, ch);
         if (ch <= 0x20) {
             if ((ch == '\n') || (ch == '\0')) {
                 if (widget->line[line] == i) return line;
@@ -426,14 +425,10 @@ int eve_textw_update(EVETextWidget *widget, EVEPage *page, uint16_t line) {
                 word_w = 0;
                 line_w += ch_w;
                 line_b = i;
-            } else {
-                return EVE_ERR_TEXT;
             }
-        } else if (ch < 0x7f) {
+        } else {
             word_w += ch_w;
             line_w += ch_w;
-        } else {
-            return EVE_ERR_TEXT;
         }
         if ((line_w > _widget->g.w) && (line_b != LINE_EMPTY)) {
             if (widget->line[line] == line_b) return line;
@@ -446,11 +441,8 @@ int eve_textw_update(EVETextWidget *widget, EVEPage *page, uint16_t line) {
             line_w = word_w;
             line_b = LINE_EMPTY;
         }
+        i += ch_l;
     }
-
-    if (i == widget->text_size) i--;
-    widget->text[i] = '\0';
-    widget->text_len = i;
 
     widget->line_len = line;
     new_h = (line + 1) * widget->font->h;
@@ -467,13 +459,15 @@ int eve_textw_update(EVETextWidget *widget, EVEPage *page, uint16_t line) {
 }
 
 void eve_textw_cursor_update(EVETextWidget *widget, EVETextCursor *cursor) {
-    int i;
-    uint16_t x;
+    int i = LINE_START(widget, cursor->line);
+    uint16_t x = 0;
+    utf32_t ch;
+    uint8_t ch_l;
 
-    x = 0;
-    for (i=LINE_START(widget, cursor->line); i<LINE_END(widget, cursor->line); i++) {
-        if (cursor->ch == i) break;
-        x += widget->font->w_ch[widget->text[i]];
+    while ((i < cursor->ch) && (i < LINE_END(widget, cursor->line))) {
+        ch_l = utf8_dec(widget->text + i, &ch);
+        x += eve_font_ch_w(widget->font, ch);
+        i += ch_l;
     }
     cursor->x = x;
 }
@@ -482,6 +476,9 @@ void eve_textw_cursor_set(EVETextWidget *widget, EVETextCursor *cursor, uint8_t 
     int i;
     int16_t _x, _d;
     uint16_t c_line = LINE_EMPTY;
+    utf32_t ch;
+    uint8_t ch_w;
+    uint8_t ch_l;
     EVEWidget *_widget = &widget->w;
 
     if ((tag >= widget->tag0) && ((widget->tagN == EVE_TAG_NOTAG) || (tag < widget->tagN))) c_line = tag - widget->tag0 + widget->line0;
@@ -494,15 +491,19 @@ void eve_textw_cursor_set(EVETextWidget *widget, EVETextCursor *cursor, uint8_t 
     }
 
     x -= _widget->g.x;
+
     _x = 0;
     _d = x;
-    for (i=LINE_START(widget, cursor->line); i<LINE_END(widget, cursor->line); i++) {
-        _x += widget->font->w_ch[widget->text[i]];
+    i = LINE_START(widget, cursor->line);
+    while (i < LINE_END(widget, cursor->line)) {
+        ch_l = utf8_dec(widget->text + i, &ch);
+        ch_w = eve_font_ch_w(widget->font, ch);
+        _x += ch_w;
+        i += ch_l;
         if (_x >= x) {
-            if (_x - x < _d) {
-                i++;
-            } else {
-                _x -= widget->font->w_ch[widget->text[i]];
+            if (_x - x > _d) {
+                _x -= ch_w;
+                i -= ch_l;
             }
             break;
         } else {

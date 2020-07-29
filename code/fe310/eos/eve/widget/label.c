@@ -3,6 +3,7 @@
 
 #include "eve.h"
 #include "eve_kbd.h"
+#include "unicode.h"
 
 #include "screen/screen.h"
 #include "screen/window.h"
