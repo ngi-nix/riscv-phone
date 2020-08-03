@@ -36,6 +36,7 @@
 #define DIVC(x,y)               ((x) / (y) + ((x) % (y) != 0))
 
 void eve_textw_init(EVETextWidget *widget, EVERect *g, EVEFont *font, utf8_t *text, uint16_t text_size, uint16_t *line, uint16_t line_size) {
+    int rv, text_len;
     EVEWidget *_widget = &widget->w;
 
     memset(widget, 0, sizeof(EVETextWidget));
@@ -43,7 +44,12 @@ void eve_textw_init(EVETextWidget *widget, EVERect *g, EVEFont *font, utf8_t *te
     widget->font = font;
     widget->text = text;
     widget->text_size = text_size;
-    widget->text_len = utf8_verify(text, text_size);
+    rv = utf8_verify(text, text_size, &text_len);
+    if (rv != UTF_OK) {
+        if (text_len >= text_size) text_len = 0;
+        widget->text[text_len] = '\0';
+    }
+    widget->text_len = text_len;
     widget->line = line;
     widget->line_size = line_size;
     memset(widget->line, 0xff, line_size * sizeof(uint16_t));
@@ -341,8 +347,17 @@ void eve_textw_putc(void *_page, int c) {
             ins_c = utf8_enc(c, utf8_buf);
             ch_w = eve_font_ch_w(widget->font, c);
         } else if (c == CH_CTRLV) {
+            int rv, clipb_len = 0;
+
             clipb = eve_clipb_get();
-            ins_c = clipb ? utf8_verify(clipb, EVE_CLIPB_SIZE_BUF) : 0;
+            if (clipb) {
+                rv = utf8_verify(clipb, EVE_CLIPB_SIZE_BUF, &clipb_len);
+                if (rv != UTF_OK) {
+                    clipb = NULL;
+                    clipb_len = 0;
+                }
+            }
+            ins_c = clipb_len;
             ch_w = eve_font_str_w(widget->font, clipb);
         }
         if (widget->text_len + ins_c >= widget->text_size + del_c) {

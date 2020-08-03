@@ -30,6 +30,7 @@
 #define CHAR_VALID_INPUT(c)     ((c >= 0x20) && (c < 0x7f))
 
 void eve_strw_init(EVEStrWidget *widget, EVERect *g, EVEFont *font, utf8_t *str, uint16_t str_size) {
+    int rv, str_len;
     EVEWidget *_widget = &widget->w;
 
     memset(widget, 0, sizeof(EVEStrWidget));
@@ -37,7 +38,12 @@ void eve_strw_init(EVEStrWidget *widget, EVERect *g, EVEFont *font, utf8_t *str,
     widget->font = font;
     widget->str = str;
     widget->str_size = str_size;
-    widget->str_len = utf8_verify(str, str_size);
+    rv = utf8_verify(str, str_size, &str_len);
+    if (rv != UTF_OK) {
+        if (str_len >= str_size) str_len = 0;
+        widget->str[str_len] = '\0';
+    }
+    widget->str_len = str_len;
     widget->str_g.w = eve_font_str_w(font, str);
     if (_widget->g.h == 0) _widget->g.h = eve_font_h(font);
 }
@@ -335,8 +341,17 @@ void eve_strw_putc(void *_page, int c) {
             ins_c = utf8_enc(c, utf8_buf);
             ins_w = eve_font_ch_w(widget->font, c);
         } else if (c == CH_CTRLV) {
+            int rv, clipb_len = 0;
+
             clipb = eve_clipb_get();
-            ins_c = clipb ? utf8_verify(clipb, EVE_CLIPB_SIZE_BUF) : 0;
+            if (clipb) {
+                rv = utf8_verify(clipb, EVE_CLIPB_SIZE_BUF, &clipb_len);
+                if (rv != UTF_OK) {
+                    clipb = NULL;
+                    clipb_len = 0;
+                }
+            }
+            ins_c = clipb_len;
             ins_w = eve_font_str_w(widget->font, clipb);
         }
         if (widget->str_len + ins_c >= widget->str_size + del_c) {
