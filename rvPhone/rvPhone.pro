@@ -1,4 +1,4 @@
-update=Friday, September 20, 2019 at 04:06:26 PM
+update=Wednesday, August 05, 2020 at 12:24:50 AM
 version=1
 last_client=kicad
 [cvpcb]
@@ -22,7 +22,7 @@ LibDir=
 [pcbnew]
 version=1
 PageLayoutDescrFile=
-LastNetListRead=myPhone.net
+LastNetListRead=rvPhone.net
 CopperLayerCount=4
 BoardThickness=1.6
 AllowMicroVias=0
@@ -64,7 +64,7 @@ OthersTextUpright=1
 SolderMaskClearance=0.045
 SolderMaskMinWidth=0.11
 SolderPasteClearance=0
-SolderPasteRatio=-0
+SolderPasteRatio=0
 [pcbnew/Layer.In1.Cu]
 Name=GND
 Type=1
