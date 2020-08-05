@@ -309,7 +309,7 @@ void eve_textw_putc(void *_page, int c) {
         switch (c) {
             case CH_BS:
                 if (cursor1->ch > 0) {
-                    del_c = utf8_seek(text, -1, &uc);
+                    del_c = -utf8_seek(text, -1, &uc);
                     ch_w = eve_font_ch_w(widget->font, uc);
                     memmove(text - del_c, text, widget->text_len - cursor1->ch + 1);
                     cursor1->ch -= del_c;
