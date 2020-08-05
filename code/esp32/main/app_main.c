@@ -21,7 +21,7 @@ void app_main() {
 
     eos_net_init();
 
-    eos_pcm_init();
+    eos_cell_pcm_init();
     gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
     eos_modem_init();
 

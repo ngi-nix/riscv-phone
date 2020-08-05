@@ -60,16 +60,16 @@ static void i2s_event_task(void *pvParameters) {
                     // Event of I2S receiving data
                     if (!hold_cnt) {
                         buf = eos_net_alloc();
-                        buf[0] = EOS_CELL_MTYPE_AUDIO;
-                        bytes_r = eos_pcm_read(buf + 1, PCM_MIC_WM);
+                        buf[0] = EOS_CELL_MTYPE_PCM_DATA;
+                        bytes_r = eos_cell_pcm_read(buf + 1, PCM_MIC_WM);
                         eos_net_send(EOS_NET_MTYPE_CELL, buf, bytes_r + 1, 0);
                     } else {
                         hold_cnt--;
                         if (hold_buf == NULL) {
                             hold_buf = eos_net_alloc();
-                            hold_buf[0] = EOS_CELL_MTYPE_AUDIO;
+                            hold_buf[0] = EOS_CELL_MTYPE_PCM_DATA;
                         }
-                        if (1 + hold_bytes_r + PCM_MIC_WM <= EOS_NET_SIZE_BUF) hold_bytes_r += eos_pcm_read(hold_buf + 1 + hold_bytes_r, PCM_MIC_WM);
+                        if (1 + hold_bytes_r + PCM_MIC_WM <= EOS_NET_SIZE_BUF) hold_bytes_r += eos_cell_pcm_read(hold_buf + 1 + hold_bytes_r, PCM_MIC_WM);
                         if (hold_cnt == 0) {
                             eos_net_send(EOS_NET_MTYPE_CELL, hold_buf, hold_bytes_r + 1, 0);
                             hold_bytes_r = 0;
@@ -104,7 +104,7 @@ static void i2s_event_task(void *pvParameters) {
     vTaskDelete(NULL);
 }
 
-void eos_pcm_init(void) {
+void eos_cell_pcm_init(void) {
     int i;
 
     i2s_config_t i2s_config = {
@@ -160,7 +160,7 @@ void eos_pcm_init(void) {
     ESP_LOGI(TAG, "INIT");
 }
 
-ssize_t eos_pcm_read(unsigned char *data, size_t size) {
+ssize_t eos_cell_pcm_read(unsigned char *data, size_t size) {
     static unsigned char buf[PCM_SIZE_BUF];
     size_t bytes_r;
     int i;
@@ -178,7 +178,7 @@ ssize_t eos_pcm_read(unsigned char *data, size_t size) {
     return bytes_r / 4;
 }
 
-ssize_t eos_pcm_expand(unsigned char *buf, unsigned char *data, size_t size) {
+static ssize_t pcm_expand(unsigned char *buf, unsigned char *data, size_t size) {
     int i;
 
     if (size > PCM_MIC_WM) return EOS_ERR;
@@ -192,7 +192,7 @@ ssize_t eos_pcm_expand(unsigned char *buf, unsigned char *data, size_t size) {
     return size * 4;
 }
 
-int eos_pcm_push(unsigned char *data, size_t size) {
+int eos_cell_pcm_push(unsigned char *data, size_t size) {
     unsigned char *buf = NULL;
     ssize_t esize;
     int rv;
@@ -212,7 +212,7 @@ int eos_pcm_push(unsigned char *data, size_t size) {
 
     if (buf == NULL) return EOS_ERR_EMPTY;
 
-    esize = eos_pcm_expand(buf, data, size);
+    esize = pcm_expand(buf, data, size);
     if (esize < 0) {
         xSemaphoreTake(mutex, portMAX_DELAY);
         eos_bufq_push(&pcm_buf_q, buf);
@@ -228,7 +228,7 @@ int eos_pcm_push(unsigned char *data, size_t size) {
     return rv;
 }
 
-void eos_pcm_start(void) {
+void eos_cell_pcm_start(void) {
     i2s_event_t evt;
 
     xSemaphoreTake(mutex, portMAX_DELAY);
@@ -253,6 +253,6 @@ void eos_pcm_start(void) {
     i2s_start(I2S_NUM_0);
 }
 
-void eos_pcm_stop(void) {
+void eos_cell_pcm_stop(void) {
     i2s_stop(I2S_NUM_0);
 }

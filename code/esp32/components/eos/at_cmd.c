@@ -27,7 +27,7 @@ static ATURCList urc_list;
 static ATURCItem *urc_curr;
 static SemaphoreHandle_t mutex;
 
-static char at_buf[128];
+static char at_buf[EOS_CELL_UART_SIZE_BUF];
 
 void at_init(void) {
     memset(&urc_list, 0, sizeof(ATURCList));
@@ -66,8 +66,11 @@ int at_urc_process(char *urc) {
             urc_curr = NULL;
             xSemaphoreGive(mutex);
         }
+        ESP_LOGD(TAG, "URC Processed: %s", urc);
         return 1;
     }
+
+    ESP_LOGD(TAG, "URC NOT Processed: %s", urc);
     return 0;
 }
 
@@ -122,8 +125,12 @@ int at_urc_delete(char *pattern) {
     return rv;
 }
 
+void at_cmd(char *cmd) {
+    eos_modem_write(cmd, strlen(cmd));
+    ESP_LOGD(TAG, "Cmd: %s", cmd);
+}
+
 int at_expect(char *str_ok, char *str_err, uint32_t timeout) {
-    int r;
     int rv;
     regex_t re_ok;
     regex_t re_err;
@@ -142,17 +149,16 @@ int at_expect(char *str_ok, char *str_err, uint32_t timeout) {
 
     do {
         rv = eos_modem_readln(at_buf, sizeof(at_buf), timeout - e);
-        if (rv) return rv;
+        ESP_LOGD(TAG, "Expect: %s", at_buf);
 
-        if (at_buf[0] == '\0') continue;
+        if (at_buf[0] != '\0') {
+            if (!rv && str_ok && (regexec(&re_ok, at_buf, 0, NULL, 0) == 0)) return 1;
+            if (!rv && str_err && (regexec(&re_err, at_buf, 0, NULL, 0) == 0)) return 0;
 
-        if (str_ok && (regexec(&re_ok, at_buf, 0, NULL, 0) == 0)) return 1;
-        if (str_err && (regexec(&re_err, at_buf, 0, NULL, 0) == 0)) return 0;
-
-        r = at_urc_process(at_buf);
-        if (!r) ESP_LOGD(TAG, "expect unhandled URC: %s", at_buf);
+            at_urc_process(at_buf);
+        }
 
         e = (uint32_t)(esp_timer_get_time() - t_start) / 1000;
-        if (e >= timeout) return EOS_ERR_TIMEOUT;
+        if (e > timeout) return EOS_ERR_TIMEOUT;
     } while (1);
 }
