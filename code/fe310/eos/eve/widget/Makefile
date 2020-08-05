@@ -1,6 +1,6 @@
 include ../../../common.mk
 
-CFLAGS += -I. -I.. -I../..
+CFLAGS += -I.. -I../..
 
 obj = clipb.o label.o widget.o pagew.o strw.o textw.o
 

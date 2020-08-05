@@ -1,4 +1,4 @@
-include ../common.mk
+include ../../common.mk
 CFLAGS += -I../include
 
 src = sys_access.c sys_chdir.c sys_chmod.c sys_chown.c sys_close.c sys_execve.c sys_exit.c sys_faccessat.c sys_fork.c sys_fstat.c sys_fstatat.c sys_ftime.c sys_getcwd.c sys_getpid.c \

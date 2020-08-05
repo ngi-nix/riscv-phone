@@ -1,4 +1,4 @@
-include ../common.mk
+include ../../common.mk
 CFLAGS += -I../include -include sys/cdefs.h
 
 %.o: %.c

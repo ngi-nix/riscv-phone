@@ -1,6 +1,6 @@
 include ../common.mk
 
-CFLAGS += -I../include -I../drivers
+CFLAGS += -I../bsp/include -I../bsp/drivers
 
 obj = trap_entry.o eos.o msgq.o event.o interrupt.o timer.o power.o i2s.o uart.o spi.o spi_dev.o net.o wifi.o cell.o sock.o unicode.o
 

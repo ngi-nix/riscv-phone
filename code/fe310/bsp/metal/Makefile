@@ -1,4 +1,4 @@
-include ../common.mk
+include ../../common.mk
 CFLAGS += -I../include -I../drivers
 
 %.o: %.c

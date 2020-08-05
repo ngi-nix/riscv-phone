@@ -1,6 +1,6 @@
 include ../../../common.mk
 
-CFLAGS += -I. -I.. -I../..
+CFLAGS += -I.. -I../..
 
 obj = font.o screen.o window.o kbdwin.o page.o form.o
 

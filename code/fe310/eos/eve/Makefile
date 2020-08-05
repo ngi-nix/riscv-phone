@@ -1,6 +1,6 @@
 include ../../common.mk
 
-CFLAGS += -I.. -I../../include
+CFLAGS += -I.. -I../../bsp/include
 
 obj = eve.o eve_touch.o eve_track.o eve_kbd.o eve_text.o eve_platform.o
 
