@@ -15,10 +15,11 @@ static void cell_handle_evt(unsigned char type, unsigned char *buffer, uint16_t 
         eos_net_bad_handler(type, buffer, len);
         return;
     }
-
     unsigned char mtype = buffer[0];
-    if (mtype < EOS_CELL_MAX_MTYPE) {
-        evt_handler[mtype](type, buffer, len);
+    unsigned char idx = (mtype & EOS_CELL_MTYPE_MASK) >> 4;
+
+    if (idx < EOS_CELL_MAX_MTYPE) {
+        evt_handler[idx](type, buffer, len);
     } else {
         eos_net_bad_handler(type, buffer, len);
     }
@@ -40,6 +41,8 @@ void eos_cell_init(void) {
 }
 
 void eos_cell_set_handler(unsigned char mtype, eos_evt_handler_t handler) {
+    unsigned char idx = (mtype & EOS_CELL_MTYPE_MASK) >> 4;
+
     if (handler == NULL) handler = eos_net_bad_handler;
-    if (mtype < EOS_CELL_MAX_MTYPE) evt_handler[mtype] = handler;
+    if (idx < EOS_CELL_MAX_MTYPE) evt_handler[idx] = handler;
 }
