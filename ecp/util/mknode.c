@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
     rv = ecp_dhkey_generate(&ctx, &key);
     if (rv) goto err;
 
-    rv = ecp_node_init(&ctx, &node, &key.public, (argc == 3) ? argv[2] : NULL);
+    rv = ecp_node_init(&node, &key.public, (argc == 3) ? argv[2] : NULL);
     if (rv) goto err;
 
     rv = ecp_util_key_save(&ctx, &key, fn_key);

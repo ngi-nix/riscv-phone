@@ -1,6 +1,6 @@
 #!/bin/sh
 
-subdirs="ecp util test"
+subdirs="src util test"
 
 for i in $subdirs; do
 	(cd $i && make $1 && cd ..) || exit;

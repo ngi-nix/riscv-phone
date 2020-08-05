@@ -1,8 +1,7 @@
-include ../ecp/Makefile.posix
-CFLAGS=$(CFLAGS_PL) -I../ecp -I../util -Wno-int-to-void-pointer-cast
-LDFLAGS=$(LDFLAGS_PL)
+include ../src/Makefile.posix
+CFLAGS += -I../src -I../util -Wno-int-to-void-pointer-cast
 
-dep=../ecp/build-posix/*.a ../util/libecputil.a
+dep=../src/build-posix/*.a ../util/libecputil.a
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<
@@ -45,7 +44,7 @@ voip.o: voip.c
 	$(CC) $(CFLAGS) -I $(opus_root)/include -c $<
 
 voip: voip.o init.o $(dep)
-	$(CC) -o $@ $< init.o $(dep) $(opus_root)/.libs/libopus.a -lm $(LDFLAGS) -l asound 
+	$(CC) -o $@ $< init.o $(dep) $(opus_root)/.libs/libopus.a -lm $(LDFLAGS) -l asound
 
 clean:
 	rm -f *.o
