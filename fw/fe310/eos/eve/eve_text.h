@@ -22,7 +22,9 @@ typedef struct EVEText {
 void eve_text_init(EVEText *box, EVERect *g, uint16_t w, uint16_t h, uint8_t tag, uint16_t line_size, uint32_t mem_addr, uint32_t *mem_next);
 int eve_text_touch(EVEText *box, uint8_t tag0, int touch_idx);
 uint8_t eve_text_draw(EVEText *box);
-int eve_text_putc(EVEText *box, int c);
+
+void eve_text_putc(EVEText *box, int c);
+void eve_text_puts(EVEText *box, char *s);
 void eve_text_update(EVEText *box);
 void eve_text_newline(EVEText *box);
 void eve_text_backspace(EVEText *box);

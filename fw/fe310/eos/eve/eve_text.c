@@ -102,7 +102,7 @@ uint8_t eve_text_draw(EVEText *box) {
     return box->tag;
 }
 
-int eve_text_putc(EVEText *box, int c) {
+void eve_text_putc(EVEText *box, int c) {
     int line_c, line_n;
 
     switch (c) {
@@ -124,7 +124,13 @@ int eve_text_putc(EVEText *box, int c) {
             if ((line_c != line_n) && (LINE_IDX_DIFF(line_n, box->line0, box->line_size) == box->h)) scroll1(box);
             break;
     }
-    return EVE_OK;
+}
+
+void eve_text_puts(EVEText *box, char *s) {
+    while (*s) {
+        eve_text_putc(box, *s);
+        s++;
+    }
 }
 
 void eve_text_update(EVEText *box) {

@@ -95,10 +95,13 @@ static void handle_cell_msg(unsigned char _type, unsigned char *buffer, uint16_t
             eos_net_send(EOS_NET_MTYPE_CELL, buffer, 1, 0);
             eos_uart_rxwm_set(0);
             printf("\nREADY.\n");
+            eos_spi_dev_start(EOS_DEV_DISP);
+            eve_text_puts(&box, "READY.\n");
+            eos_spi_dev_stop();
             break;
 
         case EOS_CELL_MTYPE_UART_DATA:
-        eos_spi_dev_start(EOS_DEV_DISP);
+            eos_spi_dev_start(EOS_DEV_DISP);
             for (i=1; i<len; i++) {
                 if (buffer[i] != '\r') eve_text_putc(&box, buffer[i]);
             }
