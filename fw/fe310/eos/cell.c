@@ -19,7 +19,7 @@ static void cell_handle_evt(unsigned char type, unsigned char *buffer, uint16_t 
     unsigned char idx = (mtype & EOS_CELL_MTYPE_MASK) >> 4;
 
     if (idx < EOS_CELL_MAX_MTYPE) {
-        evt_handler[idx](type, buffer, len);
+        evt_handler[idx](mtype & ~EOS_CELL_MTYPE_MASK, buffer, len);
     } else {
         eos_net_bad_handler(type, buffer, len);
     }
