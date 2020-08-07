@@ -11,7 +11,7 @@ static const char *TAG = "EOS BQ25895";
 
 void eos_bq25895_set_ilim(void) {
     uint8_t data = 0;
-    eos_i2c_write8(BQ25895_ADDR, 0, 0x1c);
+    eos_i2c_write8(BQ25895_ADDR, 0, 0x26);  // input current: 2.0 A
     eos_i2c_write8(BQ25895_ADDR, 2, 0x28);
     eos_i2c_write8(BQ25895_ADDR, 7, 0x8d);
 

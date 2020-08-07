@@ -112,10 +112,10 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event) {
                 if (_action == WIFI_ACTION_CONNECT) {
                     rbuf[0] = EOS_WIFI_MTYPE_CONNECT;
                     rbuf[1] = EOS_ERR;
-                    eos_net_send(EOS_NET_MTYPE_WIFI, rbuf, 2, 0);
+                    eos_net_send(EOS_NET_MTYPE_WIFI, rbuf, 2);
                 } else {
                     rbuf[0] = EOS_WIFI_MTYPE_DISCONNECT;
-                    eos_net_send(EOS_NET_MTYPE_WIFI, rbuf, 1, 0);
+                    eos_net_send(EOS_NET_MTYPE_WIFI, rbuf, 1);
                 }
                 if (!_action) ret = esp_wifi_stop();
             } else {
@@ -124,21 +124,21 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event) {
             break;
 
         case IP_EVENT_STA_GOT_IP:
-            ESP_LOGD(TAG, "IP address: " IPSTR, IP2STR(&event->event_info.got_ip.ip_info.ip));
+            ESP_LOGI(TAG, "IP address: " IPSTR, IP2STR(&event->event_info.got_ip.ip_info.ip));
             if (event->event_info.got_ip.ip_changed) {
                 // send wifi reconnect
             } else {
                 rbuf = eos_net_alloc();
                 rbuf[0] = EOS_WIFI_MTYPE_CONNECT;
                 rbuf[1] = EOS_OK;
-                eos_net_send(EOS_NET_MTYPE_WIFI, rbuf, 2, 0);
+                eos_net_send(EOS_NET_MTYPE_WIFI, rbuf, 2);
             }
             break;
 
         default: // Ignore the other event types
             break;
     }
-    if (ret != ESP_OK) ESP_LOGD(TAG, "ESP WIFI ERR: %d", ret);
+    if (ret != ESP_OK) ESP_LOGE(TAG, "EVT HANDLER ERR:%d EVT:%d", ret, event->event_id);
 
     return ESP_OK;
 }
@@ -164,7 +164,7 @@ static void wifi_handler(unsigned char _mtype, unsigned char *buffer, uint16_t s
             rv = eos_wifi_disconnect();
             break;
     }
-    if (rv) ESP_LOGD(TAG, "WIFI HANDLER ERR: %d", rv);
+    if (rv) ESP_LOGE(TAG, "MSG HANDLER ERR:%d MSG:%d", rv, mtype);
 }
 
 void eos_wifi_init(void) {

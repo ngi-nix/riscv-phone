@@ -3,9 +3,9 @@
 
 #include <esp_log.h>
 
+#include "eos.h"
 #include "at_cmd.h"
 #include "cell.h"
-#include "gsm.h"
 
 static char cmd[256];
 
@@ -25,6 +25,7 @@ void eos_cell_ussd_handler(unsigned char mtype, unsigned char *buffer, uint16_t 
             cmd_len = snprintf(cmd, sizeof(cmd), "AT+CUSD=1,\"%s\",15\r", buffer);
             if ((cmd_len < 0) || (cmd_len >= sizeof(cmd))) return;
             at_cmd(cmd);
+            rv = at_expect("^OK", "^ERROR", 1000);
 
             break;
     }
@@ -32,3 +33,4 @@ void eos_cell_ussd_handler(unsigned char mtype, unsigned char *buffer, uint16_t 
     eos_modem_give();
 }
 
+void eos_cell_ussd_init(void) {}

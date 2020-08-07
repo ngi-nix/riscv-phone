@@ -4,7 +4,6 @@ typedef struct EOSMsgItem {
     unsigned char type;
     unsigned char *buffer;
     uint16_t len;
-    uint8_t flags;
 } EOSMsgItem;
 
 typedef struct EOSMsgQ {
@@ -15,8 +14,8 @@ typedef struct EOSMsgQ {
 } EOSMsgQ;
 
 void eos_msgq_init(EOSMsgQ *msgq, EOSMsgItem *array, uint8_t size);
-int eos_msgq_push(EOSMsgQ *msgq, unsigned char type, unsigned char *buffer, uint16_t len, uint8_t flags);
-void eos_msgq_pop(EOSMsgQ *msgq, unsigned char *type, unsigned char **buffer, uint16_t *len, uint8_t *flags);
+int eos_msgq_push(EOSMsgQ *msgq, unsigned char type, unsigned char *buffer, uint16_t len);
+void eos_msgq_pop(EOSMsgQ *msgq, unsigned char *type, unsigned char **buffer, uint16_t *len);
 uint8_t eos_msgq_len(EOSMsgQ *msgq);
 
 typedef struct EOSBufQ {

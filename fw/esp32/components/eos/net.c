@@ -62,7 +62,6 @@ static void net_xchg_task(void *pvParameters) {
     unsigned char mtype = 0;
     unsigned char *buffer;
     uint16_t len;
-    uint8_t flags;
     unsigned char *buf_send = heap_caps_malloc(SPI_SIZE_BUF, MALLOC_CAP_DMA);
     unsigned char *buf_recv = heap_caps_malloc(SPI_SIZE_BUF, MALLOC_CAP_DMA);
     esp_err_t ret;
@@ -104,19 +103,15 @@ static void net_xchg_task(void *pvParameters) {
         if (!repeat) {
             xSemaphoreTake(mutex, portMAX_DELAY);
 
-            eos_msgq_pop(&net_send_q, &mtype, &buffer, &len, &flags);
+            eos_msgq_pop(&net_send_q, &mtype, &buffer, &len);
             if (mtype) {
                 buf_send[0] = mtype;
                 buf_send[1] = len >> 8;
                 buf_send[2] = len & 0xFF;
                 if (buffer) {
                     memcpy(buf_send + 3, buffer, len);
-                    if (flags & EOS_NET_FLAG_BFREE) {
-                        free(buffer);
-                    } else {
-                        eos_bufq_push(&net_buf_q, buffer);
-                        xSemaphoreGive(semaph);
-                    }
+                    eos_bufq_push(&net_buf_q, buffer);
+                    xSemaphoreGive(semaph);
                 }
             } else {
                 gpio_set_level(SPI_GPIO_RTS, 0);
@@ -133,7 +128,7 @@ static void net_xchg_task(void *pvParameters) {
         buf_recv[1] = 0;
         buf_recv[2] = 0;
         spi_slave_transmit(VSPI_HOST, &spi_tr, portMAX_DELAY);
-        ESP_LOGD(TAG, "RECV:%d", buf_recv[0]);
+        // ESP_LOGI(TAG, "RECV:%d", buf_recv[0]);
 
         if (wake) {
             eos_power_net_ready();
@@ -174,7 +169,7 @@ static void net_xchg_task(void *pvParameters) {
             mtype &= ~EOS_NET_MTYPE_FLAG_ONEW;
             if (buf_send[0]) repeat = 1;
         }
-        if (mtype <= EOS_NET_MAX_MTYPE) {
+        if ((mtype <= EOS_NET_MAX_MTYPE) && (len <= EOS_NET_SIZE_BUF)) {
             mtype_handler[mtype-1](mtype, buffer, len);
         } else {
             bad_handler(mtype, buffer, len);
@@ -240,20 +235,17 @@ void eos_net_free(unsigned char *buf) {
     xSemaphoreGive(mutex);
 }
 
-int eos_net_send(unsigned char mtype, unsigned char *buffer, uint16_t len, uint8_t flags) {
-    int rv, sleep;
+int eos_net_send(unsigned char mtype, unsigned char *buffer, uint16_t len) {
+    int rv = EOS_OK;
+    int sleep;
 
-    if (flags & EOS_NET_FLAG_BCOPY) xSemaphoreTake(semaph, portMAX_DELAY);
     xSemaphoreTake(mutex, portMAX_DELAY);
     sleep = net_sleep;
     gpio_set_level(SPI_GPIO_RTS, 1);
-    if (flags & EOS_NET_FLAG_BCOPY) {
-        unsigned char *b = eos_bufq_pop(&net_buf_q);
-        memcpy(b, buffer, len);
-        buffer = b;
-    }
-    rv = eos_msgq_push(&net_send_q, mtype, buffer, len, flags);
+    rv = eos_msgq_push(&net_send_q, mtype, buffer, len);
     xSemaphoreGive(mutex);
+
+    if (rv) eos_net_free(buffer);
 
     if (sleep) eos_power_wake(EOS_PWR_WAKE_MSG);
 

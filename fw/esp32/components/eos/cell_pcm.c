@@ -33,6 +33,7 @@ static unsigned char *pcm_bufq_array[PCM_SIZE_BUFQ];
 static EOSMsgQ pcm_evt_q;
 static EOSMsgItem pcm_evtq_array[PCM_SIZE_BUFQ];
 static char pcm_hold_tx;
+static char pcm_active = 0;
 
 static i2s_dev_t* I2S[I2S_NUM_MAX] = {&I2S0, &I2S1};
 
@@ -62,7 +63,7 @@ static void i2s_event_task(void *pvParameters) {
                         buf = eos_net_alloc();
                         buf[0] = EOS_CELL_MTYPE_PCM_DATA;
                         bytes_r = eos_cell_pcm_read(buf + 1, PCM_MIC_WM);
-                        eos_net_send(EOS_NET_MTYPE_CELL, buf, bytes_r + 1, 0);
+                        eos_net_send(EOS_NET_MTYPE_CELL, buf, bytes_r + 1);
                     } else {
                         hold_cnt--;
                         if (hold_buf == NULL) {
@@ -71,7 +72,7 @@ static void i2s_event_task(void *pvParameters) {
                         }
                         if (1 + hold_bytes_r + PCM_MIC_WM <= EOS_NET_SIZE_BUF) hold_bytes_r += eos_cell_pcm_read(hold_buf + 1 + hold_bytes_r, PCM_MIC_WM);
                         if (hold_cnt == 0) {
-                            eos_net_send(EOS_NET_MTYPE_CELL, hold_buf, hold_bytes_r + 1, 0);
+                            eos_net_send(EOS_NET_MTYPE_CELL, hold_buf, hold_bytes_r + 1);
                             hold_bytes_r = 0;
                             hold_buf = NULL;
                         }
@@ -80,7 +81,7 @@ static void i2s_event_task(void *pvParameters) {
                     buf = NULL;
                     xSemaphoreTake(mutex, portMAX_DELAY);
                     if (pcm_hold_tx && (eos_msgq_len(&pcm_evt_q) == PCM_HOLD_CNT_TX)) pcm_hold_tx = 0;
-                    if (!pcm_hold_tx) eos_msgq_pop(&pcm_evt_q, &_type, &buf, &bytes_e, NULL);
+                    if (!pcm_hold_tx) eos_msgq_pop(&pcm_evt_q, &_type, &buf, &bytes_e);
                     xSemaphoreGive(mutex);
 
                     if (buf) {
@@ -200,11 +201,15 @@ int eos_cell_pcm_push(unsigned char *data, size_t size) {
     if (size > PCM_MIC_WM) return EOS_ERR;
 
     xSemaphoreTake(mutex, portMAX_DELAY);
+    if (!pcm_active) {
+        xSemaphoreGive(mutex);
+        return EOS_ERR;
+    }
     if (pcm_hold_tx && (eos_msgq_len(&pcm_evt_q) == PCM_HOLD_CNT_TX)) {
         unsigned char _type;
         uint16_t _len;
 
-        eos_msgq_pop(&pcm_evt_q, &_type, &buf, &_len, NULL);
+        eos_msgq_pop(&pcm_evt_q, &_type, &buf, &_len);
     } else {
         buf = eos_bufq_pop(&pcm_buf_q);
     }
@@ -221,7 +226,7 @@ int eos_cell_pcm_push(unsigned char *data, size_t size) {
     }
 
     xSemaphoreTake(mutex, portMAX_DELAY);
-    rv = eos_msgq_push(&pcm_evt_q, PCM_ETYPE_WRITE, buf, esize, 0);
+    rv = eos_msgq_push(&pcm_evt_q, PCM_ETYPE_WRITE, buf, esize);
     if (rv) eos_bufq_push(&pcm_buf_q, buf);
     xSemaphoreGive(mutex);
 
@@ -232,18 +237,23 @@ void eos_cell_pcm_start(void) {
     i2s_event_t evt;
 
     xSemaphoreTake(mutex, portMAX_DELAY);
+    if (pcm_active) {
+        xSemaphoreGive(mutex);
+        return;
+    }
     while (1) {
         unsigned char _type;
         unsigned char *buf;
         uint16_t len;
 
-        eos_msgq_pop(&pcm_evt_q, &_type, &buf, &len, NULL);
+        eos_msgq_pop(&pcm_evt_q, &_type, &buf, &len);
         if (buf) {
             eos_bufq_push(&pcm_buf_q, buf);
         } else {
             break;
         }
     }
+    pcm_active = 1;
     pcm_hold_tx = 1;
     xSemaphoreGive(mutex);
 
@@ -254,5 +264,12 @@ void eos_cell_pcm_start(void) {
 }
 
 void eos_cell_pcm_stop(void) {
-    i2s_stop(I2S_NUM_0);
+    char active;
+
+    xSemaphoreTake(mutex, portMAX_DELAY);
+    active = pcm_active;
+    pcm_active = 0;
+    xSemaphoreGive(mutex);
+
+    if (active) i2s_stop(I2S_NUM_0);
 }

@@ -103,7 +103,7 @@ void power_sleep(uint8_t mode) {
             gpio_wakeup_enable(POWER_GPIO_NET, GPIO_INTR_LOW_LEVEL);
             gpio_wakeup_enable(POWER_GPIO_UART, GPIO_INTR_LOW_LEVEL);
 
-            ESP_LOGD(TAG, "SLEEP");
+            ESP_LOGI(TAG, "SLEEP");
 
             esp_pm_lock_release(power_lock_apb_freq);
             esp_pm_lock_release(power_lock_no_sleep);
@@ -115,7 +115,7 @@ void power_sleep(uint8_t mode) {
             esp_sleep_enable_ext0_wakeup(POWER_GPIO_BTN, 0);
             esp_sleep_enable_ext1_wakeup((uint64_t)1 << POWER_GPIO_UART, ESP_EXT1_WAKEUP_ALL_LOW);
 
-            ESP_LOGD(TAG, "SLEEP");
+            ESP_LOGI(TAG, "SLEEP");
 
             esp_deep_sleep_start();
             break;
@@ -162,7 +162,7 @@ void power_wake_stage2(uint8_t source, uint8_t mode) {
     gpio_set_intr_type(POWER_GPIO_BTN, GPIO_INTR_ANYEDGE);
     gpio_isr_handler_add(POWER_GPIO_BTN, btn_handler, NULL);
 
-    ESP_LOGD(TAG, "WAKE");
+    ESP_LOGI(TAG, "WAKE");
 }
 
 static void power_event_task(void *pvParameters) {
@@ -213,7 +213,7 @@ static void power_event_task(void *pvParameters) {
                     buf = eos_net_alloc();
                     buf[0] = EOS_PWR_MTYPE_BUTTON;
                     buf[1] = evt.level;
-                    eos_net_send(EOS_NET_MTYPE_POWER, buf, 2, 0);
+                    eos_net_send(EOS_NET_MTYPE_POWER, buf, 2);
                     break;
 
                 default:

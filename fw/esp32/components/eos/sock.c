@@ -91,6 +91,7 @@ static void udp_rcvr_task(void *pvParameters) {
         rv = t_recvfrom(sock, buf+EOS_SOCK_SIZE_UDP_HDR, EOS_NET_SIZE_BUF-EOS_SOCK_SIZE_UDP_HDR, &addr);
         if (rv < 0) {
             sock = 0;
+            eos_net_free(buf);
             ESP_LOGE(TAG, "UDP RECV ERR:%d", rv);
             continue;
         }
@@ -98,7 +99,7 @@ static void udp_rcvr_task(void *pvParameters) {
         buf[1] = esock;
         memcpy(buf+2, addr.host, sizeof(addr.host));
         memcpy(buf+2+sizeof(addr.host), &addr.port, sizeof(addr.port));
-        eos_net_send(EOS_NET_MTYPE_SOCK, buf, rv+EOS_SOCK_SIZE_UDP_HDR, 0);
+        eos_net_send(EOS_NET_MTYPE_SOCK, buf, rv+EOS_SOCK_SIZE_UDP_HDR);
     } while(sock);
     xSemaphoreTake(mutex, portMAX_DELAY);
     _socks[esock-1] = 0;
@@ -141,7 +142,7 @@ static void sock_handler(unsigned char type, unsigned char *buffer, uint16_t siz
             rbuf = eos_net_alloc();
             rbuf[0] = EOS_SOCK_MTYPE_OPEN_DGRAM;
             rbuf[1] = esock;
-            eos_net_send(EOS_NET_MTYPE_SOCK, rbuf, 2, 0);
+            eos_net_send(EOS_NET_MTYPE_SOCK, rbuf, 2);
             break;
 
         case EOS_SOCK_MTYPE_CLOSE:

@@ -20,3 +20,5 @@ void eos_cell_sms_handler(unsigned char mtype, unsigned char *buffer, uint16_t s
 
     eos_modem_give();
 }
+
+void eos_cell_sms_init(void) {}

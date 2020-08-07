@@ -7,10 +7,7 @@
 
 #define AT_SIZE_URC_LIST    16
 
-#define AT_URC_OK           0
-#define AT_URC_MORE         1
-
-typedef int (*at_urc_cb_t) (char *, regmatch_t[]);
+typedef void (*at_urc_cb_t) (char *, regmatch_t[]);
 
 void at_init(void);
 int at_urc_process(char *urc);
