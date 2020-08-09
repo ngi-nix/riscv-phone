@@ -54,6 +54,7 @@ static QueueHandle_t uart_queue;
 static char urc_buf[EOS_CELL_UART_SIZE_BUF];
 static char uart_buf[EOS_CELL_UART_SIZE_BUF];
 static size_t uart_buf_len;
+static char uart_buf_dirty = 0;
 
 static uint8_t uart_mode = EOS_CELL_UART_MODE_ATCMD;
 static uint8_t _uart_mode = EOS_CELL_UART_MODE_UNDEF;
@@ -243,13 +244,15 @@ static void modem_atcmd_read(size_t bsize) {
 
             uart_buf_len -= ln_end - uart_buf + 1;
             if (uart_buf_len) memmove(uart_buf, ln_end + 1, uart_buf_len);
-            at_urc_process(urc_buf);
+            if (!uart_buf_dirty) at_urc_process(urc_buf);
 
             uart_curr = uart_buf;
             uart_buf[uart_buf_len] = '\0';
+            uart_buf_dirty = 0;
         }
         if (uart_buf_len == sizeof(uart_buf) - 1) {
             uart_buf_len = 0;
+            uart_buf_dirty = 1;
         }
     } while (rd != bsize);
 }
@@ -633,10 +636,15 @@ int eos_modem_readln(char *buf, size_t buf_size, uint32_t timeout) {
     }
 
     while (ln_end == NULL) {
+        int rv = EOS_OK;
         int len;
 
-        if (buf_len == buf_size - 1) return EOS_ERR_FULL;
-        if (timeout && ((uint32_t)((esp_timer_get_time() - t_start) / 1000) > timeout)) return EOS_ERR_TIMEOUT;
+        if (buf_len == buf_size - 1) rv = EOS_ERR_FULL;
+        if (!rv && timeout && ((uint32_t)((esp_timer_get_time() - t_start) / 1000) > timeout)) rv = EOS_ERR_TIMEOUT;
+        if (rv) {
+            uart_buf_dirty = 1;
+            return rv;
+        }
 
         len = eos_modem_read(buf + buf_len, MIN(buf_size - buf_len - 1, sizeof(uart_buf) - uart_buf_len), 10);
         if (len > 0) {
