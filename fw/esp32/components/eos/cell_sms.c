@@ -182,6 +182,7 @@ static int sms_encode(unsigned char *buffer, uint16_t size) {
 
 void eos_cell_sms_handler(unsigned char mtype, unsigned char *buffer, uint16_t size) {
     int rv;
+    char b[4];
 
     buffer += 1;
     size -= 1;
@@ -227,8 +228,11 @@ void eos_cell_sms_handler(unsigned char mtype, unsigned char *buffer, uint16_t s
             rv = eos_modem_take(1000);
             if (rv) return;
             at_cmd(cmd);
+            // wait for: '> ' (0d 0a 3e 20)
+            eos_modem_read(b, 4, 1000);
             at_cmd(pdu);
-            rv = at_expect("^OK", "^ERROR", 1000);
+            rv = at_expect("^\\+CMGS: [0-9]+", "^ERROR", 5000);
+            if (rv == 1) rv = at_expect("^OK", "^ERROR", 1000);
             eos_modem_give();
 
             break;
