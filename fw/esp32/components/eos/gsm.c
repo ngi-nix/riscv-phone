@@ -16,20 +16,20 @@ void pdu_putc(uint8_t ch, char *pdu) {
     sprintf(pdu, "%.2X", ch);
 }
 
-void pdu_puts(uint8_t *s, int s_len, char *pdu) {
-    int i;
-
-    for (i=0; i<s_len; i++) {
-        sprintf(pdu + 2 * i, "%.2X", s[i]);
-    }
-}
-
 void pdu_gets(char *pdu, uint8_t *s, int s_len) {
     int i, ch;
 
     for (i=0; i<s_len; i++) {
         sscanf(pdu + 2 * i, "%2X", &ch);
         s[i] = ch;
+    }
+}
+
+void pdu_puts(uint8_t *s, int s_len, char *pdu) {
+    int i;
+
+    for (i=0; i<s_len; i++) {
+        sprintf(pdu + 2 * i, "%.2X", s[i]);
     }
 }
 
@@ -82,7 +82,7 @@ int gsm_ts_enc(char *ts, char *pdu, int pdu_size) {
     uint8_t tz;
     int tz_hh, tz_mm;
 
-    if (pdu_size < 14) return GSM_ERR;
+    if (pdu_size < 14) return GSM_ERR_SIZE;
 
     pdu[1]  = ts[2];    // YY
     pdu[0]  = ts[3];
@@ -115,7 +115,7 @@ int gsm_ts_enc(char *ts, char *pdu, int pdu_size) {
 int gsm_ts_dec(char *pdu, int pdu_len, char *ts) {
     uint8_t tz;
 
-    if (pdu_len < 14) return GSM_ERR;
+    if (pdu_len < 14) return GSM_ERR_SIZE;
 
     ts[0]  = '2';
     ts[1]  = '0';
@@ -231,7 +231,7 @@ int gsm_addr_enc(char *addr, int addr_len, uint8_t addr_type, char *pdu, int pdu
         int _addr_len = DIVC(addr_len * 7, 4);
 
         _pdu_len = 4 + DIVC(_addr_len, 2) * 2;
-        if (pdu_size < _pdu_len) return GSM_ERR;
+        if (pdu_size < _pdu_len) return GSM_ERR_SIZE;
 
         pdu_putc(_addr_len, pdu);
         pdu_putc(addr_type, pdu + 2);
@@ -239,13 +239,8 @@ int gsm_addr_enc(char *addr, int addr_len, uint8_t addr_type, char *pdu, int pdu
     } else {
         int i;
 
-        if (addr_type & GSM_TON_INTERNATIONAL) {
-            if (addr[0] != '+') return GSM_ERR;
-            addr++;
-            addr_len--;
-        }
         _pdu_len = 4 + DIVC(addr_len, 2) * 2;
-        if (pdu_size < _pdu_len) return GSM_ERR;
+        if (pdu_size < _pdu_len) return GSM_ERR_SIZE;
 
         pdu_putc(addr_len, pdu);
         pdu_putc(addr_type, pdu + 2);
@@ -262,40 +257,32 @@ int gsm_addr_enc(char *addr, int addr_len, uint8_t addr_type, char *pdu, int pdu
     return _pdu_len;
 }
 
-int gsm_addr_dec(char *pdu, int pdu_len, char *addr, int addr_size, int *addr_len, uint8_t *addr_type) {
+int gsm_addr_dec(char *pdu, int pdu_len, char *addr, int *addr_len, uint8_t *addr_type) {
     int _pdu_len;
 
-    if (pdu_len < 4) return GSM_ERR;
+    if (pdu_len < 4) return GSM_ERR_SIZE;
 
     *addr_len = pdu_getc(pdu);
     *addr_type = pdu_getc(pdu + 2);
+    if (*addr_len > GSM_ADDR_SIZE) return GSM_ERR_SIZE;
 
     if (!(*addr_type & GSM_EXT)) return GSM_ERR;
 
     _pdu_len = 4 + DIVC(*addr_len, 2) * 2;
-    if (pdu_len < _pdu_len) return GSM_ERR;
+    if (pdu_len < _pdu_len) return GSM_ERR_SIZE;
 
     if ((*addr_type & GSM_TON) == GSM_TON_ALPHANUMERIC) {
         *addr_len = (*addr_len * 4) / 7;
-        if (addr_size < *addr_len) return GSM_ERR;
 
         gsm_7bit_dec(pdu + 4, addr, *addr_len, 0);
     } else {
         int i;
-        int _addr_len = *addr_len;
 
-        if (*addr_type & GSM_TON_INTERNATIONAL) {
-            addr[0] = '+';
-            addr++;
-            (*addr_len)++;
-        }
-        if (addr_size < *addr_len) return GSM_ERR;
-
-        for (i=0; i<_addr_len / 2; i++) {
+        for (i=0; i<*addr_len / 2; i++) {
             addr[2 * i] = pdu[4 + 2 * i + 1];
             addr[2 * i + 1] = pdu[4 + 2 * i];
         }
-        if (_addr_len % 2 != 0) {
+        if (*addr_len % 2 != 0) {
             addr[2 * i] = pdu[4 + 2 * i + 1];
         }
     }
@@ -311,7 +298,7 @@ int gsm_sms_enc(uint8_t pid, char *addr, int addr_len, uint8_t addr_type, uint8_
 
     if (udh_len) mti |= GSM_UDHI;
 
-    if (pdu_size < 4) return GSM_ERR;
+    if (pdu_size < 4) return GSM_ERR_SIZE;
     pdu_putc(mti, pdu);
     pdu_putc(00, pdu + 2);
     _pdu_len += 4;
@@ -320,7 +307,7 @@ int gsm_sms_enc(uint8_t pid, char *addr, int addr_len, uint8_t addr_type, uint8_
     if (rv < 0) return rv;
     _pdu_len += rv;
 
-    if (pdu_size < _pdu_len + 4) return GSM_ERR;
+    if (pdu_size < _pdu_len + 4) return GSM_ERR_SIZE;
     gsm_dcs_enc(enc, flags, &dcs);
     pdu_putc(pid, pdu + _pdu_len);
     pdu_putc(dcs, pdu + _pdu_len + 2);
@@ -336,7 +323,7 @@ int gsm_sms_enc(uint8_t pid, char *addr, int addr_len, uint8_t addr_type, uint8_
         }
         udl = DIVC(udh_blen, 7) + msg_len;
 
-        if (pdu_size < _pdu_len + (DIVC(udl * 7, 8) + 1) * 2) return GSM_ERR;
+        if (pdu_size < _pdu_len + (DIVC(udl * 7, 8) + 1) * 2) return GSM_ERR_SIZE;
         pdu_putc(udl, pdu + _pdu_len);
         _pdu_len += 2;
 
@@ -352,7 +339,7 @@ int gsm_sms_enc(uint8_t pid, char *addr, int addr_len, uint8_t addr_type, uint8_
     } else {
         udl = msg_len + (udh_len ? udh_len + 1 : 0);
 
-        if (pdu_size < _pdu_len + (udl + 1) * 2) return GSM_ERR;
+        if (pdu_size < _pdu_len + (udl + 1) * 2) return GSM_ERR_SIZE;
         pdu_putc(udl, pdu + _pdu_len);
         _pdu_len += 2;
 
@@ -369,22 +356,22 @@ int gsm_sms_enc(uint8_t pid, char *addr, int addr_len, uint8_t addr_type, uint8_
     return _pdu_len;
 }
 
-int gsm_sms_dec(char *pdu, int pdu_len, uint8_t *pid, char *addr, int addr_size, int *addr_len, uint8_t *addr_type, uint8_t *udh, int udh_size, int *udh_len, uint8_t *msg, int msg_size, int *msg_len, char *ts, uint8_t *enc, uint16_t *flags) {
+int gsm_sms_dec(char *pdu, int pdu_len, uint8_t *pid, char *addr, int *addr_len, uint8_t *addr_type, uint8_t *udh, int *udh_len, uint8_t *msg, int *msg_len, char *ts, uint8_t *enc, uint16_t *flags) {
     int rv, _pdu_len = 0;
     uint8_t mti;
     uint8_t dcs;
     uint8_t udl;
 
-    if (pdu_len < 2) return GSM_ERR;
+    if (pdu_len < 2) return GSM_ERR_SIZE;
     mti = pdu_getc(pdu);
     _pdu_len += 2;
     if ((mti & GSM_MTI) != GSM_MTI_DELIVER) return GSM_ERR;
 
-    rv = gsm_addr_dec(pdu + _pdu_len, pdu_len - _pdu_len, addr, addr_size, addr_len, addr_type);
+    rv = gsm_addr_dec(pdu + _pdu_len, pdu_len - _pdu_len, addr, addr_len, addr_type);
     if (rv < 0) return rv;
     _pdu_len += rv;
 
-    if (pdu_len < _pdu_len + 4) return GSM_ERR;
+    if (pdu_len < _pdu_len + 4) return GSM_ERR_SIZE;
     *pid = pdu_getc(pdu + _pdu_len);
     dcs = pdu_getc(pdu + _pdu_len + 2);
     _pdu_len += 4;
@@ -394,7 +381,7 @@ int gsm_sms_dec(char *pdu, int pdu_len, uint8_t *pid, char *addr, int addr_size,
     if (rv < 0) return rv;
     _pdu_len += rv;
 
-    if (pdu_len < _pdu_len + 2) return GSM_ERR;
+    if (pdu_len < _pdu_len + 2) return GSM_ERR_SIZE;
     udl = pdu_getc(pdu + _pdu_len);
     _pdu_len += 2;
 
@@ -405,7 +392,7 @@ int gsm_sms_dec(char *pdu, int pdu_len, uint8_t *pid, char *addr, int addr_size,
         int udh_blen = 0;
         int padb = 0;
 
-        if (pdu_len < _pdu_len + DIVC(udl * 7, 8) * 2) return GSM_ERR;
+        if (pdu_len < _pdu_len + DIVC(udl * 7, 8) * 2) return GSM_ERR_SIZE;
 
         if (mti & GSM_UDHI) {
             *udh_len = pdu_getc(pdu + _pdu_len);
@@ -413,7 +400,7 @@ int gsm_sms_dec(char *pdu, int pdu_len, uint8_t *pid, char *addr, int addr_size,
             padb = DIVC(udh_blen, 7) * 7 - udh_blen;
 
             if (udl * 7 < udh_blen) return GSM_ERR;
-            if (udh_size < *udh_len) return GSM_ERR;
+            if (*udh_len > GSM_UDH_SIZE) return GSM_ERR_SIZE;
 
             pdu_gets(pdu + _pdu_len + 2, udh, *udh_len);
             _pdu_len += (*udh_len + 1) * 2;
@@ -422,19 +409,19 @@ int gsm_sms_dec(char *pdu, int pdu_len, uint8_t *pid, char *addr, int addr_size,
         }
 
         *msg_len = udl - DIVC(udh_blen, 7);
-        if (msg_size < *msg_len) return GSM_ERR;
+        if (*msg_len > GSM_UD_SIZE) return GSM_ERR_SIZE;
 
         rv = gsm_7bit_dec(pdu + _pdu_len, (char *)msg, *msg_len, padb);
         if (rv < 0) return rv;
         _pdu_len += rv;
     } else {
-        if (pdu_len < _pdu_len + udl * 2) return GSM_ERR;
+        if (pdu_len < _pdu_len + udl * 2) return GSM_ERR_SIZE;
 
         if (mti & GSM_UDHI) {
             *udh_len = pdu_getc(pdu + _pdu_len);
 
             if (udl < *udh_len + 1) return GSM_ERR;
-            if (udh_size < *udh_len) return GSM_ERR;
+            if (*udh_len > GSM_UDH_SIZE) return GSM_ERR_SIZE;
 
             pdu_gets(pdu + _pdu_len + 2, udh, *udh_len);
             _pdu_len += (*udh_len + 1) * 2;
@@ -443,7 +430,8 @@ int gsm_sms_dec(char *pdu, int pdu_len, uint8_t *pid, char *addr, int addr_size,
         }
 
         *msg_len = udl - (*udh_len ? *udh_len + 1 : 0);
-        if (msg_size < *msg_len) return GSM_ERR;
+        if (*msg_len > GSM_UD_SIZE) return GSM_ERR_SIZE;
+        if ((*enc == GSM_ENC_UCS2) && ((*msg_len % 2) != 0)) return GSM_ERR;
 
         pdu_gets(pdu + _pdu_len, msg, *msg_len);
         _pdu_len += *msg_len * 2;

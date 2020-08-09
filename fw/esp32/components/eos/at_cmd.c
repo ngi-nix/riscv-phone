@@ -60,7 +60,7 @@ int at_urc_process(char *urc) {
         return 1;
     }
 
-    ESP_LOGI(TAG, "URC NOT Processed: %d %d %d %d", urc[0], urc[1], urc[0] == '\r', strlen(urc));
+    ESP_LOGI(TAG, "URC NOT Processed: %s", urc);
     return 0;
 }
 
@@ -114,6 +114,10 @@ void at_cmd(char *cmd) {
 }
 
 int at_expect(char *str_ok, char *str_err, uint32_t timeout) {
+    return at_expect_match(str_ok, str_err, NULL, NULL, 0, REG_EXTENDED, timeout);
+}
+
+int at_expect_match(char *str_ok, char *str_err, char **buf, regmatch_t match[], size_t match_size, int flags, uint32_t timeout) {
     int rv;
     regex_t re_ok;
     regex_t re_err;
@@ -121,21 +125,24 @@ int at_expect(char *str_ok, char *str_err, uint32_t timeout) {
     uint64_t t_start = esp_timer_get_time();
 
     if (str_ok) {
-        rv = regcomp(&re_ok, str_ok, REG_EXTENDED | REG_NOSUB);
+        rv = regcomp(&re_ok, str_ok, flags);
         if (rv) return EOS_ERR;
     }
 
+    if (buf) *buf = at_buf;
     if (str_err) {
-        rv = regcomp(&re_err, str_err, REG_EXTENDED | REG_NOSUB);
+        rv = regcomp(&re_err, str_err, flags);
         if (rv) return EOS_ERR;
     }
 
     do {
         rv = eos_modem_readln(at_buf, sizeof(at_buf), timeout ? timeout - e : 0);
+        if (rv) return rv;
+
         ESP_LOGI(TAG, "Expect: %s", at_buf);
 
-        if (!rv && str_ok && (regexec(&re_ok, at_buf, 0, NULL, 0) == 0)) return 1;
-        if (!rv && str_err && (regexec(&re_err, at_buf, 0, NULL, 0) == 0)) return 0;
+        if (str_ok && (regexec(&re_ok, at_buf, match_size, match, 0) == 0)) return 1;
+        if (str_err && (regexec(&re_err, at_buf, match_size, match, 0) == 0)) return 0;
 
         at_urc_process(at_buf);
 

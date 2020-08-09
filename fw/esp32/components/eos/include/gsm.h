@@ -1,5 +1,12 @@
 #define GSM_OK                      0
 #define GSM_ERR                     -1
+#define GSM_ERR_SIZE                -10
+
+#define GSM_TS_SIZE                 25
+#define GSM_UD_SIZE                 160
+#define GSM_UDH_SIZE                140
+#define GSM_MSG_SIZE                GSM_UD_SIZE
+#define GSM_ADDR_SIZE               20
 
 /* Message-Type-Indicator */
 #define GSM_MTI                     0x03
@@ -113,5 +120,16 @@
 #define GSM_FLAG_MWI_OTHER          0x3000
 #define GSM_FLAG_MWI_MASK           0xf000
 
+uint8_t pdu_getc(char *pdu);
+void pdu_putc(uint8_t ch, char *pdu);
+void pdu_gets(char *pdu, uint8_t *s, int s_len);
+void pdu_puts(uint8_t *s, int s_len, char *pdu);
+int gsm_ucs2_to_7bit(uint16_t ucs2, char *gsm7, int gsm7_size);
+int gsm_7bit_to_ucs2(char *gsm7, int gsm7_len, uint16_t *ucs2);
+
 int gsm_7bit_enc(char *text, int text_len, char *pdu, int padb);
 int gsm_7bit_dec(char *pdu, char *text, int text_len, int padb);
+int gsm_addr_enc(char *addr, int addr_len, uint8_t addr_type, char *pdu, int pdu_size);
+int gsm_addr_dec(char *pdu, int pdu_len, char *addr, int *addr_len, uint8_t *addr_type);
+int gsm_sms_enc(uint8_t pid, char *addr, int addr_len, uint8_t addr_type, uint8_t *udh, int udh_len, uint8_t *msg, int msg_len, uint8_t enc, uint16_t flags, char *pdu, int pdu_size);
+int gsm_sms_dec(char *pdu, int pdu_len, uint8_t *pid, char *addr, int *addr_len, uint8_t *addr_type, uint8_t *udh, int *udh_len, uint8_t *msg, int *msg_len, char *ts, uint8_t *enc, uint16_t *flags);

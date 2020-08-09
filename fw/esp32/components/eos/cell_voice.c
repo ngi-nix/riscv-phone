@@ -13,13 +13,10 @@
 static const char *TAG = "EOS VOICE";
 
 static char cmd[256];
-static char ring_buf[256];
+static int cmd_len;
 
 void eos_cell_voice_handler(unsigned char mtype, unsigned char *buffer, uint16_t size) {
-    int cmd_len, rv;
-
-    rv = eos_modem_take(1000);
-    if (rv) return;
+    int rv;
 
     buffer += 1;
     size -= 1;
@@ -30,59 +27,54 @@ void eos_cell_voice_handler(unsigned char mtype, unsigned char *buffer, uint16_t
             buffer[size] = '\0';
             cmd_len = snprintf(cmd, sizeof(cmd), "ATD%s;\r", buffer);
             if ((cmd_len < 0) || (cmd_len >= sizeof(cmd))) return;
+
+            rv = eos_modem_take(1000);
+            if (rv) return;
             at_cmd(cmd);
             rv = at_expect("^OK", "^ERROR", 1000);
+            eos_modem_give();
+
             eos_cell_pcm_start();
             break;
 
         case EOS_CELL_MTYPE_VOICE_ANSWER:
+            rv = eos_modem_take(1000);
+            if (rv) return;
             at_cmd("ATA\r");
             rv = at_expect("^OK", "^ERROR", 1000);
+            eos_modem_give();
+
             eos_cell_pcm_start();
             break;
 
         case EOS_CELL_MTYPE_VOICE_HANGUP:
             eos_cell_pcm_stop();
+
+            rv = eos_modem_take(1000);
+            if (rv) return;
             at_cmd("AT+CHUP\r");
             rv = at_expect("^OK", "^ERROR", 1000);
+            eos_modem_give();
+
             break;
     }
-
-    eos_modem_give();
 }
 
 static void ring_handler(char *urc, regmatch_t m[]) {
     unsigned char *buf;
+    char *ring_buf;
     uint16_t len;
-    uint32_t timeout = 1000, e = 0;
-    uint64_t t_start = esp_timer_get_time();
+    regmatch_t match[2];
     int rv = EOS_OK;
-
-    ring_buf[0] = '\0';
-    while (ring_buf[0] == '\0') {
-        rv = eos_modem_readln(ring_buf, sizeof(ring_buf), timeout - e);
-        if (rv) break;
-
-        e = (uint32_t)(esp_timer_get_time() - t_start) / 1000;
-        if (timeout && (e > timeout)) {
-            rv = EOS_ERR_TIMEOUT;
-            break;
-        }
-    }
 
     buf = eos_net_alloc();
     buf[0] = EOS_CELL_MTYPE_VOICE | EOS_CELL_MTYPE_VOICE_RING;
     len = 1;
-    if (!rv) {
-        regex_t re;
-        regmatch_t match[2];
-
-        regcomp(&re, "^\\+CLIP: \"(\\+?[0-9]+)\"", REG_EXTENDED);
-        if (regexec(&re, ring_buf, 2, match, 0) == 0) {
-            ring_buf[match[1].rm_eo] = '\0';
-            strcpy((char *)buf + 1, ring_buf + match[1].rm_so);
-            len += 1 + match[1].rm_eo - match[1].rm_so;
-        }
+    rv = at_expect_match("^\\+CLIP: \"(\\+?[0-9]+)\"", NULL, &ring_buf, match, 2, REG_EXTENDED, 1000);
+    if (rv == 1) {
+        ring_buf[match[1].rm_eo] = '\0';
+        strcpy((char *)buf + 1, ring_buf + match[1].rm_so);
+        len += 1 + match[1].rm_eo - match[1].rm_so;
     }
     eos_net_send(EOS_NET_MTYPE_CELL, buf, len);
 }

@@ -8,12 +8,10 @@
 #include "cell.h"
 
 static char cmd[256];
+static int cmd_len;
 
 void eos_cell_ussd_handler(unsigned char mtype, unsigned char *buffer, uint16_t size) {
-    int cmd_len, rv;
-
-    rv = eos_modem_take(1000);
-    if (rv) return;
+    int rv;
 
     buffer += 1;
     size -= 1;
@@ -24,13 +22,18 @@ void eos_cell_ussd_handler(unsigned char mtype, unsigned char *buffer, uint16_t 
             buffer[size] = '\0';
             cmd_len = snprintf(cmd, sizeof(cmd), "AT+CUSD=1,\"%s\",15\r", buffer);
             if ((cmd_len < 0) || (cmd_len >= sizeof(cmd))) return;
+
+            rv = eos_modem_take(1000);
+            if (rv) return;
+
             at_cmd(cmd);
             rv = at_expect("^OK", "^ERROR", 1000);
+
+            eos_modem_give();
 
             break;
     }
 
-    eos_modem_give();
 }
 
 void eos_cell_ussd_init(void) {}

@@ -22,7 +22,7 @@
 
 // XXX: PPP reconnect on failure
 
-#define UART_SIZE_IO_BUF    1024
+#define UART_SIZE_IO_BUF    8192
 
 #define UART_GPIO_TXD       16
 #define UART_GPIO_RXD       17
@@ -250,8 +250,6 @@ static void modem_atcmd_read(size_t bsize) {
         }
         if (uart_buf_len == sizeof(uart_buf) - 1) {
             uart_buf_len = 0;
-            memcpy(urc_buf, uart_buf, sizeof(urc_buf));
-            at_urc_process(urc_buf);
         }
     } while (rd != bsize);
 }
