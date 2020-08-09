@@ -119,16 +119,6 @@ static int sms_decode(unsigned char *buf, uint16_t *_len) {
     }
     buf[len + j] = '\0';
 
-    buf = buf + len;
-    printf("BODY: %s\n", buf);
-    /*
-    while (*buf) {
-        printf("%02x ", *buf);
-        buf++;
-    }
-    printf("\n");
-    */
-
     len += j + 1;
     *_len = len;
 
