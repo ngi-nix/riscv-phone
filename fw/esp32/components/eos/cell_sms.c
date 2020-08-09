@@ -42,7 +42,6 @@ uint16_t flags;
 static int sms_decode(unsigned char *buf, uint16_t *_len) {
     int i, j, rv;
     uint16_t len = 0;
-    uint8_t pid;
     uint8_t smsc_info, smsc_info_len;
 
     if (pdu_len < 2) return GSM_ERR_SIZE;
@@ -56,12 +55,14 @@ static int sms_decode(unsigned char *buf, uint16_t *_len) {
         if (rv < 0) smsc_addr_len = 0;
     }
 
-    rv = gsm_sms_dec(pdu + smsc_info_len, pdu_len - smsc_info_len, &pid, orig_addr, &orig_addr_len, &orig_addr_type, udh, &udh_len, msg, &msg_len, smsc_timestamp, &msg_enc, &flags);
+    rv = gsm_sms_dec(pdu + smsc_info_len, pdu_len - smsc_info_len, orig_addr, &orig_addr_len, &orig_addr_type, udh, &udh_len, msg, &msg_len, smsc_timestamp, &msg_enc, &flags);
+    if (rv == GSM_ERR_NOT_SUPPORTED) ESP_LOGE(TAG, "Message not supported: %s", pdu);
     if (rv < 0) return rv;
     if (msg_enc == GSM_ENC_8BIT) return EOS_ERR;
 
-    buf[0] = flags;
-    len += 1;
+    buf[0] = flags >> 8;
+    buf[1] = flags;
+    len += 2;
 
     memcpy(buf + len, smsc_timestamp, GSM_TS_SIZE);
     len += GSM_TS_SIZE;
@@ -118,7 +119,6 @@ static int sms_decode(unsigned char *buf, uint16_t *_len) {
         j += rv;
     }
     buf[len + j] = '\0';
-
     len += j + 1;
     *_len = len;
 
@@ -134,9 +134,10 @@ static int sms_encode(unsigned char *buffer, uint16_t size) {
 
     if (size == 0) return EOS_ERR;
 
-    flags = buffer[0];
-    buffer += 1;
-    size -= 1;
+    flags = buffer[0] << 8;
+    flags |= buffer[1];
+    buffer += 2;
+    size -= 2;
 
     if (size < 2) return EOS_ERR;
     switch(buffer[0]) {
@@ -171,7 +172,7 @@ static int sms_encode(unsigned char *buffer, uint16_t size) {
     }
 
     pdu_putc(0, pdu);
-    rv = gsm_sms_enc(0, addr, addr_len, addr_type, NULL, 0, msg, msg_len, GSM_ENC_7BIT, flags, pdu + 2, sizeof(pdu) - 4);
+    rv = gsm_sms_enc(addr, addr_len, addr_type, NULL, 0, msg, msg_len, GSM_ENC_7BIT, flags, pdu + 2, sizeof(pdu) - 4);
     if (rv < 0) return EOS_ERR;
     pdu_len = rv;
     pdu[pdu_len + 2] = CTRL_Z;
@@ -203,6 +204,7 @@ void eos_cell_sms_handler(unsigned char mtype, unsigned char *buffer, uint16_t s
 
                 rv = eos_modem_readln(pdu, sizeof(pdu), 1000);
                 if (rv) break;
+
                 pdu_len = strlen(pdu);
 
                 buf = eos_net_alloc();
@@ -211,8 +213,7 @@ void eos_cell_sms_handler(unsigned char mtype, unsigned char *buffer, uint16_t s
                 if (rv) {
                     eos_net_free(buf);
                 } else {
-                    len++;
-                    eos_net_send(EOS_NET_MTYPE_CELL, buf, len);
+                    eos_net_send(EOS_NET_MTYPE_CELL, buf, len + 1);
                 }
             } while (1);
             eos_modem_give();
