@@ -211,8 +211,7 @@ void eos_cell_sms_handler(unsigned char mtype, unsigned char *buffer, uint16_t s
                     eos_net_free(buf);
                 } else {
                     len++;
-                    eos_net_free(buf);
-                    // eos_net_send(EOS_NET_MTYPE_CELL, buf, len);
+                    eos_net_send(EOS_NET_MTYPE_CELL, buf, len);
                 }
             } while (1);
             eos_modem_give();
