@@ -57,6 +57,15 @@ int utf8_dec(utf8_t *str, utf32_t *ch) {
     }
 }
 
+int utf8_len(utf8_t *str) {
+    if ((*str & 0xf8) == 0xf0) return 4;
+    if ((*str & 0xf0) == 0xe0) return 3;
+    if ((*str & 0xe0) == 0xc0) return 2;
+    if ((*str & 0x80) == 0x00) return 1;
+
+    return UTF_ERR;
+}
+
 int utf8_seek(utf8_t *str, int off, utf32_t *ch) {
     int i;
     int len = 0;
@@ -91,11 +100,8 @@ int utf8_verify(utf8_t *str, int str_size, int *str_len) {
 
     while (len < str_size) {
         if (str_size - len < 4) {
-            if (((str[len] & 0xf8) == 0xf0) ||
-               (((str[len] & 0xf0) == 0xe0) && (str_size - len < 3)) ||
-               (((str[len] & 0xe0) == 0xc0) && (str_size - len < 2))) {
-                   break;
-               }
+            int _len = utf8_len(str + len);
+            if ((_len == UTF_ERR) || ((str_size - len) < _len)) break;
         }
         ch_l = utf8_dec(str + len, &ch);
         if (ch_l > 0) {
@@ -149,6 +155,14 @@ int utf16_dec(uint8_t *str, utf32_t *ch) {
     } else {
         return 2;
     }
+}
+
+int utf16_len(uint8_t *str) {
+    uint16_t ch = (str[0] << 8) | str[1];
+
+    if ((ch >= 0xdc00) && (ch <= 0xdfff)) return UTF_ERR;
+    if ((ch >= 0xd800) && (ch <= 0xdfff)) return 4;
+    return 2;
 }
 
 int utf16_seek(uint8_t *str, int off, utf32_t *ch) {
