@@ -32,7 +32,7 @@
 #define MODEM_ETYPE_INIT    1
 #define MODEM_ETYPE_RI      2
 
-#define AT_CMD_INIT_SIZE    4
+#define AT_CMD_INIT_SIZE    5
 
 #define MIN(X, Y)           (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y)           (((X) > (Y)) ? (X) : (Y))
@@ -43,7 +43,8 @@ static char *at_cmd_init[AT_CMD_INIT_SIZE] = {
     "AT+CFGRI=1\r",
     "AT+CSCLK=1\r",
     "AT+CLIP=1\r",
-    "AT+CMGF=0\r"
+    "AT+CMGF=0\r",
+    "AT+CPMS=\"ME\",\"ME\",\"ME\"\r"
 };
 
 static SemaphoreHandle_t mutex;
