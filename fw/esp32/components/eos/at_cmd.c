@@ -95,6 +95,7 @@ int at_urc_delete(char *pattern) {
 
     for (i=0; i<urc_list.len; i++) {
         if ((strcmp(pattern, urc_list.item[i].pattern) == 0)) {
+            regfree(&urc_list.item[i].re);
             if (i != urc_list.len - 1) memmove(&urc_list.item[i], &urc_list.item[i + 1], (urc_list.len - i - 1) * sizeof(ATURCItem));
             urc_list.len--;
             memset(&urc_list.item[urc_list.len], 0, sizeof(ATURCItem));
@@ -126,27 +127,48 @@ int at_expect_match(char *str_ok, char *str_err, char **buf, regmatch_t match[],
 
     if (str_ok) {
         rv = regcomp(&re_ok, str_ok, flags);
-        if (rv) return EOS_ERR;
+        if (rv) {
+            return EOS_ERR;
+        }
+    }
+
+    if (str_err) {
+        rv = regcomp(&re_err, str_err, flags);
+        if (rv) {
+            if (str_ok) regfree(&re_ok);
+            return EOS_ERR;
+        }
     }
 
     if (buf) *buf = at_buf;
-    if (str_err) {
-        rv = regcomp(&re_err, str_err, flags);
-        if (rv) return EOS_ERR;
-    }
-
     do {
         rv = eos_modem_readln(at_buf, sizeof(at_buf), timeout ? timeout - e : 0);
-        if (rv) return rv;
+        if (rv) {
+            if (str_ok) regfree(&re_ok);
+            if (str_err) regfree(&re_err);
+            return rv;
+        }
 
         ESP_LOGI(TAG, "Expect: %s", at_buf);
 
-        if (str_ok && (regexec(&re_ok, at_buf, match_size, match, 0) == 0)) return 1;
-        if (str_err && (regexec(&re_err, at_buf, match_size, match, 0) == 0)) return 0;
+        if (str_ok && (regexec(&re_ok, at_buf, match_size, match, 0) == 0)) {
+            regfree(&re_ok);
+            if (str_err) regfree(&re_err);
+            return 1;
+        }
+        if (str_err && (regexec(&re_err, at_buf, match_size, match, 0) == 0)) {
+            if (str_ok) regfree(&re_ok);
+            regfree(&re_err);
+            return 0;
+        }
 
         at_urc_process(at_buf);
 
         e = (uint32_t)(esp_timer_get_time() - t_start) / 1000;
-        if (timeout && (e > timeout)) return EOS_ERR_TIMEOUT;
+        if (timeout && (e > timeout)) {
+            if (str_ok) regfree(&re_ok);
+            if (str_err) regfree(&re_err);
+            return EOS_ERR_TIMEOUT;
+        }
     } while (1);
 }
