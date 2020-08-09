@@ -60,12 +60,11 @@ int ecp_tr_addr_set(ECPNetAddr *addr, void *addr_s) {
 }
 
 int ecp_tr_open(ECPSocket *sock, void *addr_s) {
-    sock->sock = eos_sock_open_udp();
+    sock->sock = eos_sock_open_udp(packet_handler);
     if (sock->sock < 0) {
         sock->sock = 0;
         return ECP_ERR_SEND;
     }
-    eos_sock_set_handler(sock->sock, packet_handler);
     _ecp_tr_sock = sock;
     return ECP_OK;
 }

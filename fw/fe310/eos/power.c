@@ -19,14 +19,16 @@ static eos_evt_handler_t evt_handler[EOS_PWR_MAX_MTYPE];
 static unsigned char power_btn_down;
 
 static void power_handle_evt(unsigned char type, unsigned char *buffer, uint16_t len) {
+    unsigned char mtype;
+
     if ((buffer == NULL) || (len < 1)) {
         eos_net_bad_handler(type, buffer, len);
         return;
     }
 
-    unsigned char mtype = buffer[0];
-    if (mtype < EOS_PWR_MAX_MTYPE) {
-        evt_handler[mtype](type, buffer, len);
+    mtype = buffer[0];
+    if ((mtype < EOS_PWR_MAX_MTYPE) && evt_handler[mtype]) {
+        evt_handler[mtype](mtype, buffer, len);
     } else {
         eos_net_bad_handler(type, buffer, len);
     }
@@ -49,7 +51,7 @@ void eos_power_init(void) {
     int i;
 
     for (i=0; i<EOS_PWR_MAX_MTYPE; i++) {
-        evt_handler[i] = eos_net_bad_handler;
+        evt_handler[i] = NULL;
     }
     eos_net_set_handler(EOS_NET_MTYPE_POWER, power_handle_evt);
     eos_power_set_handler(EOS_PWR_MTYPE_BUTTON, power_handle_btn);
@@ -106,6 +108,5 @@ void eos_power_wake_disable(void) {
 }
 
 void eos_power_set_handler(unsigned char mtype, eos_evt_handler_t handler) {
-    if (handler == NULL) handler = eos_net_bad_handler;
     if (mtype < EOS_PWR_MAX_MTYPE) evt_handler[mtype] = handler;
 }
