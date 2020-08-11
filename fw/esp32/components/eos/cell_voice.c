@@ -119,10 +119,6 @@ static void call_missed_handler(char *urc, regmatch_t m[]) {
     eos_net_send(EOS_NET_MTYPE_CELL, buf, len);
 }
 
-// MISSED_CALL: 02:18AM +381641733314
-// +CLIP: "+381641733314",145,,,,0
-// "+CLIP: \"(\\+?[0-9]+)\""
-
 void eos_cell_voice_init(void) {
     at_urc_insert("^RING", ring_handler, REG_EXTENDED);
     at_urc_insert("^VOICE CALL: BEGIN", call_begin_handler, REG_EXTENDED);

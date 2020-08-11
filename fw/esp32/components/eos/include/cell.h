@@ -34,6 +34,7 @@
 
 #define EOS_CELL_MTYPE_USSD_REQUEST     1
 #define EOS_CELL_MTYPE_USSD_REPLY       2
+#define EOS_CELL_MTYPE_USSD_CANCEL      3
 
 #define EOS_CELL_MTYPE_DATA_CONFIGURE   1
 #define EOS_CELL_MTYPE_DATA_CONNECT     2
@@ -49,7 +50,7 @@
 #define EOS_CELL_UART_MODE_RELAY        3
 #define EOS_CELL_UART_MODE_UNDEF        0xff
 
-#define EOS_CELL_UART_SIZE_BUF      128
+#define EOS_CELL_UART_SIZE_BUF          1024
 
 void eos_cell_init(void);
 

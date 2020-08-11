@@ -243,7 +243,7 @@ void eos_cell_sms_handler(unsigned char mtype, unsigned char *buffer, uint16_t s
 static void sms_received_handler(char *urc, regmatch_t m[]) {
     int ref, rv;
 
-    sscanf(urc + m[1].rm_so, "%6d", &ref);
+    sscanf(urc + m[1].rm_so, "%d", &ref);
 
     snprintf(cmd, sizeof(cmd), "AT+CMGR=%d\r", ref);
     at_cmd(cmd);
