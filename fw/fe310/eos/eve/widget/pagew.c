@@ -8,20 +8,32 @@
 #include "screen/screen.h"
 #include "screen/window.h"
 #include "screen/page.h"
-#include "screen/font.h"
 
+#include "font.h"
 #include "label.h"
 #include "widget.h"
 #include "pagew.h"
 
-void eve_pagew_init(EVEPageWidget *widget, EVERect *g, char *title, EVEFont *font, EVEPage *page) {
+int eve_pagew_create(EVEPageWidget *widget, EVERect *g, EVEPageSpec *spec) {
+    eve_pagew_init(widget, g, spec->font, spec->title, spec->constructor);
+
+    return EVE_OK;
+}
+
+void eve_pagew_init(EVEPageWidget *widget, EVERect *g, EVEFont *font, char *title, eve_page_constructor_t constructor) {
     EVEWidget *_widget = &widget->w;
 
     memset(widget, 0, sizeof(EVEPageWidget));
     eve_widget_init(_widget, EVE_WIDGET_TYPE_PAGE, g, eve_pagew_touch, eve_pagew_draw, NULL);
-    widget->title = title;
-    widget->font = font;
-    widget->page = page;
+    eve_pagew_update(widget, font, title, constructor);
+}
+
+void eve_pagew_update(EVEPageWidget *widget, EVEFont *font, char *title, eve_page_constructor_t constructor) {
+    EVEWidget *_widget = &widget->w;
+
+    if (font) widget->font = font;
+    if (title) widget->title = title;
+    if (constructor) widget->constructor = constructor;
     if (_widget->g.w == 0) _widget->g.w = eve_font_str_w(font, widget->title);
     if (_widget->g.h == 0) _widget->g.h = eve_font_h(font);
 }
@@ -37,12 +49,13 @@ int eve_pagew_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_i
     t = eve_touch_evt(tag0, touch_idx, widget->tag, 1, &evt);
     if (t && evt) {
         if (evt & EVE_TOUCH_ETYPE_TRACK_MASK) {
-            if (page && page->handle_evt) page->handle_evt(page, _widget, t, evt, tag0, touch_idx);
+            if (page->handle_evt) ret = page->handle_evt(page, _widget, t, evt, tag0, touch_idx);
         } else if (evt & EVE_TOUCH_ETYPE_TAG_UP) {
-            widget->page->open(widget->page, page);
+            eve_page_open(page, widget->constructor);
+            ret = 1;
         }
-        ret = 1;
     }
+
     return ret;
 }
 

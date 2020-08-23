@@ -2,8 +2,8 @@
 
 typedef struct EVELabel {
     EVERect g;
-    char *title;
     EVEFont *font;
+    char *title;
 } EVELabel;
 
 void eve_label_init(EVELabel *label, EVERect *g, EVEFont *font, char *title);

@@ -8,24 +8,58 @@
 #include "screen.h"
 #include "window.h"
 #include "page.h"
-#include "font.h"
 
+#include "widget/font.h"
 #include "widget/label.h"
 #include "widget/widget.h"
 
 #define CH_EOF              0x1a
 
-void eve_page_init(EVEPage *page, EVEWindow *window, eve_view_touch_t touch, eve_view_draw_t draw, eve_page_open_t open, eve_page_close_t close, eve_page_evt_handler_t handle_evt, eve_page_g_updater_t update_g) {
+void eve_page_init(EVEPage *page, EVEWindow *window, EVEPageStack *stack, eve_view_touch_t touch, eve_view_draw_t draw, eve_page_evt_handler_t handle_evt, eve_page_g_updater_t update_g, eve_page_destructor_t destructor) {
     memset(page, 0, sizeof(EVEPage));
     page->v.touch = touch;
     page->v.draw = draw;
     page->v.window = window;
-    page->open = open;
-    page->close = close;
     page->handle_evt = handle_evt;
     page->update_g = update_g;
+    page->destructor = destructor;
+    page->stack = stack;
     page->widget_f = NULL;
     window->view = (EVEView *)page;
+}
+
+void eve_page_stack_init(EVEPageStack *stack) {
+    memset(stack, 0, sizeof(EVEPageStack));
+}
+
+void eve_page_create(EVEWindow *window, EVEPageStack *stack, eve_page_constructor_t constructor) {
+    if (stack->level < EVE_PAGE_SIZE_STACK - 1) {
+        stack->constructor[stack->level] = constructor;
+        stack->level++;
+        constructor(window, stack);
+    }
+}
+
+void eve_page_open(EVEPage *parent, eve_page_constructor_t constructor) {
+    EVEWindow *window = parent->v.window;
+    EVEPageStack *stack = parent->stack;
+
+    parent->destructor(parent);
+    eve_page_create(window, stack, constructor);
+}
+
+void eve_page_close(EVEPage *page) {
+    EVEWindow *window = page->v.window;
+    EVEPageStack *stack = page->stack;
+
+    if (stack->level > 1) {
+        eve_page_constructor_t constructor;
+
+        stack->level--;
+        constructor = stack->constructor[stack->level - 1];
+        page->destructor(page);
+        constructor(window, stack);
+    }
 }
 
 int16_t eve_page_x(EVEPage *page, int16_t x) {

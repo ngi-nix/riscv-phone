@@ -8,15 +8,15 @@
 #include "screen/screen.h"
 #include "screen/window.h"
 #include "screen/page.h"
-#include "screen/font.h"
 
+#include "font.h"
 #include "label.h"
 
 void eve_label_init(EVELabel *label, EVERect *g, EVEFont *font, char *title) {
     memset(label, 0, sizeof(EVELabel));
     if (g) label->g = *g;
-    label->title = title;
     label->font = font;
+    label->title = title;
     if (label->g.w == 0) label->g.w = eve_font_str_w(font, label->title);
     if (label->g.h == 0) label->g.h = eve_font_h(font);
 }

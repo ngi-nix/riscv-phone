@@ -2,17 +2,17 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include <eos/eos.h>
-#include <eos/event.h>
-#include <eos/timer.h>
-#include <eos/uart.h>
-#include <eos/i2s.h>
-#include <eos/spi.h>
-#include <eos/net.h>
-#include <eos/cell.h>
-#include <eos/eve/eve.h>
-#include <eos/eve/eve_kbd.h>
-#include <eos/eve/eve_text.h>
+#include <eos.h>
+#include <event.h>
+#include <timer.h>
+#include <uart.h>
+#include <i2s.h>
+#include <spi.h>
+#include <net.h>
+#include <cell.h>
+#include <eve/eve.h>
+#include <eve/eve_kbd.h>
+#include <eve/eve_text.h>
 
 #define ABUF_SIZE       512
 #define MIC_WM          128

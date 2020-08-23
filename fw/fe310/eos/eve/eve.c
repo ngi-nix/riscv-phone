@@ -395,6 +395,7 @@ static int _init(void) {
 }
 
 int eve_init(int pwr_on) {
+    pwr_on = 1; // override this for now
     if (pwr_on) {
         int rv = _init();
         if (rv) return rv;

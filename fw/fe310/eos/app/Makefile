@@ -1,8 +1,8 @@
 include ../../common.mk
 
-CFLAGS += -I.. -I../../bsp/include
+CFLAGS += -I..
 
-obj = eve.o eve_touch.o eve_track.o eve_kbd.o eve_text.o eve_platform.o
+obj = root.o status.o
 
 
 %.o: %.c %.h

@@ -8,9 +8,9 @@
 #include "screen/screen.h"
 #include "screen/window.h"
 #include "screen/page.h"
-#include "screen/font.h"
 
 #include "clipb.h"
+#include "font.h"
 #include "label.h"
 #include "widget.h"
 #include "strw.h"
@@ -29,22 +29,47 @@
 
 #define CHAR_VALID_INPUT(c)     ((c >= 0x20) && (c < 0x7f))
 
+int eve_strw_create(EVEStrWidget *widget, EVERect *g, EVEStrSpec *spec) {
+    utf8_t *str;
+    uint16_t *line;
+
+    str = eve_malloc(spec->str_size);
+    if (str == NULL) return EVE_ERR_NOMEM;
+    str[0] = '\0';
+
+    eve_strw_init(widget, g, spec->font, str, spec->str_size);
+
+    return EVE_OK;
+}
+
+void eve_strw_destroy(EVEStrWidget *widget) {
+    eve_free(widget->str);
+}
+
 void eve_strw_init(EVEStrWidget *widget, EVERect *g, EVEFont *font, utf8_t *str, uint16_t str_size) {
-    int rv, str_len;
     EVEWidget *_widget = &widget->w;
 
     memset(widget, 0, sizeof(EVEStrWidget));
     eve_widget_init(_widget, EVE_WIDGET_TYPE_STR, g, eve_strw_touch, eve_strw_draw, eve_strw_putc);
-    widget->font = font;
-    widget->str = str;
-    widget->str_size = str_size;
-    rv = utf8_verify(str, str_size, &str_len);
-    if (rv != UTF_OK) {
-        if (str_len >= str_size) str_len = 0;
-        widget->str[str_len] = '\0';
+    eve_strw_update(widget, font, str, str_size);
+}
+
+void eve_strw_update(EVEStrWidget *widget, EVEFont *font, utf8_t *str, uint16_t str_size) {
+    int rv, str_len;
+    EVEWidget *_widget = &widget->w;
+
+    if (font) widget->font = font;
+    if (str) {
+        widget->str = str;
+        widget->str_size = str_size;
+        rv = utf8_verify(str, str_size, &str_len);
+        if (rv != UTF_OK) {
+            if (str_len >= str_size) str_len = 0;
+            widget->str[str_len] = '\0';
+        }
+        widget->str_len = str_len;
+        widget->str_g.w = eve_font_str_w(font, str);
     }
-    widget->str_len = str_len;
-    widget->str_g.w = eve_font_str_w(font, str);
     if (_widget->g.h == 0) _widget->g.h = eve_font_h(font);
 }
 

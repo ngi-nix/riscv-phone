@@ -8,9 +8,9 @@
 #include "screen/screen.h"
 #include "screen/window.h"
 #include "screen/page.h"
-#include "screen/font.h"
 
 #include "clipb.h"
+#include "font.h"
 #include "label.h"
 #include "widget.h"
 #include "textw.h"
@@ -35,25 +35,59 @@
 
 #define DIVC(x,y)               ((x) / (y) + ((x) % (y) != 0))
 
+int eve_textw_create(EVETextWidget *widget, EVERect *g, EVETextSpec *spec) {
+    utf8_t *text;
+    uint16_t *line;
+
+    text = eve_malloc(spec->text_size);
+    if (text == NULL) {
+        return EVE_ERR_NOMEM;
+    }
+    text[0] = '\0';
+    line = eve_malloc(sizeof(uint16_t) * spec->line_size);
+    if (line == NULL) {
+        free(text);
+        return EVE_ERR_NOMEM;
+    }
+
+    eve_textw_init(widget, g, spec->font, text, spec->text_size, line, spec->line_size);
+
+    return EVE_OK;
+}
+
+void eve_textw_destroy(EVETextWidget *widget) {
+    eve_free(widget->line);
+    eve_free(widget->text);
+}
+
 void eve_textw_init(EVETextWidget *widget, EVERect *g, EVEFont *font, utf8_t *text, uint16_t text_size, uint16_t *line, uint16_t line_size) {
-    int rv, text_len;
     EVEWidget *_widget = &widget->w;
 
     memset(widget, 0, sizeof(EVETextWidget));
     eve_widget_init(_widget, EVE_WIDGET_TYPE_TEXT, g, eve_textw_touch, eve_textw_draw, eve_textw_putc);
-    widget->font = font;
-    widget->text = text;
-    widget->text_size = text_size;
-    rv = utf8_verify(text, text_size, &text_len);
-    if (rv != UTF_OK) {
-        if (text_len >= text_size) text_len = 0;
-        widget->text[text_len] = '\0';
+    eve_textw_update(widget, font, text, text_size, line, line_size);
+}
+
+void eve_textw_update(EVETextWidget *widget, EVEFont *font, utf8_t *text, uint16_t text_size, uint16_t *line, uint16_t line_size) {
+    int rv, text_len;
+
+    if (font) widget->font = font;
+    if (text) {
+        widget->text = text;
+        widget->text_size = text_size;
+        rv = utf8_verify(text, text_size, &text_len);
+        if (rv != UTF_OK) {
+            if (text_len >= text_size) text_len = 0;
+            widget->text[text_len] = '\0';
+        }
+        widget->text_len = text_len;
     }
-    widget->text_len = text_len;
-    widget->line = line;
-    widget->line_size = line_size;
+    if (line) {
+        widget->line = line;
+        widget->line_size = line_size;
+    }
     memset(widget->line, 0xff, line_size * sizeof(uint16_t));
-    eve_textw_update(widget, NULL, 0);
+    eve_textw_text_update(widget, NULL, 0);
 }
 
 static void set_focus(EVETextWidget *widget, EVETextCursor *cursor, EVEPage *page) {
@@ -87,7 +121,6 @@ int eve_textw_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_i
     EVETextWidget *widget = (EVETextWidget *)_widget;
     EVETouch *t;
     uint16_t evt;
-    int ret = 0;
 
     if (touch_idx > 0) return 0;
 
@@ -121,7 +154,9 @@ int eve_textw_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_i
                 break;
 
             case TEXTW_TMODE_CURSOR:
-                if (evt & EVE_TOUCH_ETYPE_TRACK) eve_textw_cursor_set(widget, widget->track.cursor, t->tag + widget->track.dl, eve_page_x(page, t->x) + widget->track.dx);
+                if (evt & EVE_TOUCH_ETYPE_TRACK) {
+                    eve_textw_cursor_set(widget, widget->track.cursor, t->tag + widget->track.dl, eve_page_x(page, t->x) + widget->track.dx);
+                }
                 break;
 
             default:
@@ -153,10 +188,10 @@ int eve_textw_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_i
             widget->track.dl = 0;
         }
 
-        ret = 1;
+        return 1;
     }
 
-    return ret;
+    return 0;
 }
 
 static void _draw_line(EVETextWidget *widget, EVEWindow *window, uint16_t l, uint16_t ch, uint16_t len, uint16_t x1, uint16_t x2, char s) {
@@ -387,8 +422,8 @@ void eve_textw_putc(void *_page, int c) {
     }
 
     r = cursor1->line;
-    if (cursor1->line) r = eve_textw_update(widget, page, cursor1->line - 1);
-    if ((cursor1->line == 0) || (r == cursor1->line - 1)) r = eve_textw_update(widget, page, cursor1->line);
+    if (cursor1->line) r = eve_textw_text_update(widget, page, cursor1->line - 1);
+    if ((cursor1->line == 0) || (r == cursor1->line - 1)) r = eve_textw_text_update(widget, page, cursor1->line);
 
     if (cursor1->line && (cursor1->ch < LINE_START(widget, cursor1->line))) {
         cursor1->line--;
@@ -403,7 +438,7 @@ void eve_textw_putc(void *_page, int c) {
     }
 }
 
-uint16_t eve_textw_update(EVETextWidget *widget, EVEPage *page, uint16_t line) {
+uint16_t eve_textw_text_update(EVETextWidget *widget, EVEPage *page, uint16_t line) {
     int i;
     utf32_t ch;
     uint8_t ch_w;

@@ -1,6 +1,6 @@
 include ../common.mk
 
-CFLAGS += -I.. -I../bsp/include -I../bsp/drivers
+CFLAGS += -I../eos -I../bsp/include -I../bsp/drivers
 LDFLAGS = $(CFLAGS) -L.. -Wl,--gc-sections -nostartfiles -nostdlib -Wl,--start-group -lc -lm -lgcc -leos -Wl,--end-group -T../bsp/default.lds
 
 TARGET = modem

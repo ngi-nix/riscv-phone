@@ -1,7 +1,7 @@
 #include <stdint.h>
 
-#include "../spi.h"
-#include "../timer.h"
+#include "spi.h"
+#include "timer.h"
 
 #define EVE_ETYPE_INTR      1
 #define EVE_PIN_INTR        0
@@ -18,6 +18,9 @@
 #define eve_spi_xchg16      eos_spi_xchg16
 #define eve_spi_xchg24      eos_spi_xchg24
 #define eve_spi_xchg32      eos_spi_xchg32
+
+#define eve_malloc          malloc
+#define eve_free            free
 
 void eve_time_sleep(uint32_t ms);
 void eve_timer_set(uint32_t ms);
