@@ -202,7 +202,12 @@ static void _draw_line(EVETextWidget *widget, EVEWindow *window, uint16_t l, uin
         if (!s) eve_cmd_dl(COLOR_MASK(0 ,0 ,0 ,0));
         eve_cmd_dl(VERTEX2F(_widget->g.x + x1, _widget->g.y + l * widget->font->h));
         eve_cmd_dl(VERTEX2F(_widget->g.x + x2, _widget->g.y + (l + 1) * widget->font->h));
-        if (!s) eve_cmd_dl(COLOR_MASK(1 ,1 ,1 ,1));
+        if (!s) {
+            eve_cmd_dl(COLOR_MASK(1 ,1 ,1 ,1));
+            eve_cmd_dl(BEGIN(EVE_LINES));
+            eve_cmd_dl(VERTEX2F(_widget->g.x + x1, _widget->g.y + (l + 1) * widget->font->h));
+            eve_cmd_dl(VERTEX2F(_widget->g.x + x2, _widget->g.y + (l + 1) * widget->font->h));
+        }
         eve_cmd_dl(END());
         if (len) {
             if (s) eve_cmd_dl(COLOR_RGBC(window->color_bg));

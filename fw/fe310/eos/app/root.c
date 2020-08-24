@@ -17,9 +17,9 @@
 #include "status.h"
 #include "root.h"
 
-EVEFont _app_font_default;
-extern eve_page_constructor_t _app_home_page;
+EVEFont *_app_font_default;
 
+static EVEFont font;
 static EVEScreen screen;
 static EVEWindow win_status;
 static EVEWindow win_main;
@@ -51,7 +51,7 @@ EVEForm *app_form_create(EVEWindow *window, EVEPageStack *stack, APPWidgetSpec s
     for (i=0; i<spec_size; i++) {
         w_size += eve_widget_size(spec[i].widget.type);
     }
-    form = eve_malloc(sizeof(form));
+    form = eve_malloc(sizeof(EVEForm));
     if (form == NULL) {
         return NULL;
     }
@@ -72,7 +72,7 @@ EVEForm *app_form_create(EVEWindow *window, EVEPageStack *stack, APPWidgetSpec s
             return NULL;
         }
         if (spec[i].label.title) {
-            label = eve_malloc(sizeof(label));
+            label = eve_malloc(sizeof(EVELabel));
             if (label == NULL) {
                 eve_widget_destroy(widget);
                 widgets_destroy(widgets, i);
@@ -98,13 +98,14 @@ void app_form_destroy(EVEForm *form) {
     eve_free(form);
 }
 
-void app_root_init(void) {
+void app_root_init(eve_page_constructor_t home_page) {
     EVERect g;
 
+    _app_font_default = &font;
     eos_spi_dev_start(EOS_DEV_DISP);
 
     eve_brightness(0x40);
-    eve_font_init(&_app_font_default, APP_FONT_HANDLE);
+    eve_font_init(&font, APP_FONT_HANDLE);
     eve_screen_init(&screen, APP_SCREEN_W, APP_SCREEN_H);
 
     g.x = 0;
@@ -120,7 +121,7 @@ void app_root_init(void) {
     eve_kbdwin_init(&win_kbd, &screen);
 
     eve_page_stack_init(&page_stack);
-    eve_page_create(&win_main, &page_stack, _app_home_page);
+    eve_page_create(&win_main, &page_stack, home_page);
 
     eve_window_append(&win_status);
     eve_window_append(&win_main);

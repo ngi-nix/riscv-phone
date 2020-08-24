@@ -195,7 +195,12 @@ static void _draw_str(EVEStrWidget *widget, EVEWindow *window, uint16_t ch, uint
         if (!s) eve_cmd_dl(COLOR_MASK(0 ,0 ,0 ,0));
         eve_cmd_dl(VERTEX2F(x + x1, _widget->g.y));
         eve_cmd_dl(VERTEX2F(x + x2, _widget->g.y + widget->font->h));
-        if (!s) eve_cmd_dl(COLOR_MASK(1 ,1 ,1 ,1));
+        if (!s) {
+            eve_cmd_dl(COLOR_MASK(1 ,1 ,1 ,1));
+            eve_cmd_dl(BEGIN(EVE_LINES));
+            eve_cmd_dl(VERTEX2F(x + x1, _widget->g.y + widget->font->h));
+            eve_cmd_dl(VERTEX2F(x + x2, _widget->g.y + widget->font->h));
+        }
         eve_cmd_dl(END());
         if (len) {
             if (s) eve_cmd_dl(COLOR_RGBC(window->color_bg));

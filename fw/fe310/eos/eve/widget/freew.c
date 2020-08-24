@@ -34,6 +34,13 @@ void eve_freew_update(EVEFreeWidget *widget, eve_freew_touch_t touch, eve_freew_
     if (putc) widget->w.putc = putc;
 }
 
+void eve_freew_tag(EVEFreeWidget *widget) {
+    if (widget->tagN != EVE_TAG_NOTAG) {
+        eve_cmd_dl(TAG(widget->tagN));
+        widget->tagN++;
+    }
+}
+
 int eve_freew_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_idx) {
     EVEFreeWidget *widget = (EVEFreeWidget *)_widget;
     EVETouch *t;
@@ -55,7 +62,8 @@ uint8_t eve_freew_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0) {
     EVEFreeWidget *widget = (EVEFreeWidget *)_widget;
 
     widget->tag0 = tag0;
-    widget->tagN = widget->_draw(widget, page, tag0);
+    widget->tagN = tag0;
+    widget->_draw(widget, page);
 
     return widget->tagN;
 }

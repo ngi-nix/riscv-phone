@@ -109,7 +109,7 @@ void eve_form_update_g(EVEPage *page, EVEWidget *_widget) {
             widget->label->g.x = 0;
             widget->label->g.y = h;
         }
-        if (w + widget->g.w >= form->p.v.window->g.w) {
+        if (w + widget->g.w > form->p.v.window->g.w) {
             h += _h;
             w = 0;
             _h = 0;
@@ -122,4 +122,14 @@ void eve_form_update_g(EVEPage *page, EVEWidget *_widget) {
 
         widget = eve_widget_next(widget);
     }
+}
+
+EVEWidget *eve_form_widget(EVEForm *form, uint16_t idx) {
+    EVEWidget *w = form->widget;
+    int i;
+
+    for (i=0; i<idx; i++) {
+        w = eve_widget_next(w);
+    }
+    return w;
 }
