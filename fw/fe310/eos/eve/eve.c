@@ -8,7 +8,10 @@
 
 static char _cmd_burst;
 static uint16_t _cmd_offset;
+
+static char _dl_burst;
 static uint32_t _dl_addr;
+
 static uint32_t *_touch_calib;
 static uint8_t _brigtness;
 static uint8_t _power_state;
@@ -96,13 +99,30 @@ static void _dl_inc(uint32_t i) {
     _dl_addr += i;
 }
 
-void eve_dl_start(uint32_t addr) {
+void eve_dl_start(uint32_t addr, char burst) {
     _dl_addr = addr;
+    _dl_burst = burst;
+    if (burst) {
+        eve_spi_cs_set();
+        eve_spi_xchg24(addr | EVE_MEM_WRITE, EVE_SPI_FLAG_TX);
+    }
 }
 
 void eve_dl_write(uint32_t dl) {
-    eve_write32(_dl_addr, dl);
+    if (_dl_burst) {
+        eve_spi_xchg32(dl, EVE_SPI_FLAG_TX | EVE_SPI_FLAG_BSWAP);
+    } else {
+        eve_write32(_dl_addr, dl);
+    }
     _dl_inc(4);
+}
+
+void eve_dl_end(void) {
+    if (_dl_burst) {
+        eve_spi_flush();
+        eve_spi_cs_clear();
+        _dl_burst = 0;
+    }
 }
 
 void eve_dl_swap(void) {
@@ -343,7 +363,7 @@ static int _init(void) {
     eve_write8(REG_VOL_PB, 0x00);           /* turn recorded audio volume off */
 
     /* write a basic display-list to get things started */
-    eve_dl_start(EVE_RAM_DL);
+    eve_dl_start(EVE_RAM_DL, 0);
     eve_dl_write(CLEAR_COLOR_RGB(0,0,0));
     eve_dl_write(CLEAR(1,1,1));
     eve_dl_write(DISPLAY());

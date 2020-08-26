@@ -37,8 +37,9 @@ void eve_write32(uint32_t addr, uint32_t data);
 void eve_readb(uint32_t addr, uint8_t *b, size_t size);
 void eve_writeb(uint32_t addr, uint8_t *b, size_t size);
 
-void eve_dl_start(uint32_t addr);
+void eve_dl_start(uint32_t addr, char burst);
 void eve_dl_write(uint32_t dl);
+void eve_dl_end(void);
 void eve_dl_swap(void);
 uint32_t eve_dl_get_addr(void);
 
