@@ -6,7 +6,7 @@
 
 #include "screen.h"
 #include "window.h"
-#include "kbdwin.h"
+#include "view.h"
 
 int eve_screen_init(EVEScreen *screen, uint16_t w, uint16_t h) {
     memset(screen, 0, sizeof(EVEScreen));

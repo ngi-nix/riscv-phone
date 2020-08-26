@@ -9,15 +9,12 @@
 
 #define MIN(X, Y)           (((X) < (Y)) ? (X) : (Y))
 
-void eve_window_init(EVEWindow *window, EVERect *g, EVEView *view, EVEScreen *screen) {
+void eve_window_init(EVEWindow *window, EVERect *g, EVEScreen *screen, char *name) {
     memset(window, 0, sizeof(EVEWindow));
 
     if (g) window->g = *g;
-    if (view) {
-        window->view = view;
-        window->view->window = window;
-    }
     window->screen = screen;
+    window->name = name;
     window->color_fg = 0xffffff;
 }
 
@@ -113,4 +110,15 @@ void eve_window_remove(EVEWindow *window) {
     } else {
         screen->win_tail = window->prev;
     }
+}
+
+EVEWindow *eve_window_get(EVEScreen *screen, char *name) {
+    EVEWindow *w = screen->win_head;
+
+    while (w) {
+        if (strcmp(name, w->name) == 0) return w;
+        w = w->next;
+    }
+
+    return NULL;
 }

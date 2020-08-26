@@ -7,6 +7,7 @@
 
 #include "screen/screen.h"
 #include "screen/window.h"
+#include "screen/view.h"
 #include "screen/page.h"
 
 #include "font.h"
@@ -20,7 +21,7 @@ int eve_pagew_create(EVEPageWidget *widget, EVERect *g, EVEPageSpec *spec) {
     return EVE_OK;
 }
 
-void eve_pagew_init(EVEPageWidget *widget, EVERect *g, EVEFont *font, char *title, eve_page_constructor_t constructor) {
+void eve_pagew_init(EVEPageWidget *widget, EVERect *g, EVEFont *font, char *title, eve_view_constructor_t constructor) {
     EVEWidget *_widget = &widget->w;
 
     memset(widget, 0, sizeof(EVEPageWidget));
@@ -28,7 +29,7 @@ void eve_pagew_init(EVEPageWidget *widget, EVERect *g, EVEFont *font, char *titl
     eve_pagew_update(widget, font, title, constructor);
 }
 
-void eve_pagew_update(EVEPageWidget *widget, EVEFont *font, char *title, eve_page_constructor_t constructor) {
+void eve_pagew_update(EVEPageWidget *widget, EVEFont *font, char *title, eve_view_constructor_t constructor) {
     EVEWidget *_widget = &widget->w;
 
     if (font) widget->font = font;

@@ -7,6 +7,7 @@
 
 #include "screen/screen.h"
 #include "screen/window.h"
+#include "screen/view.h"
 #include "screen/page.h"
 
 #include "font.h"

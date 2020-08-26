@@ -8,7 +8,7 @@
 
 #include "eve/screen/screen.h"
 #include "eve/screen/window.h"
-#include "eve/screen/page.h"
+#include "eve/screen/view.h"
 
 #include "status.h"
 

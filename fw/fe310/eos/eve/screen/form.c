@@ -7,6 +7,7 @@
 
 #include "screen.h"
 #include "window.h"
+#include "view.h"
 #include "page.h"
 #include "form.h"
 
@@ -17,7 +18,7 @@
 #define MIN(X, Y)               (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y)               (((X) > (Y)) ? (X) : (Y))
 
-int eve_form_init(EVEForm *form, EVEWindow *window, EVEPageStack *stack, EVEWidget *widget, uint16_t widget_size, eve_page_destructor_t destructor) {
+int eve_form_init(EVEForm *form, EVEWindow *window, EVEViewStack *stack, EVEWidget *widget, uint16_t widget_size, eve_page_destructor_t destructor) {
     memset(form, 0, sizeof(EVEForm));
     eve_page_init(&form->p, window, stack, eve_form_touch, eve_form_draw, eve_form_handle_evt, eve_form_update_g, destructor);
     form->widget = widget;
