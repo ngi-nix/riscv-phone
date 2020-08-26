@@ -1,33 +1,41 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 
 #include <eos.h>
 #include <event.h>
-#include <timer.h>
-#include <uart.h>
-#include <i2s.h>
 #include <spi.h>
+#include <uart.h>
 #include <net.h>
 #include <cell.h>
+
+#include <unicode.h>
+
 #include <eve/eve.h>
 #include <eve/eve_kbd.h>
 #include <eve/eve_text.h>
 
-#define ABUF_SIZE       512
-#define MIC_WM          128
+#include <eve/screen/screen.h>
+#include <eve/screen/window.h>
+#include <eve/screen/view.h>
+#include <eve/screen/page.h>
+#include <eve/screen/form.h>
 
-static uint8_t mic_arr[ABUF_SIZE];
-static uint8_t spk_arr[ABUF_SIZE];
+#include <eve/widget/widgets.h>
 
-static int audio_on = 0;
+#include <app/root.h>
 
-static EVEText box;
-static EVEKbd kbd;
+typedef struct {
+    uint32_t mem;
+    EVEViewStack *stack;
+    EVEText text;
+} VParam;
 
 static void key_down(void *p, int c) {
-    int i = 2;
+    EVEText *text = p;
     unsigned char *buf = eos_net_alloc();
+    int i = 2;
 
     buf[0] = EOS_CELL_MTYPE_UART_DATA;
     if (c == '\n') {
@@ -39,29 +47,7 @@ static void key_down(void *p, int c) {
     }
 
     eos_net_send(EOS_NET_MTYPE_CELL, buf, i, 0);
-}
-
-static void handle_touch(void *p, uint8_t tag0, int touch_idx) {
-    eve_kbd_touch(&kbd, tag0, touch_idx);
-    eve_text_touch(&box, tag0, touch_idx);
-
-	eve_cmd_dl(CMD_DLSTART);
-	eve_cmd_dl(CLEAR_COLOR_RGB(0,0,0));
-	eve_cmd_dl(CLEAR(1,1,1));
-    eve_text_draw(&box);
-    eve_kbd_draw(&kbd);
-    eve_cmd_dl(DISPLAY());
-	eve_cmd_dl(CMD_SWAP);
-    eve_cmd_exec(1);
-}
-
-static void handle_mic(unsigned char type) {
-    uint16_t size;
-    unsigned char *buf = eos_net_alloc();
-
-    buf[0] = EOS_CELL_MTYPE_PCM_DATA;
-    size = eos_i2s_mic_read(buf+1, MIC_WM);
-    eos_net_send(EOS_NET_MTYPE_CELL, buf, size+1, 0);
+    eve_text_scroll0(text);
 }
 
 static void handle_uart(unsigned char type) {
@@ -85,86 +71,96 @@ static void handle_uart(unsigned char type) {
     eos_uart_rxwm_set(0);
 }
 
-static void handle_cell_msg(unsigned char _type, unsigned char *buffer, uint16_t len) {
-    int i;
-    unsigned char type = buffer[0];
+static void handle_cell_msg(unsigned char type, unsigned char *buffer, uint16_t len) {
+    if (type == EOS_CELL_MTYPE_UART_DATA) {
+        EVEScreen *screen = app_screen();
+        EVEWindow *window = eve_window_get(screen, "main");
+        VParam *param = window->view->param;
+        EVEText *text = &param->text;
+        int i;
 
-    switch (type) {
-        case EOS_CELL_MTYPE_READY:
-            buffer[0] = EOS_CELL_MTYPE_UART_TAKE;
-            eos_net_send(EOS_NET_MTYPE_CELL, buffer, 1, 0);
-            eos_uart_rxwm_set(0);
-            printf("\nREADY.\n");
-            eos_spi_dev_start(EOS_DEV_DISP);
-            eve_text_puts(&box, "READY.\n");
-            eos_spi_dev_stop();
-            break;
+        eos_spi_dev_start(EOS_DEV_DISP);
+        for (i=1; i<len; i++) {
+            if (buffer[i] != '\r') eve_text_putc(text, buffer[i]);
+        }
+        if (text->dirty) {
+            text->dirty = 0;
+            eve_screen_draw(window->screen);
+        }
+        eos_spi_dev_stop();
 
-        case EOS_CELL_MTYPE_UART_DATA:
-            eos_spi_dev_start(EOS_DEV_DISP);
-            for (i=1; i<len; i++) {
-                if (buffer[i] != '\r') eve_text_putc(&box, buffer[i]);
-            }
-            eos_net_free(buffer, 0);
-            if (box.dirty) handle_touch(NULL, 0, -1);
-            eos_spi_dev_stop();
-            break;
-
-        case EOS_CELL_MTYPE_PCM_DATA:
-            eos_i2s_spk_write(buffer+1, len-1);
-            eos_net_free(buffer, 0);
-            break;
-
-        default:
-            eos_net_free(buffer, 0);
-            break;
     }
+    eos_net_free(buffer, 0);
 }
 
-static void audio_toggle(unsigned char *buf) {
-    if (audio_on) {
-        audio_on = 0;
-        buf[0] = EOS_CELL_MTYPE_PCM_STOP;
-        eos_net_send(EOS_NET_MTYPE_CELL, buf, 1, 0);
-        eos_i2s_stop();
-    } else {
-        audio_on = 1;
-        buf[0] = EOS_CELL_MTYPE_PCM_START;
-        eos_net_send(EOS_NET_MTYPE_CELL, buf, 1, 0);
-        eos_i2s_start(8000, EOS_I2S_FMT_PCM16);
-    }
+static int modem_touch(EVEView *view, uint8_t tag0, int touch_idx) {
+    VParam *param = view->param;
+    EVEText *text = &param->text;
+
+    return eve_text_touch(text, tag0, touch_idx);
 }
 
-int main() {
+static uint8_t modem_draw(EVEView *view, uint8_t tag) {
+    VParam *param = view->param;
+    EVEText *text = &param->text;
+
+    return eve_text_draw(text, tag);
+}
+
+void app_modem_create(EVEWindow *window, EVEViewStack *stack) {
+    unsigned char *buf;
+    EVEScreen *screen = window->screen;
+    EVEKbd *kbd = eve_screen_get_kbd(screen);
     EVERect g = {0, 60, 480, 512};
-    uint32_t mem_next = EVE_RAM_G;
+    EVEView *view;
+    VParam *param;
 
-    eos_init();
+    view = eve_malloc(sizeof(EVEView));
+    param = eve_malloc(sizeof(VParam));
+    param->mem = screen->mem_next;
+    param->stack = stack;
+    eve_text_init(&param->text, &g, 30, 16, 200, screen->mem_next, &screen->mem_next);
+    eve_view_init(view, window, modem_touch, modem_draw, param);
 
-    eos_spi_dev_start(EOS_DEV_DISP);
-
-    eve_text_init(&box, &g, 30, 16, 0x80, 200, mem_next, &mem_next);
-    eve_kbd_init(&kbd, NULL, mem_next, &mem_next);
-    eve_kbd_set_handler(&kbd, key_down, NULL);
-
-    eve_touch_set_handler(handle_touch, NULL);
-    eve_touch_set_opt(0x80, EVE_TOUCH_OPT_TRACK | EVE_TOUCH_OPT_TRACK_EXT);
-    handle_touch(NULL, 0, -1);
-    eve_brightness(0x40);
-
-    eos_spi_dev_stop();
-
-    eos_i2s_mic_init(mic_arr, ABUF_SIZE);
-    eos_i2s_mic_set_wm(MIC_WM);
-    eos_i2s_mic_set_handler(handle_mic);
-    eos_i2s_spk_init(spk_arr, ABUF_SIZE);
+    eve_kbd_set_handler(kbd, key_down, &param->text);
+    eve_screen_show_kbd(screen);
 
     eos_uart_set_handler(EOS_UART_ETYPE_RX, handle_uart);
     eos_cell_set_handler(EOS_CELL_MTYPE_DEV, handle_cell_msg);
-
-    eos_net_acquire_for_evt(EOS_EVT_I2S | EOS_I2S_ETYPE_MIC, 1);
-    eos_net_acquire_for_evt(EOS_EVT_UI | EVE_ETYPE_INTR, 1);
     eos_net_acquire_for_evt(EOS_EVT_UART | EOS_UART_ETYPE_RX, 1);
 
+    buf = eos_net_alloc();
+    buf[0] = EOS_CELL_MTYPE_UART_TAKE;
+    eos_net_send(EOS_NET_MTYPE_CELL, buf, 1, 0);
+    eos_uart_rxwm_set(0);
+}
+
+void app_modem_destroy(EVEView *view) {
+    unsigned char *buf = eos_net_alloc();
+    VParam *param = view->param;
+    EVEWindow *window = view->window;
+    EVEScreen *screen = window->screen;
+    EVEKbd *kbd = eve_screen_get_kbd(screen);
+    EVEViewStack *stack = param->stack;
+
+    buf[0] = EOS_CELL_MTYPE_UART_GIVE;
+    eos_net_send(EOS_NET_MTYPE_CELL, buf, 1, 0);
+    eos_uart_rxwm_clear();
+    eos_uart_set_handler(EOS_UART_ETYPE_RX, NULL);
+    eos_cell_set_handler(EOS_CELL_MTYPE_DEV, NULL);
+    eos_net_acquire_for_evt(EOS_EVT_UART | EOS_UART_ETYPE_RX, 0);
+
+    eve_screen_hide_kbd(screen);
+    eve_kbd_set_handler(kbd, NULL, NULL);
+
+    screen->mem_next = param->mem;
+    eve_free(param);
+    eve_free(view);
+    eve_view_destroy(window, stack);
+}
+
+int main() {
+    eos_init();
+    app_root_init(app_modem_create);
     eos_evtq_loop();
 }
