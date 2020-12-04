@@ -1,5 +1,10 @@
 EESchema-DOCLIB  Version 2.0
 #
+$CMP +VCTP
+D power-flag symbol (positive system voltage)
+K Power Flag Symbol system
+$ENDCMP
+#
 $CMP +VSYS
 D power-flag symbol (positive system voltage)
 K Power Flag Symbol system
