@@ -19,10 +19,6 @@ static const char *TAG = "EOS I2C";
 #define ACK_VAL                     0x0     /*!< I2C ack value */
 #define NCK_VAL                     0x1     /*!< I2C nack value */
 
-/**
- * @brief i2c initialization
- */
-
 void eos_i2c_init(void) {
     i2c_config_t conf;
     conf.mode = I2C_MODE_MASTER;
@@ -35,10 +31,6 @@ void eos_i2c_init(void) {
     i2c_driver_install(I2C_MASTER_NUM, conf.mode, I2C_MASTER_RX_BUF_DISABLE, I2C_MASTER_TX_BUF_DISABLE, 0);
     ESP_LOGI(TAG, "INIT");
 }
-
-/**
- * @brief i2c read
- */
 
 int eos_i2c_read(uint8_t addr, uint8_t reg, uint8_t *data, size_t len) {
     int i, ret;
@@ -53,6 +45,7 @@ int eos_i2c_read(uint8_t addr, uint8_t reg, uint8_t *data, size_t len) {
     }
     i2c_master_read_byte(cmd, data+i, NCK_VAL);
     i2c_master_stop(cmd);
+
     ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
     i2c_cmd_link_delete(cmd);
     if (ret != ESP_OK) {
@@ -60,20 +53,6 @@ int eos_i2c_read(uint8_t addr, uint8_t reg, uint8_t *data, size_t len) {
     }
     return EOS_OK;
 }
-
-/**
- * @brief i2c read8
- */
-
-uint8_t eos_i2c_read8(uint8_t addr, uint8_t reg) {
-    uint8_t data;
-    eos_i2c_read(addr, reg, &data, 1);
-    return data;
-}
-
-/**
- * @brief i2c write
- */
 
 int eos_i2c_write(uint8_t addr, uint8_t reg, uint8_t *data, size_t len) {
     int i, ret;
@@ -85,6 +64,7 @@ int eos_i2c_write(uint8_t addr, uint8_t reg, uint8_t *data, size_t len) {
         i2c_master_write_byte(cmd, *(data+i), ACK_CHECK_EN);
     }
     i2c_master_stop(cmd);
+
     ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
     i2c_cmd_link_delete(cmd);
     if (ret != ESP_OK) {
@@ -93,11 +73,10 @@ int eos_i2c_write(uint8_t addr, uint8_t reg, uint8_t *data, size_t len) {
     return EOS_OK;
 }
 
-/**
- * @brief i2c write8
- */
-
-void eos_i2c_write8(uint8_t addr, uint8_t reg, uint8_t data) {
-    eos_i2c_write(addr, reg, &data, 1);
+int eos_i2c_read8(uint8_t addr, uint8_t reg, uint8_t *data) {
+    return eos_i2c_read(addr, reg, data, 1);
 }
 
+int eos_i2c_write8(uint8_t addr, uint8_t reg, uint8_t data) {
+    return eos_i2c_write(addr, reg, &data, 1);
+}

@@ -7,10 +7,10 @@
 
 #include <esp_system.h>
 #include <esp_event.h>
-#include <esp_event_loop.h>
 #include <esp_log.h>
 #include <esp_err.h>
 #include <esp_wifi.h>
+#include <nvs_flash.h>
 
 #include "eos.h"
 #include "net.h"
@@ -43,104 +43,134 @@ static wifi_scan_config_t wifi_scan_config;
 static int wifi_connect_cnt = 0;
 static uint8_t wifi_action;
 static uint8_t wifi_state;
+static wifi_ap_record_t scan_r[WIFI_MAX_SCAN_RECORDS];
+static uint16_t scan_n;
 
-static esp_err_t wifi_event_handler(void *ctx, system_event_t *event) {
+static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
     esp_err_t ret = ESP_OK;
     char _disconnect;
     uint8_t _action, _state;
-    unsigned char *rbuf;
-    wifi_ap_record_t scan_r[WIFI_MAX_SCAN_RECORDS];
-    uint16_t scan_n = WIFI_MAX_SCAN_RECORDS;
+    unsigned char *rbuf, *p;
+    int i, len;
+    ip_event_got_ip_t *got_ip;
 
-    switch(event->event_id) {
-        case WIFI_EVENT_SCAN_DONE:
-            memset(scan_r, 0, sizeof(scan_r));
-            esp_wifi_scan_get_ap_records(&scan_n, scan_r);
+    if (event_base == WIFI_EVENT) {
+        switch(event_id) {
+            case WIFI_EVENT_SCAN_DONE:
+                scan_n = WIFI_MAX_SCAN_RECORDS;
+                memset(scan_r, 0, sizeof(scan_r));
+                esp_wifi_scan_get_ap_records(&scan_n, scan_r);
 
-            xSemaphoreTake(mutex, portMAX_DELAY);
-            _state = wifi_state;
-            if (wifi_state == WIFI_STATE_CONNECTED) wifi_action = WIFI_ACTION_NONE;
-            xSemaphoreGive(mutex);
+                ESP_LOGI(TAG, "Scan done: %d", scan_n);
+                xSemaphoreTake(mutex, portMAX_DELAY);
+                _state = wifi_state;
+                if (wifi_state == WIFI_STATE_CONNECTED) wifi_action = WIFI_ACTION_NONE;
+                xSemaphoreGive(mutex);
 
-            if (_state != WIFI_STATE_CONNECTED) ret = esp_wifi_stop();
-            break;
+                if (_state != WIFI_STATE_CONNECTED) ret = esp_wifi_stop();
 
-        case WIFI_EVENT_STA_START:
-            xSemaphoreTake(mutex, portMAX_DELAY);
-            _action = wifi_action;
-            xSemaphoreGive(mutex);
-
-            switch (_action) {
-                case WIFI_ACTION_SCAN:
-                    ret = esp_wifi_scan_start(&wifi_scan_config, 0);
-                    break;
-
-                case WIFI_ACTION_CONNECT:
-                    ret = esp_wifi_connect();
-                    break;
-
-                default:
-                    break;
-            }
-            break;
-
-        case WIFI_EVENT_STA_STOP:
-            xSemaphoreTake(mutex, portMAX_DELAY);
-            wifi_state = WIFI_STATE_STOPPED;
-            wifi_action = WIFI_ACTION_NONE;
-            xSemaphoreGive(mutex);
-            break;
-
-        case WIFI_EVENT_STA_CONNECTED:
-            xSemaphoreTake(mutex, portMAX_DELAY);
-            wifi_state = WIFI_STATE_CONNECTED;
-            wifi_action = WIFI_ACTION_NONE;
-            wifi_connect_cnt = WIFI_MAX_CONNECT_ATTEMPTS;
-            xSemaphoreGive(mutex);
-            break;
-
-        case WIFI_EVENT_STA_DISCONNECTED:
-            xSemaphoreTake(mutex, portMAX_DELAY);
-            if (wifi_connect_cnt) wifi_connect_cnt--;
-            _action = wifi_action;
-            _disconnect = (wifi_connect_cnt == 0);
-            if (_disconnect) wifi_state = WIFI_STATE_DISCONNECTED;
-            xSemaphoreGive(mutex);
-
-            if (_disconnect) {
                 rbuf = eos_net_alloc();
-                if (_action == WIFI_ACTION_CONNECT) {
-                    rbuf[0] = EOS_WIFI_MTYPE_CONNECT;
-                    rbuf[1] = EOS_ERR;
-                    eos_net_send(EOS_NET_MTYPE_WIFI, rbuf, 2);
-                } else {
-                    rbuf[0] = EOS_WIFI_MTYPE_DISCONNECT;
-                    eos_net_send(EOS_NET_MTYPE_WIFI, rbuf, 1);
+                rbuf[0] = EOS_WIFI_MTYPE_SCAN;
+                p = rbuf + 1;
+                for (i=0; i<scan_n; i++) {
+                    len = strlen((char *)scan_r[i].ssid);
+                    if (p - rbuf + len + 1 > EOS_NET_SIZE_BUF) break;
+                    strcpy((char *)p, (char *)scan_r[i].ssid);
+                    p += len + 1;
                 }
-                if (!_action) ret = esp_wifi_stop();
-            } else {
-                ret = esp_wifi_connect();
-            }
-            break;
+                eos_net_send(EOS_NET_MTYPE_WIFI, rbuf, p - rbuf);
+                break;
 
-        case IP_EVENT_STA_GOT_IP:
-            ESP_LOGI(TAG, "IP address: " IPSTR, IP2STR(&event->event_info.got_ip.ip_info.ip));
-            if (event->event_info.got_ip.ip_changed) {
-                // send wifi reconnect
-            } else {
+            case WIFI_EVENT_STA_START:
+                xSemaphoreTake(mutex, portMAX_DELAY);
+                _action = wifi_action;
+                xSemaphoreGive(mutex);
+
+                switch (_action) {
+                    case WIFI_ACTION_SCAN:
+                        ret = esp_wifi_scan_start(&wifi_scan_config, 0);
+                        break;
+
+                    case WIFI_ACTION_CONNECT:
+                        ret = esp_wifi_connect();
+                        break;
+
+                    default:
+                        break;
+                }
+                break;
+
+            case WIFI_EVENT_STA_STOP:
+                xSemaphoreTake(mutex, portMAX_DELAY);
+                wifi_state = WIFI_STATE_STOPPED;
+                wifi_action = WIFI_ACTION_NONE;
+                xSemaphoreGive(mutex);
+                break;
+
+            case WIFI_EVENT_STA_CONNECTED:
+                xSemaphoreTake(mutex, portMAX_DELAY);
+                wifi_state = WIFI_STATE_CONNECTED;
+                wifi_action = WIFI_ACTION_NONE;
+                wifi_connect_cnt = WIFI_MAX_CONNECT_ATTEMPTS;
+                xSemaphoreGive(mutex);
+                break;
+
+            case WIFI_EVENT_STA_DISCONNECTED:
+                xSemaphoreTake(mutex, portMAX_DELAY);
+                if (wifi_connect_cnt) wifi_connect_cnt--;
+                _action = wifi_action;
+                _disconnect = (wifi_connect_cnt == 0);
+                if (_disconnect) wifi_state = WIFI_STATE_DISCONNECTED;
+                xSemaphoreGive(mutex);
+
+                if (_disconnect) {
+                    rbuf = eos_net_alloc();
+                    if (_action == WIFI_ACTION_CONNECT) {
+                        rbuf[0] = EOS_WIFI_MTYPE_CONNECT;
+                        rbuf[1] = EOS_ERR;
+                        eos_net_send(EOS_NET_MTYPE_WIFI, rbuf, 2);
+                    } else {
+                        rbuf[0] = EOS_WIFI_MTYPE_DISCONNECT;
+                        eos_net_send(EOS_NET_MTYPE_WIFI, rbuf, 1);
+                    }
+                    if (!_action) ret = esp_wifi_stop();
+                } else {
+                    ret = esp_wifi_connect();
+                }
+                break;
+
+            default: // Ignore the other event types
+                break;
+        }
+    } else if (event_base == IP_EVENT) {
+        switch(event_id) {
+            case IP_EVENT_STA_GOT_IP:
+                got_ip = (ip_event_got_ip_t *)event_data;
+                ESP_LOGI(TAG, "IP address: " IPSTR, IP2STR(&got_ip->ip_info.ip));
                 rbuf = eos_net_alloc();
                 rbuf[0] = EOS_WIFI_MTYPE_CONNECT;
                 rbuf[1] = EOS_OK;
                 eos_net_send(EOS_NET_MTYPE_WIFI, rbuf, 2);
-            }
-            break;
 
-        default: // Ignore the other event types
-            break;
+                /* ip_changed is set even at normal connect!
+                if (got_ip->ip_changed) {
+                    ESP_LOGI(TAG, "IP changed");
+                    // send wifi reconnect
+                } else {
+                    rbuf = eos_net_alloc();
+                    rbuf[0] = EOS_WIFI_MTYPE_CONNECT;
+                    rbuf[1] = EOS_OK;
+                    eos_net_send(EOS_NET_MTYPE_WIFI, rbuf, 2);
+                }
+                */
+                break;
+
+            default: // Ignore the other event types
+                break;
+        }
     }
-    if (ret != ESP_OK) ESP_LOGE(TAG, "EVT HANDLER ERR:%d EVT:%d", ret, event->event_id);
 
-    return ESP_OK;
+    if (ret != ESP_OK) ESP_LOGE(TAG, "EVT HANDLER ERR:%d EVT:%d", ret, event_id);
 }
 
 static void wifi_handler(unsigned char _mtype, unsigned char *buffer, uint16_t size) {
@@ -173,10 +203,15 @@ void eos_wifi_init(void) {
 
     memset(&wifi_sta_config, 0, sizeof(wifi_sta_config));
 
-    ret = esp_event_loop_init(wifi_event_handler, NULL);
-    assert(ret == ESP_OK);
+    esp_netif_create_default_wifi_sta();
 
     ret = esp_wifi_init(&wifi_config);
+    assert(ret == ESP_OK);
+
+    ret = esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL, NULL);
+    assert(ret == ESP_OK);
+
+    ret = esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL, NULL);
     assert(ret == ESP_OK);
 
     ret = esp_wifi_set_storage(WIFI_STORAGE_RAM);

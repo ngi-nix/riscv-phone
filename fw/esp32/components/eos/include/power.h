@@ -1,6 +1,6 @@
 #include <stdint.h>
 
-#define EOS_PWR_MTYPE_BUTTON    0
+#define EOS_PWR_MTYPE_BUTTON    1
 
 #define EOS_PWR_WAKE_RST        0
 #define EOS_PWR_WAKE_BTN        1

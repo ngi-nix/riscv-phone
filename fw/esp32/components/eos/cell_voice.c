@@ -106,13 +106,11 @@ static void call_end_handler(char *urc, regmatch_t m[]) {
 static void call_missed_handler(char *urc, regmatch_t m[]) {
     unsigned char *buf;
     uint16_t len;
-    int duration = 0;
 
     eos_cell_pcm_stop();
 
-    sscanf(urc + m[1].rm_so, "%6d", &duration);
     buf = eos_net_alloc();
-    buf[0] = EOS_CELL_MTYPE_VOICE | EOS_CELL_MTYPE_VOICE_MISSED;
+    buf[0] = EOS_CELL_MTYPE_VOICE | EOS_CELL_MTYPE_VOICE_MISS;
     urc[m[1].rm_eo] = '\0';
     strcpy((char *)buf + 1, urc + m[1].rm_so);
     len = 2 + m[1].rm_eo - m[1].rm_so;

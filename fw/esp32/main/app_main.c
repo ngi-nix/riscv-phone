@@ -1,9 +1,11 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-#include <tcpip_adapter.h>
 #include <driver/gpio.h>
-#include <esp_sleep.h>
+#include <esp_event.h>
+#include <esp_netif.h>
+#include <esp_err.h>
+#include <esp_log.h>
 
 #include "i2c.h"
 #include "cell.h"
@@ -17,7 +19,13 @@
 
 // Main application
 void app_main() {
-    tcpip_adapter_init();
+    esp_err_t ret;
+
+    ret = esp_netif_init();
+    assert(ret == ESP_OK);
+
+    ret = esp_event_loop_create_default();
+    assert(ret == ESP_OK);
 
     eos_net_init();
 

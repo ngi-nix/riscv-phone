@@ -32,7 +32,11 @@ static void _cell_handler(unsigned char _mtype, unsigned char *buffer, uint16_t 
     mtype = buffer[0];
     switch (mtype & EOS_CELL_MTYPE_MASK) {
         case EOS_CELL_MTYPE_DEV:
-            switch (mtype) {
+            switch (mtype & ~EOS_CELL_MTYPE_MASK) {
+                case EOS_CELL_MTYPE_RESET:
+                    eos_modem_reset();
+                    break;
+
                 case EOS_CELL_MTYPE_UART_DATA:
                     if (eos_modem_get_mode() == EOS_CELL_UART_MODE_RELAY) eos_modem_write(buffer+1, size-1);
                     break;

@@ -55,8 +55,9 @@ static const char *TAG = "EOS DRV2605L";
 
 void eos_drv2605l_test(void) {
     uint8_t data = 0;
+    int ret;
 
-    int ret = eos_i2c_read(DRV2605L_ADDR, DRV2605_REG_STATUS, &data, 1);
+    ret = eos_i2c_read8(DRV2605L_ADDR, DRV2605_REG_STATUS, &data);
     if (ret) ESP_LOGE(TAG, "I2C ERROR!");
 
     eos_i2c_write8(DRV2605L_ADDR, DRV2605_REG_MODE, 0x00);      // out of standby
@@ -73,8 +74,10 @@ void eos_drv2605l_test(void) {
     eos_i2c_write8(DRV2605L_ADDR, DRV2605_REG_AUDIOMAX, 0x64);
 
     // LRA open loop
-    eos_i2c_write8(DRV2605L_ADDR, DRV2605_REG_FEEDBACK, eos_i2c_read8(DRV2605L_ADDR, DRV2605_REG_FEEDBACK) | 0x80);     // turn on N_ERM_LRA
-    eos_i2c_write8(DRV2605L_ADDR, DRV2605_REG_CONTROL3, eos_i2c_read8(DRV2605L_ADDR, DRV2605_REG_CONTROL3) | 0x01);     // turn on LRA_OPEN_LOOP
+    eos_i2c_read8(DRV2605L_ADDR, DRV2605_REG_FEEDBACK, &data);
+    eos_i2c_write8(DRV2605L_ADDR, DRV2605_REG_FEEDBACK, data | 0x80);   // turn on N_ERM_LRA
+    eos_i2c_read8(DRV2605L_ADDR, DRV2605_REG_CONTROL3, &data);
+    eos_i2c_write8(DRV2605L_ADDR, DRV2605_REG_CONTROL3, data | 0x01);   // turn on LRA_OPEN_LOOP
 
     eos_i2c_write8(DRV2605L_ADDR, DRV2605_REG_LIBRARY, 6);      // set LRA library
     eos_i2c_write8(DRV2605L_ADDR, DRV2605_REG_GO, 1);           // go
