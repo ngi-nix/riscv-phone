@@ -111,7 +111,7 @@ void eve_handle_touch(void) {
                     }
                     _touch_timer_clear();
                 }
-                touch->evt = EVE_TOUCH_ETYPE_POINT | _eevt;
+                touch->evt = EVE_TOUCH_ETYPE_POINT | _evt;
                 touch->eevt = _eevt;
                 touch->tag0 = 0;
                 touch->tag = 0;
@@ -149,7 +149,10 @@ void eve_handle_touch(void) {
                     if (!_touch_timer.evt) _touch_timer_clear();
                 }
                 if (touch->tracker.tag && touch->tracker.track) {
-                    if (!_touch_timer.tag && (_tag_opt[touch->tracker.tag] & EVE_TOUCH_OPT_TRACK_EXT)) {
+                    uint8_t opt = _tag_opt[touch->tracker.tag];
+                    char track_ext = ((opt & EVE_TOUCH_OPT_TRACK_EXT_X) && (touch->eevt & EVE_TOUCH_EETYPE_TRACK_X)) ||
+                                     ((opt & EVE_TOUCH_OPT_TRACK_EXT_Y) && (touch->eevt & EVE_TOUCH_EETYPE_TRACK_Y));
+                    if (!_touch_timer.tag && track_ext) {
                         _touch_timer_set(touch->tracker.tag, i, EVE_TOUCH_ETYPE_TRACK, touch->x, touch->y, EVE_TIMEOUT_TRACK);
                         if (_ext_tracker.init) _ext_tracker.init(&_touch_timer, touch);
                     } else {

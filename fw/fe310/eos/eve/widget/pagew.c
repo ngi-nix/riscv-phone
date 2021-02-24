@@ -39,36 +39,28 @@ void eve_pagew_update(EVEPageWidget *widget, EVEFont *font, char *title, eve_vie
     if (_widget->g.h == 0) _widget->g.h = eve_font_h(font);
 }
 
-int eve_pagew_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_idx) {
+int eve_pagew_touch(EVEWidget *_widget, EVEPage *page, EVETouch *t, uint16_t evt) {
     EVEPageWidget *widget = (EVEPageWidget *)_widget;
-    EVETouch *t;
-    uint16_t evt;
-    int ret = 0;
 
-    if (touch_idx > 0) return 0;
-
-    t = eve_touch_evt(tag0, touch_idx, widget->tag, 1, &evt);
-    if (t && evt) {
-        if (evt & EVE_TOUCH_ETYPE_TRACK_MASK) {
-            if (page->handle_evt) ret = page->handle_evt(page, _widget, t, evt, tag0, touch_idx);
-        } else if (evt & EVE_TOUCH_ETYPE_TAG_UP) {
-            eve_page_open(page, widget->constructor);
-            ret = 1;
-        }
+    if (evt & EVE_TOUCH_ETYPE_TAG_UP) {
+        eve_page_open(page, widget->constructor);
+        return 1;
     }
 
-    return ret;
+    return 0;
 }
 
 uint8_t eve_pagew_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0) {
     EVEPageWidget *widget = (EVEPageWidget *)_widget;
 
-    widget->tag = tag0;
+    _widget->tag0 = tag0;
     if (tag0 != EVE_TAG_NOTAG) {
         eve_cmd_dl(TAG(tag0));
         tag0++;
     }
+    _widget->tagN = tag0;
+
     eve_cmd(CMD_TEXT, "hhhhs", _widget->g.x, _widget->g.y, widget->font->id, 0, widget->title);
 
-    return tag0;
+    return _widget->tagN;
 }

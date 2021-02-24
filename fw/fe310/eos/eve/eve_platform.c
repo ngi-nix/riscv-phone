@@ -61,3 +61,16 @@ void eve_platform_init(void) {
 
     eos_spi_dev_set_div(EOS_DEV_DISP, 4);
 }
+
+#include <stdio.h>
+
+void *eve_malloc(size_t size) {
+    void *p = malloc(size);
+    printf("MALLOC:%p %d\n", p, size);
+    return p;
+}
+
+void eve_free(void *p) {
+    printf("FREE:%p\n", p);
+    free(p);
+}

@@ -456,10 +456,16 @@ void eos_net_release(void) {
 unsigned char *eos_net_alloc(void) {
     unsigned char *ret = NULL;
 
-    clear_csr(mstatus, MSTATUS_MIE);
-    ret = net_state_next_buf;
-    net_state_next_buf = NULL;
-    set_csr(mstatus, MSTATUS_MIE);
+    while (!ret) {
+        clear_csr(mstatus, MSTATUS_MIE);
+        if (net_state_next_buf) {
+            ret = net_state_next_buf;
+            net_state_next_buf = NULL;
+        } else {
+            asm volatile ("wfi");
+        }
+        set_csr(mstatus, MSTATUS_MIE);
+    }
 
     return ret;
 }

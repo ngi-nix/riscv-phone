@@ -16,11 +16,9 @@
 
 #define CH_EOF              0x1a
 
-void eve_page_init(EVEPage *page, EVEWindow *window, EVEViewStack *stack, eve_view_touch_t touch, eve_view_draw_t draw, eve_page_evt_handler_t handle_evt, eve_page_g_updater_t update_g, eve_page_destructor_t destructor) {
+void eve_page_init(EVEPage *page, EVEWindow *window, EVEViewStack *stack, eve_view_touch_t touch, eve_view_draw_t draw, eve_page_destructor_t destructor) {
     memset(page, 0, sizeof(EVEPage));
     eve_view_init(&page->v, window, touch, draw, NULL);
-    page->handle_evt = handle_evt;
-    page->update_g = update_g;
     page->destructor = destructor;
     page->stack = stack;
     page->widget_f = NULL;
@@ -37,11 +35,15 @@ void eve_page_open(EVEPage *parent, eve_view_constructor_t constructor) {
 
 void eve_page_close(EVEPage *page) {
     EVEWindow *window = page->v.window;
+    EVEScreen *screen = window->screen;
     EVEViewStack *stack = page->stack;
     eve_page_destructor_t destructor = page->destructor;
 
-    if (destructor) destructor(page);
-    eve_view_destroy(window, stack);
+    if (stack->level > 1) {
+        if (destructor) destructor(page);
+        eve_screen_hide_kbd(screen);
+        eve_view_destroy(window, stack);
+    }
 }
 
 int16_t eve_page_x(EVEPage *page, int16_t x) {
@@ -62,21 +64,18 @@ int16_t eve_page_scr_y(EVEPage *page, int16_t y) {
 
 void eve_page_set_focus(EVEPage *page, EVEWidget *widget, EVERect *f) {
     if (page->widget_f != widget) {
-        EVEKbd *kbd = eve_screen_get_kbd(page->v.window->screen);
+        EVEScreen *screen = page->v.window->screen;
+        EVEWidget *widget_f = page->widget_f;
 
-        if (kbd) {
-            EVEWidget *widget_f = page->widget_f;
+        if (widget_f && widget_f->putc) {
+            eve_screen_hide_kbd(screen);
+            widget_f->putc(page, CH_EOF);
+        }
+        if (widget && widget->putc) {
+            EVEKbd *kbd = eve_screen_get_kbd(screen);
 
-            if (widget_f && widget_f->putc) {
-                eve_screen_hide_kbd(page->v.window->screen);
-                widget_f->putc(page, CH_EOF);
-            }
-            if (widget && widget->putc) {
-                eve_kbd_set_handler(kbd, widget->putc, page);
-                eve_screen_show_kbd(page->v.window->screen);
-            } else {
-                eve_kbd_set_handler(kbd, NULL, NULL);
-            }
+            if (kbd) eve_kbd_set_handler(kbd, widget->putc, page);
+            eve_screen_show_kbd(screen);
         }
         page->widget_f = widget;
     }

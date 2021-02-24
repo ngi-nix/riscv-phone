@@ -28,10 +28,12 @@ void eve_spacerw_init(EVESpacerWidget *widget, EVERect *g) {
     eve_widget_init(_widget, EVE_WIDGET_TYPE_SPACER, g, eve_spacerw_touch, eve_spacerw_draw, NULL);
 }
 
-int eve_spacerw_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_idx) {
+int eve_spacerw_touch(EVEWidget *_widget, EVEPage *page, EVETouch *t, uint16_t evt) {
     return 0;
 }
 
 uint8_t eve_spacerw_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0) {
-    return tag0;
+    _widget->tag0 = tag0;
+    _widget->tagN = tag0;
+    return _widget->tagN;
 }

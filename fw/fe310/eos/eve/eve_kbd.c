@@ -38,22 +38,34 @@ void eve_kbd_init(EVEKbd *kbd, EVERect *g, uint32_t mem_addr, uint32_t *mem_next
     }
     kbd->mem_addr = mem_addr;
     kbd->key_modifier = 0;
+    kbd->key_modifier_sticky = 0;
+    kbd->key_modifier_lock = 0;
     kbd->key_count = 0;
     kbd->key_down = 0;
     kbd->putc = NULL;
     kbd->param = NULL;
 
-    kbd->active = 1;
+    kbd->key_down = 0xff;
     eve_write16(REG_CMD_DL, 0);
     eve_kbd_draw(kbd);
     eve_cmd_exec(1);
     mem_size = eve_read16(REG_CMD_DL);
     eve_cmd(CMD_MEMCPY, "www", mem_addr, EVE_RAM_DL, mem_size);
     eve_cmd_exec(1);
-    kbd->active = 0;
+    kbd->key_down = 0;
     kbd->mem_size = mem_size;
 
     *mem_next = kbd->mem_addr + kbd->mem_size;
+}
+
+void eve_kbd_close(EVEKbd *kbd) {
+    kbd->key_modifier = 0;
+    kbd->key_modifier_sticky = 0;
+    kbd->key_modifier_lock = 0;
+    kbd->key_count = 0;
+    kbd->key_down = 0;
+    kbd->putc = NULL;
+    kbd->param = NULL;
 }
 
 void eve_kbd_set_handler(EVEKbd *kbd, eve_kbd_input_handler_t putc, void *param) {
@@ -64,9 +76,12 @@ void eve_kbd_set_handler(EVEKbd *kbd, eve_kbd_input_handler_t putc, void *param)
 int eve_kbd_touch(EVEKbd *kbd, uint8_t tag0, int touch_idx) {
     EVETouch *t;
     uint16_t evt;
+    int ret;
 
     t = eve_touch_evt(tag0, touch_idx, 1, 126, &evt);
     if (t && evt) {
+        ret = 1;
+
         if (evt & EVE_TOUCH_ETYPE_TAG) {
             uint8_t _tag = t->tag;
 
@@ -117,16 +132,15 @@ int eve_kbd_touch(EVEKbd *kbd, uint8_t tag0, int touch_idx) {
                 }
             }
         }
-        kbd->active = 1;
     } else {
-        kbd->active = 0;
+        ret = 0;
     }
 
-    return kbd->active;
+    return ret;
 }
 
 uint8_t eve_kbd_draw(EVEKbd *kbd) {
-    if (kbd->active) {
+    if (kbd->key_down || kbd->key_modifier) {
         int x = kbd->g.x;
         int y = kbd->g.y;
         int w = kbd->g.w;

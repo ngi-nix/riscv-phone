@@ -18,6 +18,7 @@ typedef struct EOSNetAddr {
 
 void eos_sock_init(void);
 void eos_sock_set_handler(unsigned char sock, eos_evt_handler_t handler);
+eos_evt_handler_t eos_sock_get_handler(unsigned char sock);
 
 int eos_sock_open_udp(eos_evt_handler_t handler);
 void eos_sock_close(unsigned char sock);

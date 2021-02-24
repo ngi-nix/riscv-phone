@@ -57,6 +57,7 @@
 #define AON_PMUKEY      0x14C
 
 #define AON_LFROSC      0x070
+
 /* Constants */
 
 #define AON_WDOGKEY_VALUE  0x51F15E

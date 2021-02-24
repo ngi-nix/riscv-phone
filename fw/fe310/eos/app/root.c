@@ -97,10 +97,11 @@ static void widgets_destroy(EVEWidget *widget, uint16_t widget_size) {
     for (i=0; i<widget_size; i++) {
         if (widget->label) eve_free(widget->label);
         eve_widget_destroy(widget);
+        widget = eve_widget_next(widget);
     }
 }
 
-EVEForm *app_form_create(EVEWindow *window, EVEViewStack *stack, APPWidgetSpec spec[], uint16_t spec_size, eve_page_destructor_t destructor) {
+EVEForm *app_form_create(EVEWindow *window, EVEViewStack *stack, APPWidgetSpec spec[], uint16_t spec_size, eve_form_action_t action, eve_form_destructor_t destructor) {
     EVEWidget *widgets;
     EVEWidget *widget;
     EVELabel *label;
@@ -146,8 +147,8 @@ EVEForm *app_form_create(EVEWindow *window, EVEViewStack *stack, APPWidgetSpec s
         widget = eve_widget_next(widget);
     }
 
-    if (destructor == NULL) destructor = (eve_page_destructor_t)app_form_destroy;
-    eve_form_init(form, window, stack, widgets, spec_size, destructor);
+    if (destructor == NULL) destructor = app_form_destroy;
+    eve_form_init(form, window, stack, widgets, spec_size, action, destructor);
 
     return form;
 }

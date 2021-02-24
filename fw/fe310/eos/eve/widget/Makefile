@@ -2,7 +2,7 @@ include ../../../common.mk
 
 CFLAGS += -I.. -I../..
 
-obj = clipb.o font.o label.o widget.o freew.o spacerw.o pagew.o strw.o textw.o
+obj = clipb.o font.o label.o widget.o freew.o spacerw.o pagew.o strw.o textw.o selectw.o
 
 
 %.o: %.c %.h

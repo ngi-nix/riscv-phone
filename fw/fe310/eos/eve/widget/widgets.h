@@ -7,6 +7,7 @@
 #include "pagew.h"
 #include "strw.h"
 #include "textw.h"
+#include "selectw.h"
 
 typedef union EVEWidgetSpec {
     EVEFreeSpec free;
@@ -14,6 +15,7 @@ typedef union EVEWidgetSpec {
     EVEPageSpec page;
     EVEStrSpec str;
     EVETextSpec text;
+    EVESelectSpec select;
 } EVEWidgetSpec;
 
 typedef int (*eve_widget_create_t) (EVEWidget *, EVERect *g, EVEWidgetSpec *);

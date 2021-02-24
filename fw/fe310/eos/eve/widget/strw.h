@@ -19,7 +19,6 @@ typedef struct EVEStrWidget {
     } str_g;
     EVEStrCursor cursor1;
     EVEStrCursor cursor2;
-    uint8_t tag;
     struct {
         EVEStrCursor *cursor;
         short dx;
@@ -37,7 +36,7 @@ void eve_strw_destroy(EVEStrWidget *widget);
 void eve_strw_init(EVEStrWidget *widget, EVERect *g, EVEFont *font, utf8_t *str, uint16_t str_size);
 void eve_strw_update(EVEStrWidget *widget, EVEFont *font, utf8_t *str, uint16_t str_size);
 
-int eve_strw_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_idx);
+int eve_strw_touch(EVEWidget *_widget, EVEPage *page, EVETouch *t, uint16_t evt);
 uint8_t eve_strw_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0);
 void eve_strw_putc(void *_page, int c);
 void eve_strw_cursor_set(EVEStrWidget *widget, EVEStrCursor *cursor, int16_t x);

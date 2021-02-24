@@ -19,6 +19,7 @@ static const size_t _widget_size[] = {
     sizeof(EVEPageWidget),
     sizeof(EVEStrWidget),
     sizeof(EVETextWidget),
+    sizeof(EVESelectWidget),
 };
 
 static const eve_widget_create_t _widget_create[] = {
@@ -28,6 +29,7 @@ static const eve_widget_create_t _widget_create[] = {
     (eve_widget_create_t)eve_pagew_create,
     (eve_widget_create_t)eve_strw_create,
     (eve_widget_create_t)eve_textw_create,
+    (eve_widget_create_t)eve_selectw_create,
 };
 
 static const eve_widget_destroy_t _widget_destroy[] = {
@@ -37,6 +39,7 @@ static const eve_widget_destroy_t _widget_destroy[] = {
     NULL,
     (eve_widget_destroy_t)eve_strw_destroy,
     (eve_widget_destroy_t)eve_textw_destroy,
+    (eve_widget_destroy_t)eve_selectw_destroy,
 };
 
 void eve_widget_init(EVEWidget *widget, uint8_t type, EVERect *g, eve_widget_touch_t touch, eve_widget_draw_t draw, eve_kbd_input_handler_t putc) {

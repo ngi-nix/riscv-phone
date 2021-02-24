@@ -18,6 +18,7 @@
 #include "sifive/devices/prci.h"
 #include "sifive/devices/pwm.h"
 #include "sifive/devices/spi.h"
+#include "sifive/devices/i2c.h"
 #include "sifive/devices/uart.h"
 
 /****************************************************************************
@@ -37,6 +38,7 @@
 #define UART0_CTRL_ADDR _AC(0x10013000,UL)
 #define SPI0_CTRL_ADDR _AC(0x10014000,UL)
 #define PWM0_CTRL_ADDR _AC(0x10015000,UL)
+#define I2C0_CTRL_ADDR _AC(0x10016000,UL)
 #define UART1_CTRL_ADDR _AC(0x10023000,UL)
 #define SPI1_CTRL_ADDR _AC(0x10024000,UL)
 #define PWM1_CTRL_ADDR _AC(0x10025000,UL)
@@ -47,43 +49,45 @@
 
 // IOF masks
 #define IOF0_SPI1_MASK          _AC(0x000007FC,UL)
-#define SPI11_NUM_SS     (4)
-#define IOF_SPI1_SS0          (2u)
-#define IOF_SPI1_SS1          (8u)
-#define IOF_SPI1_SS2          (9u)
-#define IOF_SPI1_SS3          (10u)
-#define IOF_SPI1_MOSI         (3u)
-#define IOF_SPI1_MISO         (4u)
-#define IOF_SPI1_SCK          (5u)
-#define IOF_SPI1_DQ0          (3u)
-#define IOF_SPI1_DQ1          (4u)
-#define IOF_SPI1_DQ2          (6u)
-#define IOF_SPI1_DQ3          (7u)
+#define SPI11_NUM_SS            (4)
+#define IOF_SPI1_SS0            (2u)
+#define IOF_SPI1_SS1            (8u)
+#define IOF_SPI1_SS2            (9u)
+#define IOF_SPI1_SS3            (10u)
+#define IOF_SPI1_MOSI           (3u)
+#define IOF_SPI1_MISO           (4u)
+#define IOF_SPI1_SCK            (5u)
+#define IOF_SPI1_DQ0            (3u)
+#define IOF_SPI1_DQ1            (4u)
+#define IOF_SPI1_DQ2            (6u)
+#define IOF_SPI1_DQ3            (7u)
 
 #define IOF0_SPI2_MASK          _AC(0xFC000000,UL)
-#define SPI2_NUM_SS       (1)
-#define IOF_SPI2_SS0          (26u)
-#define IOF_SPI2_MOSI         (27u)
-#define IOF_SPI2_MISO         (28u)
-#define IOF_SPI2_SCK          (29u)
-#define IOF_SPI2_DQ0          (27u)
-#define IOF_SPI2_DQ1          (28u)
-#define IOF_SPI2_DQ2          (30u)
-#define IOF_SPI2_DQ3          (31u)
+#define SPI2_NUM_SS             (1)
+#define IOF_SPI2_SS0            (26u)
+#define IOF_SPI2_MOSI           (27u)
+#define IOF_SPI2_MISO           (28u)
+#define IOF_SPI2_SCK            (29u)
+#define IOF_SPI2_DQ0            (27u)
+#define IOF_SPI2_DQ1            (28u)
+#define IOF_SPI2_DQ2            (30u)
+#define IOF_SPI2_DQ3            (31u)
 
-//#define IOF0_I2C_MASK          _AC(0x00003000,UL)
+#define IOF0_I2C0_MASK          _AC(0x00003000,UL)
+#define IOF_I2C0_SCL            (13u)
+#define IOF_I2C0_SDA            (12u)
 
-#define IOF0_UART0_MASK         _AC(0x00030000, UL)
-#define IOF_UART0_RX   (16u)
-#define IOF_UART0_TX   (17u)
+#define IOF0_UART0_MASK         _AC(0x00030000,UL)
+#define IOF_UART0_RX            (16u)
+#define IOF_UART0_TX            (17u)
 
-#define IOF0_UART1_MASK         _AC(0x03000000, UL)
-#define IOF_UART1_RX (24u)
-#define IOF_UART1_TX (25u)
+#define IOF0_UART1_MASK         _AC(0x00840000,UL)
+#define IOF_UART1_RX            (23u)
+#define IOF_UART1_TX            (18u)
 
-#define IOF1_PWM0_MASK          _AC(0x0000000F, UL)
-#define IOF1_PWM1_MASK          _AC(0x00780000, UL)
-#define IOF1_PWM2_MASK          _AC(0x00003C00, UL)
+#define IOF1_PWM0_MASK          _AC(0x0000000F,UL)
+#define IOF1_PWM1_MASK          _AC(0x00780000,UL)
+#define IOF1_PWM2_MASK          _AC(0x00003C00,UL)
 
 // Interrupt numbers
 #define INT_RESERVED 0
@@ -98,9 +102,14 @@
 #define INT_PWM0_BASE 40
 #define INT_PWM1_BASE 44
 #define INT_PWM2_BASE 48
+#define INT_I2C0_BASE 52
 
 // Helper functions
+#define _REG8(p, i) (*(volatile uint8_t *) ((p) + (i)))
+#define _REG16(p, i) (*(volatile uint16_t *) ((p) + (i)))
 #define _REG32(p, i) (*(volatile uint32_t *) ((p) + (i)))
+#define _REG8P(p, i) ((volatile uint8_t *) ((p) + (i)))
+#define _REG16P(p, i) ((volatile uint16_t *) ((p) + (i)))
 #define _REG32P(p, i) ((volatile uint32_t *) ((p) + (i)))
 #define AON_REG(offset) _REG32(AON_CTRL_ADDR, offset)
 #define CLINT_REG(offset) _REG32(CLINT_CTRL_ADDR, offset)
@@ -114,6 +123,8 @@
 #define SPI0_REG(offset) _REG32(SPI0_CTRL_ADDR, offset)
 #define SPI1_REG(offset) _REG32(SPI1_CTRL_ADDR, offset)
 #define SPI2_REG(offset) _REG32(SPI2_CTRL_ADDR, offset)
+#define I2C0_REG(offset) _REG32(I2C0_CTRL_ADDR, offset)
+#define I2C0_REGB(offset) _REG8(I2C0_CTRL_ADDR, offset)
 #define UART0_REG(offset) _REG32(UART0_CTRL_ADDR, offset)
 #define UART1_REG(offset) _REG32(UART1_CTRL_ADDR, offset)
 

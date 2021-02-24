@@ -7,6 +7,10 @@
 
 #define EVE_OK              0
 #define EVE_ERR             -1
+
+#define EVE_ERR_FULL        -10
+#define EVE_ERR_EMPTY       -11
+
 #define EVE_ERR_NOMEM       -100
 
 #define EVE_PSTATE_ACTIVE   0

@@ -10,7 +10,7 @@
 
 static eos_evt_handler_t evt_handler[EOS_SOCK_MAX_SOCK];
 
-static void sock_handle_evt(unsigned char type, unsigned char *buffer, uint16_t len) {
+static void sock_handle_msg(unsigned char type, unsigned char *buffer, uint16_t len) {
     unsigned char sock;
 
     if ((buffer == NULL) || (len < 2)) {
@@ -40,11 +40,16 @@ void eos_sock_init(void) {
     for (i=0; i<EOS_SOCK_MAX_SOCK; i++) {
         evt_handler[i] = NULL;
     }
-    eos_net_set_handler(EOS_NET_MTYPE_SOCK, sock_handle_evt);
+    eos_net_set_handler(EOS_NET_MTYPE_SOCK, sock_handle_msg);
 }
 
 void eos_sock_set_handler(unsigned char sock, eos_evt_handler_t handler) {
     if (sock && (sock <= EOS_SOCK_MAX_SOCK)) evt_handler[sock - 1] = handler;
+}
+
+eos_evt_handler_t eos_sock_get_handler(unsigned char sock) {
+    if (sock && (sock <= EOS_SOCK_MAX_SOCK)) return evt_handler[sock - 1];
+    return NULL;
 }
 
 int eos_sock_open_udp(eos_evt_handler_t handler) {

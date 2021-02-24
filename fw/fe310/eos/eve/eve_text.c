@@ -151,7 +151,7 @@ uint8_t eve_text_draw(EVEText *box, uint8_t tag) {
     box->tag = tag;
     if (tag != EVE_TAG_NOTAG) {
         eve_cmd_dl(TAG(tag));
-        eve_touch_set_opt(tag, EVE_TOUCH_OPT_TRACK | EVE_TOUCH_OPT_TRACK_EXT);
+        eve_touch_set_opt(tag, EVE_TOUCH_OPT_TRACK | EVE_TOUCH_OPT_TRACK_EXT_Y);
         tag++;
     }
     eve_cmd(CMD_APPEND, "ww", box->mem_addr + box->w * 2 * box->line_size, box->dl_size * 4);

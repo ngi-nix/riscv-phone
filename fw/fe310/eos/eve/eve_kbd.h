@@ -17,6 +17,7 @@ typedef struct EVEKbd {
 } EVEKbd;
 
 void eve_kbd_init(EVEKbd *kbd, EVERect *g, uint32_t mem_addr, uint32_t *mem_next);
+void eve_kbd_close(EVEKbd *kbd);
 void eve_kbd_set_handler(EVEKbd *kbd, eve_kbd_input_handler_t putc, void *param);
 int eve_kbd_touch(EVEKbd *kbd, uint8_t tag0, int touch_idx);
 uint8_t eve_kbd_draw(EVEKbd *kbd);

@@ -19,12 +19,15 @@
 #define eve_spi_xchg24      eos_spi_xchg24
 #define eve_spi_xchg32      eos_spi_xchg32
 
-#define eve_malloc          malloc
-#define eve_free            free
-
 void eve_time_sleep(uint32_t ms);
 void eve_timer_set(uint32_t ms);
 void eve_timer_clear(void);
 uint64_t eve_time_get_tick(void);
 
 void eve_platform_init(void);
+
+//#define eve_malloc          malloc
+//#define eve_free            free
+
+void *eve_malloc(size_t);
+void eve_free(void *);

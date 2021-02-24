@@ -36,35 +36,26 @@ void eve_freew_update(EVEFreeWidget *widget, eve_freew_touch_t touch, eve_freew_
 }
 
 void eve_freew_tag(EVEFreeWidget *widget) {
-    if (widget->tagN != EVE_TAG_NOTAG) {
-        eve_cmd_dl(TAG(widget->tagN));
-        widget->tagN++;
+    EVEWidget *_widget = &widget->w;
+
+    if (_widget->tagN != EVE_TAG_NOTAG) {
+        eve_cmd_dl(TAG(_widget->tagN));
+        _widget->tagN++;
     }
 }
 
-int eve_freew_touch(EVEWidget *_widget, EVEPage *page, uint8_t tag0, int touch_idx) {
+int eve_freew_touch(EVEWidget *_widget, EVEPage *page, EVETouch *t, uint16_t evt) {
     EVEFreeWidget *widget = (EVEFreeWidget *)_widget;
-    EVETouch *t;
-    uint16_t evt;
-    int ret = 0;
 
-    if (touch_idx > 0) return 0;
-
-    t = eve_touch_evt(tag0, touch_idx, widget->tag0, widget->tagN - widget->tag0, &evt);
-    if (t && evt) {
-        ret = widget->_touch(widget, page, t, evt, tag0, touch_idx);
-        if (!ret && page && page->handle_evt) ret = page->handle_evt(page, _widget, t, evt, tag0, touch_idx);
-    }
-
-    return ret;
+    return widget->_touch(widget, page, t, evt);
 }
 
 uint8_t eve_freew_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0) {
     EVEFreeWidget *widget = (EVEFreeWidget *)_widget;
 
-    widget->tag0 = tag0;
-    widget->tagN = tag0;
+    _widget->tag0 = tag0;
+    _widget->tagN = tag0;
     widget->_draw(widget, page);
 
-    return widget->tagN;
+    return _widget->tagN;
 }

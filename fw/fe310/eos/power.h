@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include "event.h"
 
-#define EOS_PWR_MTYPE_BUTTON    0
+#define EOS_PWR_MTYPE_BUTTON    1
 
 #define EOS_PWR_MAX_MTYPE       2
 
@@ -20,3 +20,4 @@ void eos_power_sleep(void);
 void eos_power_wake_at(uint32_t msec);
 void eos_power_wake_disable(void);
 void eos_power_set_handler(unsigned char mtype, eos_evt_handler_t handler);
+eos_evt_handler_t eos_power_get_handler(unsigned char mtype);

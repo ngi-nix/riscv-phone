@@ -19,6 +19,6 @@
 #define GPIO_LOW_IP     (0x34)
 #define GPIO_IOF_EN     (0x38)
 #define GPIO_IOF_SEL    (0x3C)
-#define GPIO_OUTPUT_XOR    (0x40)
+#define GPIO_OUTPUT_XOR (0x40)
 
 #endif /* _SIFIVE_GPIO_H */

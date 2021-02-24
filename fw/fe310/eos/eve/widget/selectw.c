@@ -50,11 +50,11 @@ void eve_selectw_update(EVESelectWidget *widget, EVEFont *font, utf8_t *option, 
     if (option) {
         widget->option = option;
         widget->option_size = option_size;
+        widget->select = SELECTW_NOSELECT;
     }
-    widget->select = SELECTW_NOSELECT;
 }
 
-int eve_selectw_touch(EVEWidget *_widget, EVEPage *page, EVETouch *t, uint16_t evt, uint8_t tag0, int touch_idx) {
+int eve_selectw_touch(EVEWidget *_widget, EVEPage *page, EVETouch *t, uint16_t evt) {
     EVESelectWidget *widget = (EVESelectWidget *)_widget;
 
     if (evt & EVE_TOUCH_ETYPE_TAG_UP) {
@@ -111,11 +111,7 @@ uint8_t eve_selectw_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0) {
         }
     } while (o_len);
 
-    new_h = i * widget->font->h;
-    if (_widget->g.h != new_h) {
-        _widget->g.h = new_h;
-        if (page && page->update_g) page->update_g(page, _widget);
-    }
+    _widget->g.h = i * widget->font->h;
 
     return _widget->tagN;
 }
@@ -138,10 +134,8 @@ utf8_t *eve_selectw_option_get(EVESelectWidget *widget, int idx) {
     return NULL;
 }
 
-int eve_selectw_option_set(EVESelectWidget *widget, utf8_t *opt, uint16_t size) {
-    if (size > widget->option_size) return EVE_ERR_FULL;
-    memcpy(widget->option, opt, size);
-    memset(widget->option + size, 0, widget->option_size - size);
+utf8_t *eve_selectw_option_get_select(EVESelectWidget *widget) {
+    return eve_selectw_option_get(widget, widget->select);
 }
 
 int eve_selectw_option_add(EVESelectWidget *widget, utf8_t *opt) {
@@ -162,6 +156,10 @@ int eve_selectw_option_add(EVESelectWidget *widget, utf8_t *opt) {
     return EVE_OK;
 }
 
-utf8_t *eve_selectw_option_get_select(EVESelectWidget *widget) {
-    return eve_selectw_option_get(widget, widget->select);
+int eve_selectw_option_set(EVESelectWidget *widget, utf8_t *opt, uint16_t size) {
+    if (size > widget->option_size) return EVE_ERR_FULL;
+    memcpy(widget->option, opt, size);
+    memset(widget->option + size, 0, widget->option_size - size);
+
+    return EVE_OK;
 }
