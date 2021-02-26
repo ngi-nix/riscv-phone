@@ -91,7 +91,7 @@ void eve_screen_draw(EVEScreen *screen) {
 void eve_screen_handle_touch(void *s, uint8_t tag0, int touch_idx) {
     EVEScreen *screen = s;
     EVEWindow *win;
-    int h;
+    int h = 0;
 
     eve_touch_clear_opt();
 
@@ -106,5 +106,5 @@ void eve_screen_handle_touch(void *s, uint8_t tag0, int touch_idx) {
         }
     }
 
-    eve_screen_draw(screen);
+    if (h) eve_screen_draw(screen);
 }

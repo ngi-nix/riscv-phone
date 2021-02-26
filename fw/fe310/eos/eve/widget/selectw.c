@@ -94,6 +94,7 @@ int eve_selectw_touch(EVEWidget *_widget, EVEPage *page, EVETouch *t, uint16_t e
                 widget->select = i;
             }
         }
+        return 1;
     }
     return 0;
 }

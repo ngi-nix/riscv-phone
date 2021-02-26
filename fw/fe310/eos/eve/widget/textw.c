@@ -155,6 +155,7 @@ int eve_textw_touch(EVEWidget *_widget, EVEPage *page, EVETouch *t, uint16_t evt
         eve_textw_cursor_set(widget, &widget->cursor1, t->tag_up, eve_page_x(page, t->x0));
         if (widget->cursor2.on) eve_textw_cursor_clear(widget, &widget->cursor2);
         set_focus(widget, &widget->cursor1, page);
+        ret = 1;
     }
 
     if (evt & EVE_TOUCH_ETYPE_TRACK_STOP) {
