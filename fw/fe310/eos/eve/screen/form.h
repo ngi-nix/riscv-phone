@@ -11,6 +11,9 @@ typedef struct EVEForm {
     struct EVEWidget *widget;
     uint16_t widget_size;
     eve_form_action_t action;
+    int16_t win_x0;
+    int16_t win_y0;
+    uint8_t evt_lock;
 } EVEForm;
 
 int eve_form_init(EVEForm *form, EVEWindow *window, EVEViewStack *stack, struct EVEWidget *widget, uint16_t widget_size, eve_form_action_t action, eve_form_destructor_t destructor);
