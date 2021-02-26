@@ -106,7 +106,7 @@ int utf8_verify(utf8_t *str, int str_size, int *str_len) {
         ch_l = utf8_dec(str + len, &ch);
         if (ch_l > 0) {
             if (ch == 0) {
-                *str_len = len;
+                if (str_len) *str_len = len;
                 return UTF_OK;
             }
             len += ch_l;
@@ -114,7 +114,8 @@ int utf8_verify(utf8_t *str, int str_size, int *str_len) {
             break;
         }
     }
-    *str_len = len;
+
+    if (str_len) *str_len = len;
     return UTF_ERR;
 }
 

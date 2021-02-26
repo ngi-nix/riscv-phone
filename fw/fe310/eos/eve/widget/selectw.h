@@ -6,16 +6,18 @@ typedef struct EVESelectWidget {
     utf8_t *option;
     uint16_t option_size;
     uint32_t select;
+    uint8_t multi;
 } EVESelectWidget;
 
 typedef struct EVESelectSpec {
     EVEFont *font;
     uint16_t option_size;
+    uint8_t multi;
 } EVESelectSpec;
 
 int eve_selectw_create(EVESelectWidget *widget, EVERect *g, EVESelectSpec *spec);
 void eve_selectw_destroy(EVESelectWidget *widget);
-void eve_selectw_init(EVESelectWidget *widget, EVERect *g, EVEFont *font, utf8_t *option, uint16_t option_size);
+void eve_selectw_init(EVESelectWidget *widget, EVERect *g, EVEFont *font, utf8_t *option, uint16_t option_size, uint8_t multi);
 void eve_selectw_update(EVESelectWidget *widget, EVEFont *font, utf8_t *option, uint16_t option_size);
 
 int eve_selectw_touch(EVEWidget *_widget, EVEPage *page, EVETouch *t, uint16_t evt);
