@@ -16,6 +16,12 @@
 #include "widget.h"
 #include "strw.h"
 
+#define STRW_TOUCH_OPT          EVE_TOUCH_OPT_TRACK | EVE_TOUCH_OPT_TRACK_X | EVE_TOUCH_OPT_TRACK_EXT_X | EVE_TOUCH_OPT_LPRESS
+
+#define STRW_TRACK_NONE         0
+#define STRW_TRACK_CRSR         1
+#define STRW_TRACK_TXT          2
+
 #define CH_BS                   0x08
 #define CH_DEL                  0x7f
 #define CH_EOF                  0x1a
@@ -23,10 +29,6 @@
 #define CH_CTRLX                0x18
 #define CH_CTRLC                0x03
 #define CH_CTRLV                0x16
-
-#define STRW_TRACK_NONE         0
-#define STRW_TRACK_CRSR         1
-#define STRW_TRACK_TXT          2
 
 #define CHAR_VALID_INPUT(c)     ((c >= 0x20) && (c < 0x7f))
 
@@ -214,7 +216,7 @@ uint8_t eve_strw_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0) {
     _widget->tag0 = tag0;
     if (tag0 != EVE_TAG_NOTAG) {
         eve_cmd_dl(TAG(tag0));
-        eve_touch_set_opt(tag0, EVE_TOUCH_OPT_LPRESS);
+        eve_touch_set_opt(tag0, STRW_TOUCH_OPT);
         tag0++;
     }
     _widget->tagN = tag0;

@@ -16,6 +16,8 @@
 #include "widget.h"
 #include "textw.h"
 
+#define TEXTW_TOUCH_OPT         EVE_TOUCH_OPT_TRACK | EVE_TOUCH_OPT_TRACK_XY | EVE_TOUCH_OPT_TRACK_EXT_XY | EVE_TOUCH_OPT_LPRESS
+
 #define CH_BS                   0x08
 #define CH_DEL                  0x7f
 #define CH_EOF                  0x1a
@@ -241,7 +243,7 @@ uint8_t eve_textw_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0) {
         for (i=line0; i<lineN; i++) {
             if (_widget->tagN != EVE_TAG_NOTAG) {
                 eve_cmd_dl(TAG(_widget->tagN));
-                eve_touch_set_opt(_widget->tagN, EVE_TOUCH_OPT_LPRESS);
+                eve_touch_set_opt(_widget->tagN, TEXTW_TOUCH_OPT);
                 _widget->tagN++;
             }
             if (!s && c1 && (c1->line == i)) {
@@ -280,7 +282,7 @@ uint8_t eve_textw_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0) {
         if (lineNvisible) {
             if (_widget->tagN != EVE_TAG_NOTAG) {
                 eve_cmd_dl(TAG(_widget->tagN));
-                eve_touch_set_opt(_widget->tagN, EVE_TOUCH_OPT_LPRESS);
+                eve_touch_set_opt(_widget->tagN, TEXTW_TOUCH_OPT);
                 _widget->tagN++;
             }
             _draw_line(widget, page->v.window, lineN, 0, 0, 0, _widget->g.w, 0);
