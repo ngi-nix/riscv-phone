@@ -73,7 +73,8 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
                 rbuf[0] = EOS_WIFI_MTYPE_SCAN;
                 p = rbuf + 1;
                 for (i=0; i<scan_n; i++) {
-                    len = strlen((char *)scan_r[i].ssid);
+                    len = strnlen((char *)scan_r[i].ssid, 33);
+                    if (len > 32) continue;
                     if (p - rbuf + len + 1 > EOS_NET_SIZE_BUF) break;
                     strcpy((char *)p, (char *)scan_r[i].ssid);
                     p += len + 1;
