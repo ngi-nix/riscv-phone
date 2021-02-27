@@ -26,10 +26,11 @@
 #include <app/root.h>
 
 #include "status.h"
+#include "cell_dev.h"
+#include "cell_pdp.h"
 #include "phone.h"
-#include "wifi.h"
-#include "cell_data.h"
 #include "modem.h"
+#include "wifi.h"
 
 extern EVEFont *_app_font_default;
 
@@ -54,7 +55,7 @@ void app_home_page(EVEWindow *window, EVEViewStack *stack) {
             .widget.g.w = APP_SCREEN_W,
             .widget.spec.page.font = _app_font_default,
             .widget.spec.page.title = "Cellular data",
-            .widget.spec.page.constructor = app_cell_data
+            .widget.spec.page.constructor = app_cell_pdp
         },
         {
             .widget.type = EVE_WIDGET_TYPE_PAGE,
@@ -77,7 +78,7 @@ int main() {
     app_status_init();
     app_phone_init();
     app_wifi_init();
-    app_cell_data_init();
+    app_cell_pdp_init();
 
     eos_evtq_loop();
 }

@@ -57,6 +57,10 @@ void eos_cell_voice_handler(unsigned char mtype, unsigned char *buffer, uint16_t
             eos_modem_give();
 
             break;
+
+        case EOS_CELL_MTYPE_VOICE_PCM:
+            eos_cell_pcm_push(buffer+1, size-1);
+            break;
     }
 }
 

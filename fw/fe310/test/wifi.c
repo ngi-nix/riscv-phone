@@ -30,6 +30,35 @@
 
 extern EVEFont *_app_font_default;
 
+static void wifi_scan(void) {
+    unsigned char *buffer = eos_net_alloc();
+    buffer[0] = EOS_WIFI_MTYPE_SCAN;
+    eos_net_send(EOS_NET_MTYPE_WIFI, buffer, 1, 0);
+}
+
+static void wifi_connect(const char *ssid, const char *pass) {
+    unsigned char *buffer, *p;
+
+    buffer = eos_net_alloc();
+    buffer[0] = EOS_WIFI_MTYPE_CONFIG;
+    p = buffer + 1;
+    strcpy(p, ssid);
+    p += strlen(ssid) + 1;
+    strcpy(p, pass);
+    p += strlen(pass) + 1;
+    eos_net_send(EOS_NET_MTYPE_WIFI, buffer, p - buffer, 1);
+
+    buffer = eos_net_alloc();
+    buffer[0] = EOS_WIFI_MTYPE_CONNECT;
+    eos_net_send(EOS_NET_MTYPE_WIFI, buffer, 1, 0);
+}
+
+static void wifi_disconnect(void) {
+    unsigned char *buffer = eos_net_alloc();
+    buffer[0] = EOS_WIFI_MTYPE_DISCONNECT;
+    eos_net_send(EOS_NET_MTYPE_WIFI, buffer, 1, 0);
+}
+
 void wifi_scan_handler(unsigned char type, unsigned char *buffer, uint16_t size) {
     EVEScreen *screen = app_screen();
     EVEWindow *window = eve_window_get(screen, "main");
@@ -86,7 +115,7 @@ void app_wifi(EVEWindow *window, EVEViewStack *stack) {
     };
 
     EVEForm *form = app_form_create(window, stack, spec, 3, app_wifi_action, app_wifi_close);
-    eos_wifi_scan();
+    wifi_scan();
 }
 
 void app_wifi_action(EVEForm *form) {
@@ -94,7 +123,7 @@ void app_wifi_action(EVEForm *form) {
     EVEStrWidget *str = (EVEStrWidget *)eve_form_widget(form, 2);
     char *ssid = eve_selectw_option_get_select(sel);
 
-    eos_wifi_connect(ssid, str->str);
+    if (ssid) wifi_connect(ssid, str->str);
 }
 
 void app_wifi_close(EVEForm *form) {

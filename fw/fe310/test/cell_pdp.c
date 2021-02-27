@@ -26,17 +26,42 @@
 #include <app/root.h>
 
 #include "status.h"
-#include "cell_data.h"
+#include "cell_pdp.h"
 
 extern EVEFont *_app_font_default;
 
-static void cell_data_handler(unsigned char type, unsigned char *buffer, uint16_t size) {
+static void cell_pdp_connect(char *apn, char *user, char *pass) {
+    unsigned char *buffer, *p;
+
+    buffer = eos_net_alloc();
+    buffer[0] = EOS_CELL_MTYPE_PDP | EOS_CELL_MTYPE_PDP_CONFIG;
+    p = buffer + 1;
+    strcpy(p, user);
+    p += strlen(user) + 1;
+    strcpy(p, user);
+    p += strlen(user) + 1;
+    strcpy(p, pass);
+    p += strlen(pass) + 1;
+    eos_net_send(EOS_NET_MTYPE_CELL, buffer, p - buffer, 1);
+
+    buffer = eos_net_alloc();
+    buffer[0] = EOS_CELL_MTYPE_PDP | EOS_CELL_MTYPE_PDP_CONNECT;
+    eos_net_send(EOS_NET_MTYPE_CELL, buffer, 1, 0);
+}
+
+static void cell_pdp_disconnect(void) {
+    unsigned char *buffer = eos_net_alloc();
+    buffer[0] = EOS_CELL_MTYPE_PDP | EOS_CELL_MTYPE_PDP_DISCONNECT;
+    eos_net_send(EOS_NET_MTYPE_CELL, buffer, 1, 0);
+}
+
+static void cell_pdp_handler(unsigned char type, unsigned char *buffer, uint16_t size) {
     switch (type) {
-        case EOS_CELL_MTYPE_DATA_CONNECT:
+        case EOS_CELL_MTYPE_PDP_CONNECT:
             app_status_msg_set("Cell data connected", 1);
             break;
 
-        case EOS_CELL_MTYPE_DATA_DISCONNECT:
+        case EOS_CELL_MTYPE_PDP_DISCONNECT:
             app_status_msg_set("Cell data disconnected", 1);
             break;
 
@@ -46,7 +71,7 @@ static void cell_data_handler(unsigned char type, unsigned char *buffer, uint16_
     eos_net_free(buffer, 0);
 }
 
-void app_cell_data(EVEWindow *window, EVEViewStack *stack) {
+void app_cell_pdp(EVEWindow *window, EVEViewStack *stack) {
     APPWidgetSpec spec[] = {
         {
             .label.g.w = APP_SCREEN_W / 3,
@@ -80,36 +105,21 @@ void app_cell_data(EVEWindow *window, EVEViewStack *stack) {
         },
     };
 
-    EVEForm *form = app_form_create(window, stack, spec, 3, app_cell_data_action, app_cell_data_close);
+    EVEForm *form = app_form_create(window, stack, spec, 3, app_cell_pdp_action, app_cell_pdp_close);
 }
 
-void app_cell_data_action(EVEForm *form) {
-    unsigned char *buf = eos_net_alloc();
-    unsigned char *p;
+void app_cell_pdp_action(EVEForm *form) {
     EVEStrWidget *apn = (EVEStrWidget *)eve_form_widget(form, 0);
     EVEStrWidget *user = (EVEStrWidget *)eve_form_widget(form, 1);
     EVEStrWidget *pass = (EVEStrWidget *)eve_form_widget(form, 2);
 
-    buf[0] = EOS_CELL_MTYPE_DATA | EOS_CELL_MTYPE_DATA_CONFIGURE;
-    p = buf + 1;
-    strcpy(p, apn->str);
-    p += strlen(apn->str) + 1;
-    strcpy(p, user->str);
-    p += strlen(user->str) + 1;
-    strcpy(p, pass->str);
-    p += strlen(pass->str) + 1;
-    eos_net_send(EOS_NET_MTYPE_CELL, buf, p - buf, 1);
-
-    eos_net_acquire();
-    buf = eos_net_alloc();
-    buf[0] = EOS_CELL_MTYPE_DATA | EOS_CELL_MTYPE_DATA_CONNECT;
-    eos_net_send(EOS_NET_MTYPE_CELL, buf, 1, 0);
+    cell_pdp_connect(apn->str, user->str, pass->str);
 }
 
-void app_cell_data_close(EVEForm *form) {
+void app_cell_pdp_close(EVEForm *form) {
     app_form_destroy(form);
 }
 
-void app_cell_data_init(void) {
-    eos_cell_set_handler(EOS_CELL_MTYPE_DATA, cell_data_handler);
+void app_cell_pdp_init(void) {
+    eos_cell_set_handler(EOS_CELL_MTYPE_PDP, cell_pdp_handler);
 }

@@ -364,7 +364,7 @@ static void ppp_status_cb(ppp_pcb *pcb, int err_code, void *ctx) {
             ESP_LOGI(TAG,"   his_ipaddr  = %s\n", ipaddr_ntoa(&pppif->gw));
             ESP_LOGI(TAG,"   netmask     = %s\n", ipaddr_ntoa(&pppif->netmask));
             rbuf = eos_net_alloc();
-            rbuf[0] = EOS_CELL_MTYPE_DATA | EOS_CELL_MTYPE_DATA_CONNECT;
+            rbuf[0] = EOS_CELL_MTYPE_PDP | EOS_CELL_MTYPE_PDP_CONNECT;
             rbuf[1] = EOS_OK;
             eos_net_send(EOS_NET_MTYPE_CELL, rbuf, 2);
             return;

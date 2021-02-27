@@ -43,28 +43,3 @@ eos_evt_handler_t eos_wifi_get_handler(unsigned char mtype) {
     if (mtype < EOS_WIFI_MAX_MTYPE) return evt_handler[mtype];
     return NULL;
 }
-
-void eos_wifi_scan(void) {
-    unsigned char *buffer = eos_net_alloc();
-    buffer[0] = EOS_WIFI_MTYPE_SCAN;
-    eos_net_send(EOS_NET_MTYPE_WIFI, buffer, 1, 0);
-}
-
-void eos_wifi_connect(const char *ssid, const char *pass) {
-    int ssid_len = strlen(ssid);
-    int pass_len = strlen(pass);
-    unsigned char *buffer = eos_net_alloc();
-
-    buffer[0] = EOS_WIFI_MTYPE_CONNECT;
-    strcpy(buffer+1, ssid);
-    buffer[ssid_len+1] = 0;
-    strcpy(buffer+ssid_len+2, pass);
-    buffer[ssid_len+pass_len+2] = 0;
-    eos_net_send(EOS_NET_MTYPE_WIFI, buffer, ssid_len+pass_len+3, 0);
-}
-
-void eos_wifi_disconnect(void) {
-    unsigned char *buffer = eos_net_alloc();
-    buffer[0] = EOS_WIFI_MTYPE_DISCONNECT;
-    eos_net_send(EOS_NET_MTYPE_WIFI, buffer, 1, 0);
-}

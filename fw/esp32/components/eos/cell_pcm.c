@@ -61,14 +61,14 @@ static void i2s_event_task(void *pvParameters) {
                     // Event of I2S receiving data
                     if (!hold_cnt) {
                         buf = eos_net_alloc();
-                        buf[0] = EOS_CELL_MTYPE_DEV | EOS_CELL_MTYPE_PCM_DATA;
+                        buf[0] = EOS_CELL_MTYPE_VOICE | EOS_CELL_MTYPE_VOICE_PCM;
                         bytes_r = eos_cell_pcm_read(buf + 1, PCM_MIC_WM);
                         eos_net_send(EOS_NET_MTYPE_CELL, buf, bytes_r + 1);
                     } else {
                         hold_cnt--;
                         if (hold_buf == NULL) {
                             hold_buf = eos_net_alloc();
-                            hold_buf[0] = EOS_CELL_MTYPE_DEV | EOS_CELL_MTYPE_PCM_DATA;
+                            hold_buf[0] = EOS_CELL_MTYPE_VOICE | EOS_CELL_MTYPE_VOICE_PCM;
                         }
                         if (1 + hold_bytes_r + PCM_MIC_WM <= EOS_NET_SIZE_BUF) hold_bytes_r += eos_cell_pcm_read(hold_buf + 1 + hold_bytes_r, PCM_MIC_WM);
                         if (hold_cnt == 0) {

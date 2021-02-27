@@ -126,14 +126,8 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
 
                 if (_disconnect) {
                     rbuf = eos_net_alloc();
-                    if (_action == WIFI_ACTION_CONNECT) {
-                        rbuf[0] = EOS_WIFI_MTYPE_CONNECT;
-                        rbuf[1] = EOS_ERR;
-                        eos_net_send(EOS_NET_MTYPE_WIFI, rbuf, 2);
-                    } else {
-                        rbuf[0] = EOS_WIFI_MTYPE_DISCONNECT;
-                        eos_net_send(EOS_NET_MTYPE_WIFI, rbuf, 1);
-                    }
+                    rbuf[0] = EOS_WIFI_MTYPE_DISCONNECT;
+                    eos_net_send(EOS_NET_MTYPE_WIFI, rbuf, 1);
                     if (!_action) ret = esp_wifi_stop();
                 } else {
                     ret = esp_wifi_connect();
@@ -175,26 +169,37 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
 }
 
 static void wifi_handler(unsigned char _mtype, unsigned char *buffer, uint16_t size) {
-    int rv = EOS_OK;
-    uint8_t mtype = buffer[0];
+    uint8_t mtype;
+    int rv;
     char *ssid, *pass;
+
+    if (size < 1) return;
+
+    mtype = buffer[0];
+    rv = EOS_OK;
+    buffer += 1;
+    size -= 1;
 
     switch (mtype) {
         case EOS_WIFI_MTYPE_SCAN:
             rv = eos_wifi_scan();
             break;
 
+        case EOS_WIFI_MTYPE_CONFIG:
+            ssid = (char *)buffer;
+            pass = ssid + strlen(ssid) + 1;
+            rv = eos_wifi_set_config(ssid, pass);
+            break;
+
         case EOS_WIFI_MTYPE_CONNECT:
-            ssid = (char *)buffer+1;
-            pass = ssid+strlen(ssid)+1;
-            rv = eos_wifi_set_auth(ssid, pass);
-            if (!rv) rv = eos_wifi_connect();
+            rv = eos_wifi_connect();
             break;
 
         case EOS_WIFI_MTYPE_DISCONNECT:
             rv = eos_wifi_disconnect();
             break;
     }
+
     if (rv) ESP_LOGE(TAG, "MSG HANDLER ERR:%d MSG:%d", rv, mtype);
 }
 
@@ -264,7 +269,7 @@ int eos_wifi_scan(void) {
     return rv;
 }
 
-int eos_wifi_set_auth(char *ssid, char *pass) {
+int eos_wifi_set_config(char *ssid, char *pass) {
     int rv = EOS_OK;
 
     xSemaphoreTake(mutex, portMAX_DELAY);

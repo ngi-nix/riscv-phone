@@ -3,7 +3,7 @@ include ../common.mk
 CFLAGS += -I../eos -I../bsp/include -I../bsp/drivers
 LDFLAGS = $(CFLAGS) -L.. -Wl,--gc-sections -nostartfiles -nostdlib -Wl,--start-group -lc -lm -lgcc -leos -Wl,--end-group -T../bsp/default.lds
 
-DEPS = main.o status.o phone.o wifi.o cell_data.o modem.o
+DEPS = main.o status.o cell_dev.o cell_pdp.o phone.o modem.o wifi.o
 TARGET = phone
 
 all: $(TARGET)

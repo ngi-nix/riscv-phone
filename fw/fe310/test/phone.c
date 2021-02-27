@@ -43,19 +43,13 @@ static uint8_t spk_arr[ABUF_SIZE];
 
 static unsigned char voice_state = 0;
 
-static void cell_dev_handler(unsigned char type, unsigned char *buffer, uint16_t len) {
-    switch (type) {
-        case EOS_CELL_MTYPE_READY:
-            app_status_msg_set("Modem ready", 1);
-            break;
+static void handle_mic(unsigned char type) {
+    uint16_t size;
+    unsigned char *buf = eos_net_alloc();
 
-        case EOS_CELL_MTYPE_PCM_DATA:
-            if (voice_state == VOICE_STATE_CIP) {
-                eos_i2s_spk_write(buffer+1, len-1);
-            }
-            break;
-    }
-    eos_net_free(buffer, 0);
+    buf[0] = EOS_CELL_MTYPE_VOICE_PCM;
+    size = eos_i2s_mic_read(buf+1, MIC_WM);
+    eos_net_send(EOS_NET_MTYPE_CELL, buf, size+1, 0);
 }
 
 static void cell_voice_handler(unsigned char type, unsigned char *buffer, uint16_t len) {
@@ -68,29 +62,29 @@ static void cell_voice_handler(unsigned char type, unsigned char *buffer, uint16
             voice_state = VOICE_STATE_RING;
             sprintf(msg, "RING:%s", buffer+1);
             break;
+
         case EOS_CELL_MTYPE_VOICE_MISS:
             voice_state = VOICE_STATE_IDLE;
             break;
+
         case EOS_CELL_MTYPE_VOICE_BEGIN:
             voice_state = VOICE_STATE_CIP;
             eos_i2s_start(8000, EOS_I2S_FMT_PCM16);
             break;
+
         case EOS_CELL_MTYPE_VOICE_END:
             voice_state = VOICE_STATE_IDLE;
             eos_i2s_stop();
             break;
+
+        case EOS_CELL_MTYPE_VOICE_PCM:
+            if (voice_state == VOICE_STATE_CIP) {
+                eos_i2s_spk_write(buffer+1, len-1);
+            }
+            break;
     }
     app_status_msg_set(msg, 1);
     eos_net_free(buffer, 0);
-}
-
-static void handle_mic(unsigned char type) {
-    uint16_t size;
-    unsigned char *buf = eos_net_alloc();
-
-    buf[0] = EOS_CELL_MTYPE_PCM_DATA;
-    size = eos_i2s_mic_read(buf+1, MIC_WM);
-    eos_net_send(EOS_NET_MTYPE_CELL, buf, size+1, 0);
 }
 
 void app_phone(EVEWindow *window, EVEViewStack *stack) {
@@ -122,12 +116,11 @@ void app_phone_action(EVEForm *form) {
     eos_net_send(EOS_NET_MTYPE_CELL, buf, 1 + strlen(w->str), 0);
 
     voice_state = VOICE_STATE_DIAL;
-    sprintf(msg, "DIAL:%s",  w->str);
+    sprintf(msg, "DIAL:%s", w->str);
     app_status_msg_set(msg, 0);
 }
 
 void app_phone_init(void) {
-    eos_cell_set_handler(EOS_CELL_MTYPE_DEV, cell_dev_handler);
     eos_cell_set_handler(EOS_CELL_MTYPE_VOICE, cell_voice_handler);
 
     eos_i2s_mic_init(mic_arr, ABUF_SIZE);

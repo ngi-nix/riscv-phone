@@ -49,18 +49,6 @@ static void _cell_handler(unsigned char _mtype, unsigned char *buffer, uint16_t 
                 case EOS_CELL_MTYPE_UART_GIVE:
                     eos_modem_set_mode(cell_mode);
                     break;
-
-                case EOS_CELL_MTYPE_PCM_DATA:
-                    eos_cell_pcm_push(buffer+1, size-1);
-                    break;
-
-                case EOS_CELL_MTYPE_PCM_START:
-                    eos_cell_pcm_start();
-                    break;
-
-                case EOS_CELL_MTYPE_PCM_STOP:
-                    eos_cell_pcm_stop();
-                    break;
             }
             break;
 
@@ -76,8 +64,8 @@ static void _cell_handler(unsigned char _mtype, unsigned char *buffer, uint16_t 
             eos_cell_ussd_handler(mtype & ~EOS_CELL_MTYPE_MASK, buffer, size);
             break;
 
-        case EOS_CELL_MTYPE_DATA:
-            eos_cell_data_handler(mtype & ~EOS_CELL_MTYPE_MASK, buffer, size);
+        case EOS_CELL_MTYPE_PDP:
+            eos_cell_pdp_handler(mtype & ~EOS_CELL_MTYPE_MASK, buffer, size);
             break;
     }
 }
