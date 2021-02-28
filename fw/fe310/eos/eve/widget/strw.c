@@ -1,17 +1,18 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "unicode.h"
+#include "clipb.h"
+
 #include "eve.h"
 #include "eve_kbd.h"
-#include "unicode.h"
+#include "eve_font.h"
 
 #include "screen/screen.h"
 #include "screen/window.h"
 #include "screen/view.h"
 #include "screen/page.h"
 
-#include "clipb.h"
-#include "font.h"
 #include "label.h"
 #include "widget.h"
 #include "strw.h"
@@ -32,7 +33,7 @@
 
 #define CHAR_VALID_INPUT(c)     ((c >= 0x20) && (c < 0x7f))
 
-int eve_strw_create(EVEStrWidget *widget, EVERect *g, EVEStrSpec *spec) {
+int eve_strw_create(EVEStrWidget *widget, EVERect *g, EVEFont *font, EVEStrSpec *spec) {
     utf8_t *str;
     uint16_t *line;
 
@@ -40,7 +41,7 @@ int eve_strw_create(EVEStrWidget *widget, EVERect *g, EVEStrSpec *spec) {
     if (str == NULL) return EVE_ERR_NOMEM;
     str[0] = '\0';
 
-    eve_strw_init(widget, g, spec->font, str, spec->str_size);
+    eve_strw_init(widget, g, font, str, spec->str_size);
 
     return EVE_OK;
 }
@@ -53,15 +54,14 @@ void eve_strw_init(EVEStrWidget *widget, EVERect *g, EVEFont *font, utf8_t *str,
     EVEWidget *_widget = &widget->w;
 
     memset(widget, 0, sizeof(EVEStrWidget));
-    eve_widget_init(_widget, EVE_WIDGET_TYPE_STR, g, eve_strw_touch, eve_strw_draw, eve_strw_putc);
-    eve_strw_update(widget, font, str, str_size);
+    eve_widget_init(_widget, EVE_WIDGET_TYPE_STR, g, font, eve_strw_touch, eve_strw_draw, eve_strw_putc);
+    eve_strw_update(widget, str, str_size);
 }
 
-void eve_strw_update(EVEStrWidget *widget, EVEFont *font, utf8_t *str, uint16_t str_size) {
+void eve_strw_update(EVEStrWidget *widget, utf8_t *str, uint16_t str_size) {
     int rv, str_len;
     EVEWidget *_widget = &widget->w;
 
-    if (font) widget->font = font;
     if (str) {
         widget->str = str;
         widget->str_size = str_size;
@@ -71,9 +71,9 @@ void eve_strw_update(EVEStrWidget *widget, EVEFont *font, utf8_t *str, uint16_t 
             widget->str[str_len] = '\0';
         }
         widget->str_len = str_len;
-        widget->str_g.w = eve_font_str_w(font, str);
+        widget->str_g.w = eve_font_str_w(_widget->font, str);
     }
-    if (_widget->g.h == 0) _widget->g.h = eve_font_h(font);
+    if (_widget->g.h == 0) _widget->g.h = eve_font_h(_widget->font);
 }
 
 static void set_focus(EVEStrWidget *widget, EVEPage *page) {
@@ -83,7 +83,7 @@ static void set_focus(EVEStrWidget *widget, EVEPage *page) {
     focus.x = _widget->g.x;
     focus.y = _widget->g.y;
     focus.w = _widget->g.w;
-    focus.h = 2 * widget->font->h;
+    focus.h = 2 * _widget->font->h;
     eve_page_set_focus(page, _widget, &focus);
 }
 
@@ -95,7 +95,7 @@ static EVEStrCursor *cursor_prox(EVEStrWidget *widget, EVEStrCursor *cursor, EVE
     *dx = cursor->x - x;
     _dx = *dx < 0 ? -(*dx) : *dx;
 
-    if (_dx <= widget->font->w) return cursor;
+    if (_dx <= _widget->font->w) return cursor;
     return NULL;
 }
 
@@ -132,7 +132,7 @@ int eve_strw_touch(EVEWidget *_widget, EVEPage *page, EVETouch *t, uint16_t evt)
                     widget->str_g.x0 = widget->str_g.x;
                 }
                 x = widget->str_g.x0 + t->x0 - t->x;
-                w1 = widget->w.g.w - widget->font->w;
+                w1 = _widget->g.w - _widget->font->w;
                 if (x > widget->str_g.w - w1) x = widget->str_g.w - w1;
                 if (x < 0) x = 0;
                 widget->str_g.x = x;
@@ -181,17 +181,17 @@ static void _draw_str(EVEStrWidget *widget, EVEWindow *window, uint16_t ch, uint
         eve_cmd_dl(BEGIN(EVE_RECTS));
         if (!s) eve_cmd_dl(COLOR_MASK(0 ,0 ,0 ,0));
         eve_cmd_dl(VERTEX2F(x + x1, _widget->g.y));
-        eve_cmd_dl(VERTEX2F(x + x2, _widget->g.y + widget->font->h));
+        eve_cmd_dl(VERTEX2F(x + x2, _widget->g.y + _widget->font->h));
         if (!s) {
             eve_cmd_dl(COLOR_MASK(1 ,1 ,1 ,1));
             eve_cmd_dl(BEGIN(EVE_LINES));
-            eve_cmd_dl(VERTEX2F(x + x1, _widget->g.y + widget->font->h));
-            eve_cmd_dl(VERTEX2F(x + x2, _widget->g.y + widget->font->h));
+            eve_cmd_dl(VERTEX2F(x + x1, _widget->g.y + _widget->font->h));
+            eve_cmd_dl(VERTEX2F(x + x2, _widget->g.y + _widget->font->h));
         }
         eve_cmd_dl(END());
         if (len) {
             if (s) eve_cmd_dl(COLOR_RGBC(window->color_bg));
-            eve_cmd(CMD_TEXT, "hhhhpb", x + x1, _widget->g.y, widget->font->id, 0, widget->str + ch, len, 0);
+            eve_cmd(CMD_TEXT, "hhhhpb", x + x1, _widget->g.y, _widget->font->id, 0, widget->str + ch, len, 0);
             if (s) eve_cmd_dl(COLOR_RGBC(window->color_fg));
         }
     }
@@ -205,7 +205,7 @@ static void _draw_cursor(EVEStrWidget *widget, EVEStrCursor *cursor) {
     y = _widget->g.y;
     eve_cmd_dl(BEGIN(EVE_LINES));
     eve_cmd_dl(VERTEX2F(x, y));
-    eve_cmd_dl(VERTEX2F(x, y + widget->font->h));
+    eve_cmd_dl(VERTEX2F(x, y + _widget->font->h));
     eve_cmd_dl(END());
 }
 
@@ -286,12 +286,13 @@ uint8_t eve_strw_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0) {
 void eve_strw_putc(void *_page, int c) {
     EVEPage *page = _page;
     EVEStrWidget *widget = (EVEStrWidget *)eve_page_get_focus(page);
+    EVEWidget *_widget = &widget->w;
     EVEStrCursor *cursor1 = &widget->cursor1;
     EVEStrCursor *cursor2 = &widget->cursor2;
     utf8_t *str;
     utf8_t *clipb = NULL;
-    int w0 = widget->font->w;
-    int w1 = widget->w.g.w - widget->font->w;
+    int w0 = _widget->font->w;
+    int w1 = _widget->g.w - _widget->font->w;
     int ins_c = 0, del_c = 0;
     int ins_w = 0, del_w = 0;
 
@@ -312,7 +313,7 @@ void eve_strw_putc(void *_page, int c) {
             case CH_BS:
                 if (cursor1->ch > 0) {
                     del_c = -utf8_seek(str, -1, &uc);
-                    del_w = eve_font_ch_w(widget->font, uc);
+                    del_w = eve_font_ch_w(_widget->font, uc);
                     memmove(str - del_c, str, widget->str_len - cursor1->ch + 1);
                     widget->str_len -= del_c;
                     widget->str_g.w -= del_w;
@@ -324,7 +325,7 @@ void eve_strw_putc(void *_page, int c) {
             case CH_DEL:
                 if (cursor1->ch < widget->str_len) {
                     del_c = utf8_dec(str, &uc);
-                    del_w = eve_font_ch_w(widget->font, uc);
+                    del_w = eve_font_ch_w(_widget->font, uc);
                     memmove(str, str + del_c, widget->str_len - cursor1->ch - del_c + 1);
                     widget->str_len -= del_c;
                     widget->str_g.w -= del_w;
@@ -347,7 +348,7 @@ void eve_strw_putc(void *_page, int c) {
                 c1 = cursor2;
             }
             del_c = c2->ch - c1->ch;
-            del_w = eve_font_buf_w(widget->font, str, del_c);
+            del_w = eve_font_buf_w(_widget->font, str, del_c);
             if ((c == CH_CTRLX) || (c == CH_CTRLC)) {
                 eve_clipb_push(str, del_c);
                 if (c == CH_CTRLC) return;
@@ -357,7 +358,7 @@ void eve_strw_putc(void *_page, int c) {
         str = widget->str + c1->ch;
         if (CHAR_VALID_INPUT(c)) {
             ins_c = utf8_enc(c, utf8_buf);
-            ins_w = eve_font_ch_w(widget->font, c);
+            ins_w = eve_font_ch_w(_widget->font, c);
         } else if (c == CH_CTRLV) {
             int rv, clipb_len = 0;
 
@@ -370,7 +371,7 @@ void eve_strw_putc(void *_page, int c) {
                 }
             }
             ins_c = clipb_len;
-            ins_w = eve_font_str_w(widget->font, clipb);
+            ins_w = eve_font_str_w(_widget->font, clipb);
         }
         if (widget->str_len + ins_c >= widget->str_size + del_c) {
             ins_c = 0;
@@ -413,7 +414,7 @@ void eve_strw_cursor_set(EVEStrWidget *widget, EVEStrCursor *cursor, int16_t x) 
     i = 0;
     while (i < widget->str_len) {
         ch_l = utf8_dec(widget->str + i, &ch);
-        ch_w = eve_font_ch_w(widget->font, ch);
+        ch_w = eve_font_ch_w(_widget->font, ch);
         _x += ch_w;
         i += ch_l;
         if (_x >= x) {

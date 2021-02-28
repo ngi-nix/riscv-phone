@@ -31,10 +31,10 @@ typedef struct EVEStrSpec {
     uint16_t str_size;
 } EVEStrSpec;
 
-int eve_strw_create(EVEStrWidget *widget, EVERect *g, EVEStrSpec *spec);
+int eve_strw_create(EVEStrWidget *widget, EVERect *g, EVEFont *font, EVEStrSpec *spec);
 void eve_strw_destroy(EVEStrWidget *widget);
 void eve_strw_init(EVEStrWidget *widget, EVERect *g, EVEFont *font, utf8_t *str, uint16_t str_size);
-void eve_strw_update(EVEStrWidget *widget, EVEFont *font, utf8_t *str, uint16_t str_size);
+void eve_strw_update(EVEStrWidget *widget, utf8_t *str, uint16_t str_size);
 
 int eve_strw_touch(EVEWidget *_widget, EVEPage *page, EVETouch *t, uint16_t evt);
 uint8_t eve_strw_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0);

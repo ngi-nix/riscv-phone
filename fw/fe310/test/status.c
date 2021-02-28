@@ -14,6 +14,7 @@
 
 #include <eve/eve.h>
 #include <eve/eve_kbd.h>
+#include <eve/eve_font.h>
 
 #include <eve/screen/screen.h>
 #include <eve/screen/window.h>
@@ -27,8 +28,6 @@
 
 #include "phone.h"
 #include "status.h"
-
-extern EVEFont *_app_font_default;
 
 static char status_msg[128];
 

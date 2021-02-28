@@ -2,7 +2,7 @@ include ../../common.mk
 
 CFLAGS += -I.. -I../../bsp/include
 
-obj = eve.o eve_touch.o eve_track.o eve_kbd.o eve_text.o eve_platform.o
+obj = eve.o eve_platform.o eve_touch.o eve_track.o eve_kbd.o eve_text.o eve_font.o clipb.o
 
 
 %.o: %.c %.h

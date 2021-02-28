@@ -1,9 +1,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "unicode.h"
+
 #include "eve.h"
 #include "eve_kbd.h"
-#include "unicode.h"
+#include "eve_font.h"
 
 #include "screen.h"
 #include "window.h"
@@ -11,7 +13,6 @@
 #include "page.h"
 #include "form.h"
 
-#include "widget/font.h"
 #include "widget/label.h"
 #include "widget/widget.h"
 

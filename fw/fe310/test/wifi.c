@@ -14,6 +14,7 @@
 
 #include <eve/eve.h>
 #include <eve/eve_kbd.h>
+#include <eve/eve_font.h>
 
 #include <eve/screen/screen.h>
 #include <eve/screen/window.h>
@@ -27,8 +28,6 @@
 
 #include "status.h"
 #include "wifi.h"
-
-extern EVEFont *_app_font_default;
 
 static void wifi_scan(void) {
     unsigned char *buffer = eos_net_alloc();
@@ -82,17 +81,13 @@ static void wifi_disconnect_handler(unsigned char type, unsigned char *buffer, u
 }
 
 void app_wifi(EVEWindow *window, EVEViewStack *stack) {
-    char *title = "Password:";
-    uint16_t w = eve_font_str_w(_app_font_default, title) + 10;
-    APPWidgetSpec spec[] = {
+    EVEWidgetSpec spec[] = {
         {
             .label.g.w = APP_SCREEN_W,
-            .label.font = _app_font_default,
             .label.title = "Select network:",
 
             .widget.type = EVE_WIDGET_TYPE_SELECT,
             .widget.g.w = APP_SCREEN_W,
-            .widget.spec.select.font = _app_font_default,
             .widget.spec.select.option_size = 1500,
         },
         {
@@ -101,13 +96,9 @@ void app_wifi(EVEWindow *window, EVEViewStack *stack) {
             .widget.g.h = 50,
         },
         {
-            .label.g.w = w,
-            .label.font = _app_font_default,
-            .label.title = title,
+            .label.title = "Password:",
 
             .widget.type = EVE_WIDGET_TYPE_STR,
-            .widget.g.w = APP_SCREEN_W - w,
-            .widget.spec.str.font = _app_font_default,
             .widget.spec.str.str_size = 128,
         },
     };

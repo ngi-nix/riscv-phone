@@ -15,10 +15,10 @@ typedef struct EVESelectSpec {
     uint8_t multi;
 } EVESelectSpec;
 
-int eve_selectw_create(EVESelectWidget *widget, EVERect *g, EVESelectSpec *spec);
+int eve_selectw_create(EVESelectWidget *widget, EVERect *g, EVEFont *font, EVESelectSpec *spec);
 void eve_selectw_destroy(EVESelectWidget *widget);
 void eve_selectw_init(EVESelectWidget *widget, EVERect *g, EVEFont *font, utf8_t *option, uint16_t option_size, uint8_t multi);
-void eve_selectw_update(EVESelectWidget *widget, EVEFont *font, utf8_t *option, uint16_t option_size);
+void eve_selectw_update(EVESelectWidget *widget, utf8_t *option, uint16_t option_size);
 
 int eve_selectw_touch(EVEWidget *_widget, EVEPage *page, EVETouch *t, uint16_t evt);
 uint8_t eve_selectw_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0);

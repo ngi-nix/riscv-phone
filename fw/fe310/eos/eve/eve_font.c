@@ -1,9 +1,9 @@
 #include <stdlib.h>
 
-#include "eve.h"
 #include "unicode.h"
 
-#include "font.h"
+#include "eve.h"
+#include "eve_font.h"
 
 void eve_font_init(EVEFont *font, uint8_t font_id) {
     uint32_t p;

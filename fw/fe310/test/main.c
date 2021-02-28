@@ -14,6 +14,7 @@
 
 #include <eve/eve.h>
 #include <eve/eve_kbd.h>
+#include <eve/eve_font.h>
 
 #include <eve/screen/screen.h>
 #include <eve/screen/window.h>
@@ -32,35 +33,29 @@
 #include "modem.h"
 #include "wifi.h"
 
-extern EVEFont *_app_font_default;
-
 void app_home_page(EVEWindow *window, EVEViewStack *stack) {
-    APPWidgetSpec spec[] = {
+    EVEWidgetSpec spec[] = {
         {
             .widget.type = EVE_WIDGET_TYPE_PAGE,
             .widget.g.w = APP_SCREEN_W,
-            .widget.spec.page.font = _app_font_default,
             .widget.spec.page.title = "Phone",
             .widget.spec.page.constructor = app_phone
         },
         {
             .widget.type = EVE_WIDGET_TYPE_PAGE,
             .widget.g.w = APP_SCREEN_W,
-            .widget.spec.page.font = _app_font_default,
             .widget.spec.page.title = "WiFi",
             .widget.spec.page.constructor = app_wifi
         },
         {
             .widget.type = EVE_WIDGET_TYPE_PAGE,
             .widget.g.w = APP_SCREEN_W,
-            .widget.spec.page.font = _app_font_default,
             .widget.spec.page.title = "Cellular data",
             .widget.spec.page.constructor = app_cell_pdp
         },
         {
             .widget.type = EVE_WIDGET_TYPE_PAGE,
             .widget.g.w = APP_SCREEN_W,
-            .widget.spec.page.font = _app_font_default,
             .widget.spec.page.title = "Modem",
             .widget.spec.page.constructor = app_modem
         },

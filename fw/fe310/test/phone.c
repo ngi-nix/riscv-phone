@@ -14,6 +14,7 @@
 
 #include <eve/eve.h>
 #include <eve/eve_kbd.h>
+#include <eve/eve_font.h>
 
 #include <eve/screen/screen.h>
 #include <eve/screen/window.h>
@@ -27,8 +28,6 @@
 
 #include "status.h"
 #include "phone.h"
-
-extern EVEFont *_app_font_default;
 
 #define ABUF_SIZE       512
 #define MIC_WM          128
@@ -88,17 +87,11 @@ static void cell_voice_handler(unsigned char type, unsigned char *buffer, uint16
 }
 
 void app_phone(EVEWindow *window, EVEViewStack *stack) {
-    char *title = "Phone:";
-    uint16_t w = eve_font_str_w(_app_font_default, title) + 10;
-    APPWidgetSpec spec[] = {
+    EVEWidgetSpec spec[] = {
         {
-            .label.g.w = w,
-            .label.font = _app_font_default,
-            .label.title = title,
+            .label.title = "Phone:",
 
             .widget.type = EVE_WIDGET_TYPE_STR,
-            .widget.g.w = APP_SCREEN_W - w,
-            .widget.spec.str.font = _app_font_default,
             .widget.spec.str.str_size = 128,
         },
     };

@@ -1,9 +1,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "unicode.h"
+
 #include "eve.h"
 #include "eve_kbd.h"
-#include "unicode.h"
+#include "eve_font.h"
 
 #include "screen/screen.h"
 #include "screen/window.h"
@@ -42,8 +44,9 @@ static const eve_widget_destroy_t _widget_destroy[] = {
     (eve_widget_destroy_t)eve_selectw_destroy,
 };
 
-void eve_widget_init(EVEWidget *widget, uint8_t type, EVERect *g, eve_widget_touch_t touch, eve_widget_draw_t draw, eve_kbd_input_handler_t putc) {
+void eve_widget_init(EVEWidget *widget, uint8_t type, EVERect *g, EVEFont *font, eve_widget_touch_t touch, eve_widget_draw_t draw, eve_kbd_input_handler_t putc) {
     if (g) widget->g = *g;
+    widget->font = font;
     widget->touch = touch;
     widget->draw = draw;
     widget->putc = putc;
@@ -63,8 +66,8 @@ EVEWidget *eve_widget_next(EVEWidget *widget) {
     return (EVEWidget *)(_w + _widget_size[widget->type]);
 }
 
-int eve_widget_create(EVEWidget *widget, uint8_t type, EVERect *g, EVEWidgetSpec *spec) {
-    return _widget_create[type](widget, g, spec);
+int eve_widget_create(EVEWidget *widget, uint8_t type, EVERect *g, EVEFont *font, EVEWidgetSpecT *spec) {
+    return _widget_create[type](widget, g, font, spec);
 }
 
 void eve_widget_destroy(EVEWidget *widget) {

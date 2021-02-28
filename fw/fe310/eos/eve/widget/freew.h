@@ -17,8 +17,8 @@ typedef struct EVEFreeSpec {
     eve_kbd_input_handler_t putc;
 } EVEFreeSpec;
 
-int eve_freew_create(EVEFreeWidget *widget, EVERect *g, EVEFreeSpec *spec);
-void eve_freew_init(EVEFreeWidget *widget, EVERect *g, eve_freew_touch_t touch, eve_freew_draw_t draw, eve_kbd_input_handler_t putc);
+int eve_freew_create(EVEFreeWidget *widget, EVERect *g, EVEFont *font, EVEFreeSpec *spec);
+void eve_freew_init(EVEFreeWidget *widget, EVERect *g, EVEFont *font, eve_freew_touch_t touch, eve_freew_draw_t draw, eve_kbd_input_handler_t putc);
 void eve_freew_update(EVEFreeWidget *widget, eve_freew_touch_t touch, eve_freew_draw_t draw, eve_kbd_input_handler_t putc);
 
 void eve_freew_tag(EVEFreeWidget *widget);

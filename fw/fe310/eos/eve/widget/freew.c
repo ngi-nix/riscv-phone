@@ -1,31 +1,32 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "unicode.h"
+
 #include "eve.h"
 #include "eve_kbd.h"
-#include "unicode.h"
+#include "eve_font.h"
 
 #include "screen/screen.h"
 #include "screen/window.h"
 #include "screen/view.h"
 #include "screen/page.h"
 
-#include "font.h"
 #include "label.h"
 #include "widget.h"
 #include "freew.h"
 
-int eve_freew_create(EVEFreeWidget *widget, EVERect *g, EVEFreeSpec *spec) {
-    eve_freew_init(widget, g, spec->touch, spec->draw, spec->putc);
+int eve_freew_create(EVEFreeWidget *widget, EVERect *g, EVEFont *font, EVEFreeSpec *spec) {
+    eve_freew_init(widget, g, font, spec->touch, spec->draw, spec->putc);
 
     return EVE_OK;
 }
 
-void eve_freew_init(EVEFreeWidget *widget, EVERect *g, eve_freew_touch_t touch, eve_freew_draw_t draw, eve_kbd_input_handler_t putc) {
+void eve_freew_init(EVEFreeWidget *widget, EVERect *g, EVEFont *font, eve_freew_touch_t touch, eve_freew_draw_t draw, eve_kbd_input_handler_t putc) {
     EVEWidget *_widget = &widget->w;
 
     memset(widget, 0, sizeof(EVEFreeWidget));
-    eve_widget_init(_widget, EVE_WIDGET_TYPE_FREE, g, eve_freew_touch, eve_freew_draw, putc);
+    eve_widget_init(_widget, EVE_WIDGET_TYPE_FREE, g, font, eve_freew_touch, eve_freew_draw, putc);
     eve_freew_update(widget, touch, draw, NULL);
 }
 

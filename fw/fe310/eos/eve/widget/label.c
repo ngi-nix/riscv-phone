@@ -1,16 +1,17 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "unicode.h"
+
 #include "eve.h"
 #include "eve_kbd.h"
-#include "unicode.h"
+#include "eve_font.h"
 
 #include "screen/screen.h"
 #include "screen/window.h"
 #include "screen/view.h"
 #include "screen/page.h"
 
-#include "font.h"
 #include "label.h"
 
 void eve_label_init(EVELabel *label, EVERect *g, EVEFont *font, char *title) {
@@ -18,7 +19,6 @@ void eve_label_init(EVELabel *label, EVERect *g, EVEFont *font, char *title) {
     if (g) label->g = *g;
     label->font = font;
     label->title = title;
-    if (label->g.w == 0) label->g.w = eve_font_str_w(font, label->title);
     if (label->g.h == 0) label->g.h = eve_font_h(font);
 }
 

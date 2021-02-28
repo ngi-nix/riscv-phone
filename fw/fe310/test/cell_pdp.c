@@ -14,6 +14,7 @@
 
 #include <eve/eve.h>
 #include <eve/eve_kbd.h>
+#include <eve/eve_font.h>
 
 #include <eve/screen/screen.h>
 #include <eve/screen/window.h>
@@ -27,8 +28,6 @@
 
 #include "status.h"
 #include "cell_pdp.h"
-
-extern EVEFont *_app_font_default;
 
 static void cell_pdp_connect(char *apn, char *user, char *pass) {
     unsigned char *buffer, *p;
@@ -72,35 +71,26 @@ static void cell_pdp_handler(unsigned char type, unsigned char *buffer, uint16_t
 }
 
 void app_cell_pdp(EVEWindow *window, EVEViewStack *stack) {
-    APPWidgetSpec spec[] = {
+    EVEWidgetSpec spec[] = {
         {
             .label.g.w = APP_SCREEN_W / 3,
-            .label.font = _app_font_default,
             .label.title = "APN:",
 
             .widget.type = EVE_WIDGET_TYPE_STR,
-            .widget.g.w = APP_SCREEN_W - APP_SCREEN_W / 3,
-            .widget.spec.str.font = _app_font_default,
             .widget.spec.str.str_size = 128,
         },
         {
             .label.g.w = APP_SCREEN_W / 3,
-            .label.font = _app_font_default,
             .label.title = "User:",
 
             .widget.type = EVE_WIDGET_TYPE_STR,
-            .widget.g.w = APP_SCREEN_W - APP_SCREEN_W / 3,
-            .widget.spec.str.font = _app_font_default,
             .widget.spec.str.str_size = 128,
         },
         {
             .label.g.w = APP_SCREEN_W / 3,
-            .label.font = _app_font_default,
             .label.title = "Pass:",
 
             .widget.type = EVE_WIDGET_TYPE_STR,
-            .widget.g.w = APP_SCREEN_W - APP_SCREEN_W / 3,
-            .widget.spec.str.font = _app_font_default,
             .widget.spec.str.str_size = 128,
         },
     };

@@ -1,16 +1,17 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "unicode.h"
+
 #include "eve.h"
 #include "eve_kbd.h"
-#include "unicode.h"
+#include "eve_font.h"
 
 #include "screen/screen.h"
 #include "screen/window.h"
 #include "screen/view.h"
 #include "screen/page.h"
 
-#include "font.h"
 #include "label.h"
 #include "widget.h"
 #include "selectw.h"
@@ -33,7 +34,7 @@ static int selectw_option_verify(utf8_t *opt, uint16_t size) {
     return EVE_OK;
 }
 
-int eve_selectw_create(EVESelectWidget *widget, EVERect *g, EVESelectSpec *spec) {
+int eve_selectw_create(EVESelectWidget *widget, EVERect *g, EVEFont *font, EVESelectSpec *spec) {
     utf8_t *option;
 
     option = eve_malloc(spec->option_size);
@@ -42,7 +43,7 @@ int eve_selectw_create(EVESelectWidget *widget, EVERect *g, EVESelectSpec *spec)
     }
     memset(option, 0, spec->option_size);
 
-    eve_selectw_init(widget, g, spec->font, option, spec->option_size, spec->multi);
+    eve_selectw_init(widget, g, font, option, spec->option_size, spec->multi);
 
     return EVE_OK;
 }
@@ -55,15 +56,14 @@ void eve_selectw_init(EVESelectWidget *widget, EVERect *g, EVEFont *font, utf8_t
     EVEWidget *_widget = &widget->w;
 
     memset(widget, 0, sizeof(EVESelectWidget));
-    eve_widget_init(_widget, EVE_WIDGET_TYPE_SELECT, g, eve_selectw_touch, eve_selectw_draw, NULL);
-    eve_selectw_update(widget, font, option, option_size);
+    eve_widget_init(_widget, EVE_WIDGET_TYPE_SELECT, g, font, eve_selectw_touch, eve_selectw_draw, NULL);
+    eve_selectw_update(widget, option, option_size);
     widget->multi = multi;
 }
 
-void eve_selectw_update(EVESelectWidget *widget, EVEFont *font, utf8_t *option, uint16_t option_size) {
+void eve_selectw_update(EVESelectWidget *widget, utf8_t *option, uint16_t option_size) {
     int rv, text_len;
 
-    if (font) widget->font = font;
     if (option) {
         int rv = selectw_option_verify(option, option_size);
         if (rv == EVE_OK) {
@@ -121,8 +121,8 @@ uint8_t eve_selectw_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0) {
         s = widget->multi ? widget->select & (0x1 << i) : widget->select == i;
         x1 = _widget->g.x;
         x2 = x1 + _widget->g.w;
-        y1 = _widget->g.y + i * widget->font->h;
-        y2 = y1 + widget->font->h;
+        y1 = _widget->g.y + i * _widget->font->h;
+        y2 = y1 + _widget->font->h;
         eve_cmd_dl(BEGIN(EVE_RECTS));
         if (!s) eve_cmd_dl(COLOR_MASK(0 ,0 ,0 ,0));
         eve_cmd_dl(VERTEX2F(x1, y1));
@@ -135,14 +135,14 @@ uint8_t eve_selectw_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0) {
         }
         eve_cmd_dl(END());
         if (s) eve_cmd_dl(COLOR_RGBC(page->v.window->color_bg));
-        eve_cmd(CMD_TEXT, "hhhhs", x1, y1, widget->font->id, 0, widget->option + o_curr);
+        eve_cmd(CMD_TEXT, "hhhhs", x1, y1, _widget->font->id, 0, widget->option + o_curr);
         if (s) eve_cmd_dl(COLOR_RGBC(page->v.window->color_fg));
 
         o_curr += o_len + 1;
         i++;
     } while (o_len);
 
-    _widget->g.h = i * widget->font->h;
+    _widget->g.h = i * _widget->font->h;
 
     return _widget->tagN;
 }

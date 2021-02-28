@@ -5,6 +5,7 @@
 
 #include "eve/eve.h"
 #include "eve/eve_kbd.h"
+#include "eve/eve_font.h"
 
 #include "eve/screen/screen.h"
 #include "eve/screen/window.h"
@@ -16,8 +17,6 @@
 
 #include "status.h"
 #include "root.h"
-
-EVEFont *_app_font_default;
 
 static EVEKbd kbd;
 static EVEFont font;
@@ -49,7 +48,6 @@ static uint8_t kbd_draw(EVEView *v, uint8_t tag0) {
 void app_screen_init(eve_view_constructor_t home_page) {
     EVERect g;
 
-    _app_font_default = &font;
     eve_spi_start();
 
     eve_brightness(0x40);
@@ -107,11 +105,12 @@ static void widgets_destroy(EVEWidget *widget, uint16_t widget_size) {
     }
 }
 
-EVEForm *app_form_create(EVEWindow *window, EVEViewStack *stack, APPWidgetSpec spec[], uint16_t spec_size, eve_form_action_t action, eve_form_destructor_t destructor) {
+EVEForm *app_form_create(EVEWindow *window, EVEViewStack *stack, EVEWidgetSpec spec[], uint16_t spec_size, eve_form_action_t action, eve_form_destructor_t destructor) {
     EVEWidget *widgets;
     EVEWidget *widget;
     EVELabel *label;
     EVEForm *form;
+    EVEFont *_font;
     int w_size = 0;
     int i, r;
 
@@ -131,7 +130,8 @@ EVEForm *app_form_create(EVEWindow *window, EVEViewStack *stack, APPWidgetSpec s
 
     widget = widgets;
     for (i=0; i<spec_size; i++) {
-        r = eve_widget_create(widget, spec[i].widget.type, &spec[i].widget.g, &spec[i].widget.spec);
+        _font = spec[i].widget.font ? spec[i].widget.font : &font;
+        r = eve_widget_create(widget, spec[i].widget.type, &spec[i].widget.g, _font, &spec[i].widget.spec);
         if (r) {
             widgets_destroy(widgets, i);
             eve_free(widgets);
@@ -139,6 +139,7 @@ EVEForm *app_form_create(EVEWindow *window, EVEViewStack *stack, APPWidgetSpec s
             return NULL;
         }
         if (spec[i].label.title) {
+            _font = spec[i].label.font ? spec[i].label.font : &font;
             label = eve_malloc(sizeof(EVELabel));
             if (label == NULL) {
                 eve_widget_destroy(widget);
@@ -147,9 +148,11 @@ EVEForm *app_form_create(EVEWindow *window, EVEViewStack *stack, APPWidgetSpec s
                 eve_free(form);
                 return NULL;
             }
-            eve_label_init(label, &spec[i].label.g, spec[i].label.font, spec[i].label.title);
+            eve_label_init(label, &spec[i].label.g, _font, spec[i].label.title);
             eve_widget_set_label(widget, label);
         }
+        if (widget->label && (widget->label->g.w == 0)) eve_font_str_w(label->font, label->title) + APP_LABEL_MARGIN;
+        if (widget->g.w == 0) widget->g.w = APP_SCREEN_W - (widget->label ? widget->label->g.w : 0);
         widget = eve_widget_next(widget);
     }
 

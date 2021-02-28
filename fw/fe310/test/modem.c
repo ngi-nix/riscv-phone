@@ -15,6 +15,7 @@
 #include <eve/eve.h>
 #include <eve/eve_kbd.h>
 #include <eve/eve_text.h>
+#include <eve/eve_font.h>
 
 #include <eve/screen/screen.h>
 #include <eve/screen/window.h>

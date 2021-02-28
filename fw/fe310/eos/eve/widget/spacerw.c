@@ -1,21 +1,22 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "unicode.h"
+
 #include "eve.h"
 #include "eve_kbd.h"
-#include "unicode.h"
+#include "eve_font.h"
 
 #include "screen/screen.h"
 #include "screen/window.h"
 #include "screen/view.h"
 #include "screen/page.h"
 
-#include "font.h"
 #include "label.h"
 #include "widget.h"
 #include "spacerw.h"
 
-int eve_spacerw_create(EVESpacerWidget *widget, EVERect *g, EVESpacerSpec *spec) {
+int eve_spacerw_create(EVESpacerWidget *widget, EVERect *g, EVEFont *font, EVESpacerSpec *spec) {
     eve_spacerw_init(widget, g);
 
     return EVE_OK;
@@ -25,7 +26,7 @@ void eve_spacerw_init(EVESpacerWidget *widget, EVERect *g) {
     EVEWidget *_widget = &widget->w;
 
     memset(widget, 0, sizeof(EVESpacerWidget));
-    eve_widget_init(_widget, EVE_WIDGET_TYPE_SPACER, g, eve_spacerw_touch, eve_spacerw_draw, NULL);
+    eve_widget_init(_widget, EVE_WIDGET_TYPE_SPACER, g, NULL, eve_spacerw_touch, eve_spacerw_draw, NULL);
 }
 
 int eve_spacerw_touch(EVEWidget *_widget, EVEPage *page, EVETouch *t, uint16_t evt) {

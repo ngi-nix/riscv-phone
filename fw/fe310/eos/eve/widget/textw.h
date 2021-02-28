@@ -9,7 +9,6 @@ typedef struct EVETextCursor {
 
 typedef struct EVETextWidget {
     EVEWidget w;
-    EVEFont *font;
     utf8_t *text;
     uint16_t text_size;
     uint16_t text_len;
@@ -32,10 +31,10 @@ typedef struct EVETextSpec {
     uint16_t line_size;
 } EVETextSpec;
 
-int eve_textw_create(EVETextWidget *widget, EVERect *g, EVETextSpec *spec);
+int eve_textw_create(EVETextWidget *widget, EVERect *g, EVEFont *font, EVETextSpec *spec);
 void eve_textw_destroy(EVETextWidget *widget);
 void eve_textw_init(EVETextWidget *widget, EVERect *g, EVEFont *font, utf8_t *text, uint16_t text_size, uint16_t *line, uint16_t line_size);
-void eve_textw_update(EVETextWidget *widget, EVEFont *font, utf8_t *text, uint16_t text_size, uint16_t *line, uint16_t line_size);
+void eve_textw_update(EVETextWidget *widget, utf8_t *text, uint16_t text_size, uint16_t *line, uint16_t line_size);
 
 int eve_textw_touch(EVEWidget *_widget, EVEPage *page, EVETouch *t, uint16_t evt);
 uint8_t eve_textw_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0);

@@ -7,7 +7,7 @@ typedef struct EVESpacerWidget {
 typedef struct EVESpacerSpec {
 } EVESpacerSpec;
 
-int eve_spacerw_create(EVESpacerWidget *widget, EVERect *g, EVESpacerSpec *spec);
+int eve_spacerw_create(EVESpacerWidget *widget, EVERect *g, EVEFont *font, EVESpacerSpec *spec);
 void eve_spacerw_init(EVESpacerWidget *widget, EVERect *g);
 
 int eve_spacerw_touch(EVEWidget *_widget, EVEPage *page, EVETouch *t, uint16_t evt);
