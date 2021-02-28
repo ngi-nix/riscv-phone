@@ -1,4 +1,3 @@
-
 #include <stdlib.h>
 
 #include "unicode.h"
@@ -10,7 +9,7 @@
 #include "eve/screen/window.h"
 #include "eve/screen/view.h"
 
-#include "status.h"
+#include "app_status.h"
 
 int app_status_touch(EVEView *v, uint8_t tag0, int touch_idx) {
     return 0;

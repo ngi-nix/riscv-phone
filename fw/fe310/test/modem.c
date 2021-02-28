@@ -25,7 +25,8 @@
 
 #include <eve/widget/widgets.h>
 
-#include <app/root.h>
+#include <app/app_screen.h>
+#include <app/app_form.h>
 
 #include "modem.h"
 
