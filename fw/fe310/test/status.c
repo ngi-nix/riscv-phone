@@ -78,11 +78,7 @@ static uint8_t status_draw(EVEView *v, uint8_t tag0) {
 void app_status_msg_set(char *msg, int refresh) {
     strcpy(status_msg, msg);
 
-    if (refresh) {
-        eos_spi_dev_start(EOS_DEV_DISP);
-        eve_screen_draw(app_screen());
-        eos_spi_dev_stop();
-    }
+    if (refresh) app_screen_refresh();
 }
 
 void app_status_init(void) {

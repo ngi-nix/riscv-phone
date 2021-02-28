@@ -74,9 +74,9 @@ uint8_t eos_power_reset_cause(void) {
 }
 
 void eos_power_sleep(void) {
-    eos_spi_dev_start(EOS_DEV_DISP);
+    eos_spi_dev_select(EOS_DEV_DISP);
     eve_sleep();
-    eos_spi_dev_stop();
+    eos_spi_dev_deselect();
     eos_net_sleep(1000);
 
     AON_REG(AON_PMUKEY) = 0x51F15E;

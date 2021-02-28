@@ -69,8 +69,11 @@ void eve_handle_touch(void) {
     char int_ccomplete = 0;
     uint8_t tag0 = _tag0;
     uint8_t touch_last = 0;
-    uint8_t flags = eve_read8(REG_INT_FLAGS) & _intr_mask;
+    uint8_t flags;
 
+    eve_spi_start();
+
+    flags = eve_read8(REG_INT_FLAGS) & _intr_mask;
     if (!_multitouch && (flags & EVE_INT_TOUCH)) _multitouch = 1;
     for (i=0; i<EVE_MAX_TOUCH; i++) {
         uint8_t touch_tag;
@@ -261,9 +264,13 @@ void eve_handle_touch(void) {
             _touch_handler(_touch_handler_param, tag0, i);
         }
     }
+
+    eve_spi_stop();
 }
 
 void eve_handle_time(void) {
+    eve_spi_start();
+
     if (_touch_handler && _touch_timer.tag) {
         EVETouch *touch = &_touch[_touch_timer.idx];
 
@@ -296,6 +303,8 @@ void eve_handle_time(void) {
             _touch_timer_clear();
         }
     }
+
+    eve_spi_stop();
 }
 
 void eve_touch_init(void) {

@@ -9,8 +9,11 @@
 #define EOS_SPI_FLAG_BSWAP  0x04
 
 void eos_spi_init(void);
-void eos_spi_start(unsigned char dev, uint32_t div, uint32_t csid, uint8_t pin);
-void eos_spi_stop(void);
+int eos_spi_start(unsigned char dev, uint32_t div, uint32_t csid, uint8_t pin);
+int eos_spi_stop(void);
+uint8_t eos_spi_dev(void);
+void eos_spi_lock(void);
+void eos_spi_unlock(void);
 void eos_spi_set_handler(unsigned char dev, eos_evt_handler_t handler);
 
 void _eos_spi_xchg_init(unsigned char *buffer, uint16_t len, uint8_t flags);

@@ -5,7 +5,7 @@
 #define EOS_DEV_MAX_DEV     3
 
 void eos_spi_dev_init(void);
-void eos_spi_dev_start(unsigned char dev);
-void eos_spi_dev_stop(void);
+int eos_spi_dev_select(unsigned char dev);
+int eos_spi_dev_deselect(void);
 
 void eos_spi_dev_set_div(unsigned char dev, uint16_t div);

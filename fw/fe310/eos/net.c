@@ -486,17 +486,36 @@ void eos_net_free(unsigned char *buffer, unsigned char more) {
 int eos_net_send(unsigned char type, unsigned char *buffer, uint16_t len, unsigned char more) {
     int rv = EOS_OK;
 
-    if (more) {
-        type |= EOS_NET_MTYPE_FLAG_ONEW;
-    }
+    if (more) type |= EOS_NET_MTYPE_FLAG_ONEW;
+
     clear_csr(mstatus, MSTATUS_MIE);
-    if ((net_state_flags & NET_STATE_FLAG_RUN) && (net_state_flags & NET_STATE_FLAG_CTS)) {
+    if ((type & EOS_NET_MTYPE_FLAG_ONEW) && !(net_state_flags & NET_STATE_FLAG_RUN)) {
+        uint8_t spi_dev;
+
+        set_csr(mstatus, MSTATUS_MIE);
+        spi_dev = eos_spi_dev();
+        rv = eos_spi_dev_deselect();
+        if (rv) return rv;
+
+        clear_csr(mstatus, MSTATUS_MIE);
+        while (!(net_state_flags & NET_STATE_FLAG_CTS)) {
+            asm volatile ("wfi");
+            set_csr(mstatus, MSTATUS_MIE);
+            clear_csr(mstatus, MSTATUS_MIE);
+        }
         net_xchg_start(type, buffer, len);
+        set_csr(mstatus, MSTATUS_MIE);
+
+        eos_spi_dev_select(spi_dev);
     } else {
-        rv = eos_msgq_push(&net_send_q, type, buffer, len);
-        if (rv) eos_bufq_push(&net_buf_q, buffer);
+        if ((net_state_flags & NET_STATE_FLAG_RUN) && (net_state_flags & NET_STATE_FLAG_CTS)) {
+            net_xchg_start(type, buffer, len);
+        } else {
+            rv = eos_msgq_push(&net_send_q, type, buffer, len);
+            if (rv) eos_bufq_push(&net_buf_q, buffer);
+        }
+        set_csr(mstatus, MSTATUS_MIE);
     }
-    set_csr(mstatus, MSTATUS_MIE);
 
     return rv;
 }

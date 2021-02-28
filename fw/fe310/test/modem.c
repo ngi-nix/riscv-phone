@@ -89,7 +89,7 @@ static void handle_cell_msg(unsigned char type, unsigned char *buffer, uint16_t 
         EVEText *text = &param->text;
         int i;
 
-        eos_spi_dev_start(EOS_DEV_DISP);
+        eve_spi_start();
         for (i=1; i<len; i++) {
             if (buffer[i] != '\r') eve_text_putc(text, buffer[i]);
         }
@@ -97,7 +97,7 @@ static void handle_cell_msg(unsigned char type, unsigned char *buffer, uint16_t 
             text->dirty = 0;
             eve_screen_draw(window->screen);
         }
-        eos_spi_dev_stop();
+        eve_spi_stop();
         eos_net_free(buffer, 0);
     } else {
         param->cell_dev_handler(type, buffer, len);

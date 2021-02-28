@@ -20,6 +20,7 @@
 
 static uint8_t spi_dev;
 static uint8_t spi_dev_cs_pin;
+static uint8_t spi_lock;
 static volatile uint8_t spi_state_flags;
 static unsigned char spi_in_xchg;
 
@@ -61,7 +62,7 @@ void eos_spi_init(void) {
     // SPI1_REG(SPI_REG_CSDEF) = 0xFFFF;
 }
 
-void eos_spi_start(unsigned char dev, uint32_t div, uint32_t csid, uint8_t pin) {
+int eos_spi_start(unsigned char dev, uint32_t div, uint32_t csid, uint8_t pin) {
     spi_dev = dev;
     spi_state_flags = 0;
     SPI1_REG(SPI_REG_SCKDIV) = div;
@@ -73,11 +74,28 @@ void eos_spi_start(unsigned char dev, uint32_t div, uint32_t csid, uint8_t pin) 
         spi_dev_cs_pin = pin;
     }
     eos_intr_set_handler(INT_SPI1_BASE, eos_spi_handle_xchg);
+
+    return EOS_OK;
 }
 
-void eos_spi_stop(void) {
+int eos_spi_stop(void) {
+    if (spi_lock) return EOS_ERR_BUSY;
     eos_spi_flush();
     spi_dev = 0;
+
+    return EOS_OK;
+}
+
+uint8_t eos_spi_dev(void) {
+    return spi_dev;
+}
+
+void eos_spi_lock(void) {
+    spi_lock = 1;
+}
+
+void eos_spi_unlock(void) {
+    spi_lock = 0;
 }
 
 void eos_spi_set_handler(unsigned char dev, eos_evt_handler_t handler) {

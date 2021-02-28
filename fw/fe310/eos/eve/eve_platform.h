@@ -11,6 +11,15 @@
 #define EVE_SPI_FLAG_BSWAP  EOS_SPI_FLAG_BSWAP
 #define EVE_SPI_FLAG_TX     EOS_SPI_FLAG_TX
 
+void *eve_malloc(size_t);
+void eve_free(void *);
+
+//#define eve_malloc          malloc
+//#define eve_free            free
+
+void eve_spi_start(void);
+void eve_spi_stop(void);
+
 #define eve_spi_cs_set      eos_spi_cs_set
 #define eve_spi_cs_clear    eos_spi_cs_clear
 #define eve_spi_flush       eos_spi_flush
@@ -18,6 +27,8 @@
 #define eve_spi_xchg16      eos_spi_xchg16
 #define eve_spi_xchg24      eos_spi_xchg24
 #define eve_spi_xchg32      eos_spi_xchg32
+#define eve_spi_lock        eos_spi_lock
+#define eve_spi_unlock      eos_spi_unlock
 
 void eve_time_sleep(uint32_t ms);
 void eve_timer_set(uint32_t ms);
@@ -25,9 +36,3 @@ void eve_timer_clear(void);
 uint64_t eve_time_get_tick(void);
 
 void eve_platform_init(void);
-
-//#define eve_malloc          malloc
-//#define eve_free            free
-
-void *eve_malloc(size_t);
-void eve_free(void *);

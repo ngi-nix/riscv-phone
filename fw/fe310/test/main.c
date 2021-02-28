@@ -74,7 +74,7 @@ int main() {
 
     eos_init();
 
-    app_root_init(app_home_page);
+    app_screen_init(app_home_page);
     app_status_init();
     app_phone_init();
     app_wifi_init();

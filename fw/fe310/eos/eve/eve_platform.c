@@ -11,15 +11,11 @@
 #include "irq_def.h"
 
 static void handle_time(unsigned char type) {
-    eos_spi_dev_start(EOS_DEV_DISP);
     eve_handle_time();
-    eos_spi_dev_stop();
 }
 
 static void handle_evt(unsigned char type, unsigned char *buffer, uint16_t len) {
-    eos_spi_dev_start(EOS_DEV_DISP);
     eve_handle_touch();
-    eos_spi_dev_stop();
 
     GPIO_REG(GPIO_LOW_IP) = (1 << EVE_PIN_INTR);
     GPIO_REG(GPIO_LOW_IE) |= (1 << EVE_PIN_INTR);
@@ -60,6 +56,14 @@ void eve_platform_init(void) {
     eos_intr_set(INT_GPIO_BASE + EVE_PIN_INTR, IRQ_PRIORITY_UI, handle_intr);
 
     eos_spi_dev_set_div(EOS_DEV_DISP, 4);
+}
+
+void eve_spi_start(void) {
+    eos_spi_dev_select(EOS_DEV_DISP);
+}
+
+void eve_spi_stop(void) {
+    eos_spi_dev_deselect();
 }
 
 #include <stdio.h>

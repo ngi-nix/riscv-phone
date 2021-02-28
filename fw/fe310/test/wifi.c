@@ -68,9 +68,7 @@ void wifi_scan_handler(unsigned char type, unsigned char *buffer, uint16_t size)
     eve_selectw_option_set(select, buffer + 1, size - 1);
     eos_net_free(buffer, 0);
 
-    eos_spi_dev_start(EOS_DEV_DISP);
-    eve_screen_draw(app_screen());
-    eos_spi_dev_stop();
+    app_screen_refresh();
 }
 
 static void wifi_connect_handler(unsigned char type, unsigned char *buffer, uint16_t size) {

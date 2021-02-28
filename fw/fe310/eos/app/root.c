@@ -46,11 +46,11 @@ static uint8_t kbd_draw(EVEView *v, uint8_t tag0) {
     return tag0;
 }
 
-void app_root_init(eve_view_constructor_t home_page) {
+void app_screen_init(eve_view_constructor_t home_page) {
     EVERect g;
 
     _app_font_default = &font;
-    eos_spi_dev_start(EOS_DEV_DISP);
+    eve_spi_start();
 
     eve_brightness(0x40);
 
@@ -86,9 +86,15 @@ void app_root_init(eve_view_constructor_t home_page) {
     eve_screen_hide_kbd(&screen);
     eve_screen_draw(&screen);
 
-    eos_spi_dev_stop();
+    eve_spi_stop();
 
     eos_net_acquire_for_evt(EOS_EVT_UI | EVE_ETYPE_INTR, 1);
+}
+
+void app_screen_refresh(void) {
+    eve_spi_start();
+    eve_screen_draw(app_screen());
+    eve_spi_stop();
 }
 
 static void widgets_destroy(EVEWidget *widget, uint16_t widget_size) {

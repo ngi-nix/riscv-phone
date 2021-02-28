@@ -37,7 +37,7 @@ void eos_init(void) {
     eos_net_wake(wakeup_cause);
 
     eve_set_touch_calibration(eve_touch);
-    eos_spi_dev_start(EOS_DEV_DISP);
+    eos_spi_dev_select(EOS_DEV_DISP);
     eve_init(wakeup_cause == EOS_PWR_WAKE_RST);
-    eos_spi_dev_stop();
+    eos_spi_dev_deselect();
 }

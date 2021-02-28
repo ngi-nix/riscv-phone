@@ -4,6 +4,7 @@
 #include "encoding.h"
 #include "platform.h"
 
+#include "eos.h"
 #include "spi.h"
 #include "net.h"
 
@@ -22,24 +23,41 @@
 
 static uint16_t spi_dev_div[EOS_DEV_MAX_DEV];
 
-void eos_spi_dev_start(unsigned char dev) {
-    eos_net_stop();
+int eos_spi_dev_select(unsigned char dev) {
+    uint8_t spi_dev = eos_spi_dev();
+    int rv = EOS_ERR;
+
+    if (spi_dev) {
+        int rv;
+
+        rv = eos_spi_stop();
+        if (rv) return rv;
+    } else {
+        eos_net_stop();
+    }
     switch (dev) {
         case EOS_DEV_DISP:
-            eos_spi_start(dev, spi_dev_div[dev-1], SPI_CSID_DISP, 0);
+            rv = eos_spi_start(dev, spi_dev_div[dev-1], SPI_CSID_DISP, 0);
             break;
         case EOS_DEV_CARD:
-            eos_spi_start(dev, spi_dev_div[dev-1], SPI_CSID_CARD, 0);
+            rv = eos_spi_start(dev, spi_dev_div[dev-1], SPI_CSID_CARD, 0);
             break;
         case EOS_DEV_CAM:
-            eos_spi_start(dev, spi_dev_div[dev-1], SPI_CSID_NONE, SPI_CSPIN_CAM);
+            rv = eos_spi_start(dev, spi_dev_div[dev-1], SPI_CSID_NONE, SPI_CSPIN_CAM);
             break;
     }
+
+    return rv;
 }
 
-void eos_spi_dev_stop(void) {
-    eos_spi_stop();
+int eos_spi_dev_deselect(void) {
+    int rv;
+
+    rv = eos_spi_stop();
+    if (rv) return rv;
     eos_net_start();
+
+    return EOS_OK;
 }
 
 void eos_spi_dev_init(void) {

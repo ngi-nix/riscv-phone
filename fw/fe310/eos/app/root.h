@@ -22,7 +22,8 @@ typedef struct APPWidgetSpec {
 } APPWidgetSpec;
 
 EVEScreen *app_screen(void);
-void app_root_init(eve_view_constructor_t home_page);
+void app_screen_init(eve_view_constructor_t home_page);
+void app_screen_refresh(void);
 
 EVEForm *app_form_create(EVEWindow *window, EVEViewStack *stack, APPWidgetSpec spec[], uint16_t spec_size, eve_form_action_t action, eve_form_destructor_t destructor);
 void app_form_destroy(EVEForm *form);

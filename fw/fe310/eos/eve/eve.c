@@ -103,6 +103,7 @@ void eve_dl_start(uint32_t addr, char burst) {
     _dl_addr = addr;
     _dl_burst = burst;
     if (burst) {
+        eve_spi_lock();
         eve_spi_cs_set();
         eve_spi_xchg24(addr | EVE_MEM_WRITE, EVE_SPI_FLAG_TX);
     }
@@ -121,6 +122,7 @@ void eve_dl_end(void) {
     if (_dl_burst) {
         eve_spi_flush();
         eve_spi_cs_clear();
+        eve_spi_unlock();
         _dl_burst = 0;
     }
 }
@@ -266,6 +268,7 @@ int eve_cmd_exec(int w) {
 
 void eve_cmd_burst_start(void) {
     uint32_t addr = EVE_RAM_CMD + _cmd_offset;
+    eve_spi_lock();
     eve_spi_cs_set();
     eve_spi_xchg24(addr | EVE_MEM_WRITE, EVE_SPI_FLAG_TX);
     _cmd_burst = 1;
@@ -274,6 +277,7 @@ void eve_cmd_burst_start(void) {
 void eve_cmd_burst_end(void) {
     eve_spi_flush();
     eve_spi_cs_clear();
+    eve_spi_unlock();
     _cmd_burst = 0;
 }
 
