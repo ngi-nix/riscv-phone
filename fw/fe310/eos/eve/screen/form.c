@@ -56,9 +56,11 @@ static int form_handle_evt(EVEForm *form, EVEWidget *widget, EVETouch *touch, ui
         form->evt_lock = 1;
     }
     if (evt & EVE_TOUCH_ETYPE_TRACK_STOP) {
-        form->win_x0 = 0;
-        form->win_y0 = 0;
         form->evt_lock = 0;
+    }
+    if ((evt & EVE_TOUCH_ETYPE_TRACK) && (touch->eevt & EVE_TOUCH_EETYPE_TRACK_Y)) {
+        form->p.win_y = form->win_y0 + touch->y0 - touch->y;
+        return 1;
     }
     if (evt & EVE_TOUCH_ETYPE_POINT_UP) {
         if ((touch->eevt & EVE_TOUCH_EETYPE_TRACK_XY) == 0) {
@@ -73,10 +75,6 @@ static int form_handle_evt(EVEForm *form, EVEWidget *widget, EVETouch *touch, ui
             form->action(form);
             return 1;
         }
-    }
-    if ((evt & EVE_TOUCH_ETYPE_TRACK) && (touch->eevt & EVE_TOUCH_EETYPE_TRACK_Y)) {
-        form->p.win_y = form->win_y0 + touch->y0 - touch->y;
-        return 1;
     }
 
     return 0;

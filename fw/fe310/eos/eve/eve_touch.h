@@ -1,5 +1,8 @@
 #include <stdint.h>
 
+#define EVE_TOUCH_TIMEOUT_TAP           1000
+#define EVE_TOUCH_TIMEOUT_TRACK         20
+
 /* events */
 #define EVE_TOUCH_ETYPE_TRACK           0x0001
 #define EVE_TOUCH_ETYPE_TRACK_REG       0x0002
@@ -15,7 +18,7 @@
 
 #define EVE_TOUCH_ETYPE_TAG_MASK        (EVE_TOUCH_ETYPE_TAG    | EVE_TOUCH_ETYPE_TAG_UP)
 #define EVE_TOUCH_ETYPE_TAP_MASK        (EVE_TOUCH_ETYPE_TAP1   | EVE_TOUCH_ETYPE_TAP2)
-#define EVE_TOUCH_ETYPE_TRACK_MASK      (EVE_TOUCH_ETYPE_TRACK  | EVE_TOUCH_ETYPE_TRACK_START   | EVE_TOUCH_ETYPE_TRACK_STOP)
+#define EVE_TOUCH_ETYPE_TRACK_MASK      (EVE_TOUCH_ETYPE_TRACK  | EVE_TOUCH_ETYPE_TRACK_START | EVE_TOUCH_ETYPE_TRACK_STOP | EVE_TOUCH_ETYPE_TRACK_REG)
 #define EVE_TOUCH_ETYPE_POINT_MASK      (EVE_TOUCH_ETYPE_POINT  | EVE_TOUCH_ETYPE_POINT_UP)
 #define EVE_TOUCH_ETYPE_TIMER_MASK      (EVE_TOUCH_OPT_LPRESS   | EVE_TOUCH_OPT_DTAP)
 
@@ -70,12 +73,9 @@ typedef struct EVETouch {
 } EVETouch;
 
 typedef struct EVETouchTimer {
-    uint8_t tag;
+    uint8_t tag0;
     uint8_t idx;
     uint16_t evt;
-    int x0;
-    int y0;
-    void *p;
 } EVETouchTimer;
 
 void eve_handle_touch(void);
@@ -83,22 +83,14 @@ void eve_handle_time(void);
 
 void eve_touch_init(void);
 void eve_touch_set_handler(eve_touch_handler_t handler, void *handler_param);
+EVETouch *eve_touch_get(int i);
 EVETouch *eve_touch_evt(uint8_t tag0, int touch_idx, uint8_t tag_min, uint8_t tag_n, uint16_t *evt);
+
 void eve_touch_set_opt(uint8_t tag, uint8_t opt);
 uint8_t eve_touch_get_opt(uint8_t tag);
 void eve_touch_clear_opt(void);
-EVETouchTimer *eve_touch_get_timer(void);
 
-typedef void (*eve_etrack_init_t) (EVETouchTimer *, EVETouch *);
-typedef int  (*eve_etrack_tick_t) (EVETouchTimer *, EVETouch *);
-typedef void (*eve_etrack_stop_t) (EVETouchTimer *, EVETouch *);
-
-typedef struct EVEExtTracker {
-    eve_etrack_init_t init;
-    eve_etrack_tick_t tick;
-    eve_etrack_stop_t stop;
-} EVEExtTracker;
-
-void eve_etrack_set(eve_etrack_init_t init, eve_etrack_tick_t tick, eve_etrack_stop_t stop, void *param);
-void eve_etrack_start(int i);
-void eve_etrack_stop(void);
+void eve_touch_timer_set(uint8_t tag0, int i, uint16_t evt, uint32_t to);
+void eve_touch_timer_clear(void);
+uint16_t eve_touch_timer_evt(int i);
+EVETouchTimer *eve_touch_timer_get(void);

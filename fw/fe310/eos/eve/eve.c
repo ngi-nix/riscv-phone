@@ -429,7 +429,6 @@ int eve_init(int pwr_on) {
     }
 
     eve_touch_init();
-    eve_track_init();
     eve_platform_init();
 
     return EVE_OK;
