@@ -419,7 +419,10 @@ static int _init(void) {
 }
 
 int eve_init(int pwr_on) {
+    eve_spi_start();
+
     pwr_on = 1; // override this for now
+
     if (pwr_on) {
         int rv = _init();
         if (rv) return rv;
@@ -430,6 +433,8 @@ int eve_init(int pwr_on) {
 
     eve_touch_init();
     eve_platform_init();
+
+    eve_spi_stop();
 
     return EVE_OK;
 }

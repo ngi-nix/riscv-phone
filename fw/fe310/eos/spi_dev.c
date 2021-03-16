@@ -37,13 +37,13 @@ int eos_spi_dev_select(unsigned char dev) {
     }
     switch (dev) {
         case EOS_DEV_DISP:
-            rv = eos_spi_start(dev, spi_dev_div[dev-1], SPI_CSID_DISP, 0);
+            rv = eos_spi_start(dev, spi_dev_div[dev - 1], SPI_CSID_DISP, 0);
             break;
         case EOS_DEV_CARD:
-            rv = eos_spi_start(dev, spi_dev_div[dev-1], SPI_CSID_CARD, 0);
+            rv = eos_spi_start(dev, spi_dev_div[dev - 1], SPI_CSID_CARD, 0);
             break;
         case EOS_DEV_CAM:
-            rv = eos_spi_start(dev, spi_dev_div[dev-1], SPI_CSID_NONE, SPI_CSPIN_CAM);
+            rv = eos_spi_start(dev, spi_dev_div[dev - 1], SPI_CSID_NONE, SPI_CSPIN_CAM);
             break;
     }
 
