@@ -41,6 +41,7 @@ static void form_update_g(EVEForm *form, EVEWidget *_widget) {
         }
         widget->g.x = w;
         widget->g.y = h;
+        form->h = widget->g.y + widget->g.h;
 
         w += widget->g.w;
         _h = MAX(_h, widget->g.h);
@@ -49,35 +50,72 @@ static void form_update_g(EVEForm *form, EVEWidget *_widget) {
     }
 }
 
-static int form_handle_evt(EVEForm *form, EVEWidget *widget, EVETouch *touch, uint16_t evt) {
-    if (evt & EVE_TOUCH_ETYPE_TRACK_START) {
-        form->win_x0 = form->p.win_x;
-        form->win_y0 = form->p.win_y;
+static int form_handle_evt(EVEForm *form, EVEWidget *widget, EVETouch *touch, uint16_t evt, uint8_t tag0) {
+    int ret = 0;
+    EVEPage *page = &form->p;
+
+    if ((evt & EVE_TOUCH_ETYPE_POINT_UP) && !(touch->eevt & (EVE_TOUCH_EETYPE_TRACK_XY | EVE_TOUCH_EETYPE_ABORT))) {
+        if (page->widget_f) eve_page_set_focus(page, NULL, NULL);
+        ret = 1;
+    }
+
+    /* Scroll start */
+    if ((evt & EVE_TOUCH_ETYPE_TRACK_START) && !(touch->eevt & EVE_TOUCH_EETYPE_ABORT)) {
         form->evt_lock = 1;
     }
-    if (evt & EVE_TOUCH_ETYPE_TRACK_STOP) {
-        form->evt_lock = 0;
-    }
-    if ((evt & EVE_TOUCH_ETYPE_TRACK) && (touch->eevt & EVE_TOUCH_EETYPE_TRACK_Y)) {
-        form->p.win_y = form->win_y0 + touch->y0 - touch->y;
-        return 1;
-    }
-    if (evt & EVE_TOUCH_ETYPE_POINT_UP) {
-        if ((touch->eevt & EVE_TOUCH_EETYPE_TRACK_XY) == 0) {
-            if (form->p.widget_f) eve_page_set_focus(&form->p, NULL, NULL);
-            return 1;
-        }
-        if (touch->eevt & EVE_TOUCH_EETYPE_TRACK_RIGHT) {
-            eve_page_close((EVEPage *)form);
-            return 1;
-        }
-        if (touch->eevt & EVE_TOUCH_EETYPE_TRACK_LEFT) {
-            form->action(form);
-            return 1;
+
+    /* Scroll stop */
+    if (((evt & EVE_TOUCH_ETYPE_TRACK_STOP) && !(evt & EVE_TOUCH_ETYPE_TRACK_ABORT)) ||
+        ((evt & EVE_TOUCH_ETYPE_POINT_UP) && (touch->eevt & EVE_TOUCH_EETYPE_ABORT) && !(touch->eevt & EVE_TOUCH_EETYPE_TRACK_XY))) {
+        int wmax_y;
+        EVERect vg;
+
+        eve_window_visible_g(page->v.window, &vg);
+        wmax_y = form->h > vg.h ? form->h - vg.h : 0;
+        if ((page->win_y < 0) || (page->win_y > wmax_y)) {
+            EVEPhyLHO *lho = &form->lho;
+            eve_phy_lho_init(lho, 0, page->win_y < 0 ? 0 : wmax_y, 1000, 0.5, 0);
+            eve_phy_lho_start(lho, 0, page->win_y);
+            form->lho_t0 = eve_time_get_tick();
+            eve_touch_timer_start(tag0, 20);
+        } else {
+            form->evt_lock = 0;
+            if (evt & EVE_TOUCH_ETYPE_TRACK_STOP) {
+                if (touch->eevt & EVE_TOUCH_EETYPE_TRACK_RIGHT) {
+                    eve_page_close((EVEPage *)form);
+                    return 1;
+                }
+                if (touch->eevt & EVE_TOUCH_EETYPE_TRACK_LEFT) {
+                    if (form->action) form->action(form);
+                    return 1;
+                }
+            }
         }
     }
 
-    return 0;
+    if (evt & EVE_TOUCH_ETYPE_TRACK_START) {
+        if (touch->eevt & EVE_TOUCH_EETYPE_TRACK_Y) {
+            form->win_y0 = page->win_y;
+        }
+    }
+    if (evt & EVE_TOUCH_ETYPE_TRACK) {
+        if (touch->eevt & EVE_TOUCH_EETYPE_TRACK_Y) {
+            page->win_y = form->win_y0 + touch->y0 - touch->y;
+        }
+        ret = 1;
+    }
+    if (evt & EVE_TOUCH_ETYPE_TIMER) {
+        EVEPhyLHO *lho = &form->lho;
+        int more = eve_phy_lho_tick(lho, eve_time_get_tick() - form->lho_t0, NULL, &page->win_y);
+
+        if (!more) {
+            form->evt_lock = 0;
+            eve_touch_timer_stop();
+        }
+        ret = 1;
+    }
+
+    return ret;
 }
 
 int eve_form_init(EVEForm *form, EVEWindow *window, EVEViewStack *stack, EVEWidget *widget, uint16_t widget_size, eve_form_action_t action, eve_form_destructor_t destructor) {
@@ -90,31 +128,29 @@ int eve_form_init(EVEForm *form, EVEWindow *window, EVEViewStack *stack, EVEWidg
     form_update_g(form, NULL);
 }
 
-int eve_form_touch(EVEView *v, uint8_t tag0, int touch_idx) {
-    EVEForm *form = (EVEForm *)v;
+int eve_form_touch(EVEView *view, EVETouch *touch, uint16_t evt, uint8_t tag0) {
+    EVEForm *form = (EVEForm *)view;
     EVEWidget *widget = form->widget;
-    EVETouch *t;
-    uint16_t evt;
-    int i, ret = 0;
+    int8_t touch_idx = eve_touch_get_idx(touch);
+    uint16_t _evt;
+    int i, ret;
 
     if (touch_idx > 0) return 0;
 
-    t = eve_touch_evt(tag0, touch_idx, form->p.v.window->tag, 1, &evt);
-    if (t && evt) {
-        ret = form_handle_evt(form, NULL, t, evt);
+    _evt = eve_touch_evt(touch, evt, tag0, form->p.v.window->tag, 1);
+    if (_evt) {
+        ret = form_handle_evt(form, NULL, touch, _evt, tag0);
         if (ret) return 1;
     }
     for (i=0; i<form->widget_size; i++) {
-        if (eve_page_rect_visible(&form->p, &widget->g)) {
-            t = eve_touch_evt(tag0, touch_idx, widget->tag0, widget->tagN - widget->tag0, &evt);
-            if (t && evt) {
-                if (!form->evt_lock) {
-                    ret = widget->touch(widget, &form->p, t, evt);
-                    if (ret) return 1;
-                }
-                ret = form_handle_evt(form, widget, t, evt);
+        _evt = eve_touch_evt(touch, evt, tag0, widget->tag0, widget->tagN - widget->tag0);
+        if (_evt) {
+            if (!form->evt_lock) {
+                ret = widget->touch(widget, &form->p, touch, _evt);
                 if (ret) return 1;
             }
+            ret = form_handle_evt(form, widget, touch, _evt, tag0);
+            if (ret) return 1;
         }
         widget = eve_widget_next(widget);
     }
@@ -122,8 +158,8 @@ int eve_form_touch(EVEView *v, uint8_t tag0, int touch_idx) {
     return 0;
 }
 
-uint8_t eve_form_draw(EVEView *v, uint8_t tag0) {
-    EVEForm *form = (EVEForm *)v;
+uint8_t eve_form_draw(EVEView *view, uint8_t tag0) {
+    EVEForm *form = (EVEForm *)view;
     EVEWidget *widget = form->widget;
     int i;
     uint8_t tagN = tag0;
@@ -133,7 +169,6 @@ uint8_t eve_form_draw(EVEView *v, uint8_t tag0) {
     eve_cmd_dl(VERTEX_FORMAT(0));
     eve_cmd_dl(VERTEX_TRANSLATE_X(eve_page_scr_x(&form->p, 0) * 16));
     eve_cmd_dl(VERTEX_TRANSLATE_Y(eve_page_scr_y(&form->p, 0) * 16));
-
     for (i=0; i<form->widget_size; i++) {
         if (widget->label && eve_page_rect_visible(&form->p, &widget->label->g)) {
             eve_cmd_dl(TAG_MASK(0));
@@ -153,7 +188,7 @@ uint8_t eve_form_draw(EVEView *v, uint8_t tag0) {
     for (i=tag0; i<tagN; i++) {
         eve_touch_set_opt(i, eve_touch_get_opt(i) | tag_opt);
     }
-    if (v->window->tag != EVE_TAG_NOTAG) eve_touch_set_opt(v->window->tag, eve_touch_get_opt(v->window->tag) | tag_opt);
+    if (view->window->tag != EVE_TAG_NOTAG) eve_touch_set_opt(view->window->tag, eve_touch_get_opt(view->window->tag) | tag_opt);
 
     return tagN;
 }

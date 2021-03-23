@@ -5,7 +5,7 @@
 struct EVEView;
 struct EVEViewStack;
 
-typedef int (*eve_view_touch_t) (struct EVEView *, uint8_t, int);
+typedef int (*eve_view_touch_t) (struct EVEView *, EVETouch *, uint16_t, uint8_t);
 typedef uint8_t (*eve_view_draw_t) (struct EVEView *, uint8_t);
 typedef void (*eve_view_constructor_t) (EVEWindow *window, struct EVEViewStack *);
 

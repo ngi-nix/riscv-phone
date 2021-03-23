@@ -88,23 +88,22 @@ void eve_screen_draw(EVEScreen *screen) {
     eve_cmd_exec(1);
 }
 
-void eve_screen_handle_touch(void *s, uint8_t tag0, int touch_idx) {
+void eve_screen_handle_touch(EVETouch *touch, uint16_t evt, uint8_t tag0, void *s) {
     EVEScreen *screen = s;
     EVEWindow *win;
     int h = 0;
 
-    eve_touch_clear_opt();
-
-    if (touch_idx >= 0) {
-        win = screen->win_tail;
-        while (win) {
-            if (eve_window_visible(win)) {
-                h = win->view->touch(win->view, tag0, touch_idx);
-                if (h) break;
-            }
-            win = win->prev;
+    win = screen->win_tail;
+    while (win) {
+        if (eve_window_visible(win)) {
+            h = win->view->touch(win->view, touch, evt, tag0);
+            if (h) break;
         }
+        win = win->prev;
     }
 
-    if (h) eve_screen_draw(screen);
+    if (h) {
+        eve_touch_clear_opt();
+        eve_screen_draw(screen);
+    }
 }

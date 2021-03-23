@@ -119,18 +119,15 @@ void eve_text_scroll0(EVEText *box) {
     }
 }
 
-int eve_text_touch(EVEText *box, uint8_t tag0, int touch_idx) {
-    EVETouch *t;
-    uint16_t evt;
-
-    t = eve_touch_evt(tag0, touch_idx, box->tag, 1, &evt);
-    if (t && evt) {
+int eve_text_touch(EVEText *box, EVETouch *touch, uint16_t evt, uint8_t tag0) {
+    evt = eve_touch_evt(touch, evt, tag0, box->tag, 1);
+    if (touch && evt) {
         if ((evt & EVE_TOUCH_ETYPE_TRACK_START) && (box->line_top < 0)) {
             box->line_top = box->line0;
             box->line_top0 = box->line0;
         }
         if ((evt & EVE_TOUCH_ETYPE_TRACK) && (box->line_top0 >=0)) {
-            int line = LINE_IDX_ADD(box->line_top0, (t->y0 - t->y) / box->ch_h, box->line_size);
+            int line = LINE_IDX_ADD(box->line_top0, (touch->y0 - touch->y) / box->ch_h, box->line_size);
             if (LINE_IDX_LTE(line, box->line0, box->line_size, box->h)) {
                 box->line_top = line;
                 eve_text_update(box);

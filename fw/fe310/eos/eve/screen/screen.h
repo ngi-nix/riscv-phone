@@ -18,4 +18,4 @@ void eve_screen_show_kbd(EVEScreen *screen);
 void eve_screen_hide_kbd(EVEScreen *screen);
 
 void eve_screen_draw(EVEScreen *screen);
-void eve_screen_handle_touch(void *s, uint8_t tag0, int touch_idx);
+void eve_screen_handle_touch(EVETouch *touch, uint16_t evt, uint8_t tag0, void *s);

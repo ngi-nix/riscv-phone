@@ -70,10 +70,12 @@ int main() {
 
     eos_init();
 
+    app_form_init();
     app_screen_init(app_home_page);
     app_status_init();
     app_phone_init();
     app_wifi_init();
+    app_cell_dev_init();
     app_cell_pdp_init();
 
     eos_evtq_loop();

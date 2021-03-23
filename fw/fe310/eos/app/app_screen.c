@@ -31,10 +31,10 @@ EVEScreen *app_screen(void) {
     return &screen;
 }
 
-static int kbd_touch(EVEView *v, uint8_t tag0, int touch_idx) {
+static int kbd_touch(EVEView *v, EVETouch *touch, uint16_t evt, uint8_t tag0) {
     EVEKbd *kbd = v->param;
 
-    return eve_kbd_touch(kbd, tag0, touch_idx);
+    return eve_kbd_touch(kbd, touch, evt, tag0);
 }
 
 static uint8_t kbd_draw(EVEView *v, uint8_t tag0) {

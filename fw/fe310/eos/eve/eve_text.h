@@ -23,7 +23,7 @@ void eve_text_init(EVEText *box, EVERect *g, uint16_t w, uint16_t h, uint16_t li
 void eve_text_update(EVEText *box);
 void eve_text_scroll0(EVEText *box);
 
-int eve_text_touch(EVEText *box, uint8_t tag0, int touch_idx);
+int eve_text_touch(EVEText *box, EVETouch *touch, uint16_t evt, uint8_t tag0);
 uint8_t eve_text_draw(EVEText *box, uint8_t tag);
 
 void eve_text_putc(EVEText *box, int c);

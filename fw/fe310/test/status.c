@@ -32,37 +32,36 @@
 
 static char status_msg[128];
 
-static int status_touch(EVEView *v, uint8_t tag0, int touch_idx) {
-    if (touch_idx == 0) {
-        EVETouch *t;
-        uint16_t evt;
-        unsigned char state = app_phone_state_get();
+static int status_touch(EVEView *view, EVETouch *touch, uint16_t evt, uint8_t tag0) {
+    unsigned char state = app_phone_state_get();
+    int8_t touch_idx = eve_touch_get_idx(touch);
 
-        t = eve_touch_evt(tag0, touch_idx, v->window->tag, 2, &evt);
-        if (t && (evt & EVE_TOUCH_ETYPE_POINT_UP)) {
-            if ((state == VOICE_STATE_RING) && (t->eevt & EVE_TOUCH_EETYPE_TRACK_LEFT)) {
-                unsigned char *buf = eos_net_alloc();
+    if (touch_idx != 0) return 0;
 
-                buf[0] = EOS_CELL_MTYPE_VOICE | EOS_CELL_MTYPE_VOICE_ANSWER;
-                eos_net_send(EOS_NET_MTYPE_CELL, buf, 1, 0);
-                status_msg[0] = '\0';
-            }
-            if ((state != VOICE_STATE_IDLE) && (t->eevt & EVE_TOUCH_EETYPE_TRACK_RIGHT)) {
-                unsigned char *buf = eos_net_alloc();
+    evt = eve_touch_evt(touch, evt, tag0, view->window->tag, 2);
+    if (touch && (evt & EVE_TOUCH_ETYPE_POINT_UP)) {
+        if ((state == VOICE_STATE_RING) && (touch->eevt & EVE_TOUCH_EETYPE_TRACK_LEFT)) {
+            unsigned char *buf = eos_net_alloc();
 
-                buf[0] = EOS_CELL_MTYPE_VOICE | EOS_CELL_MTYPE_VOICE_HANGUP;
-                eos_net_send(EOS_NET_MTYPE_CELL, buf, 1, 0);
-                status_msg[0] = '\0';
-            }
-            return 1;
+            buf[0] = EOS_CELL_MTYPE_VOICE | EOS_CELL_MTYPE_VOICE_ANSWER;
+            eos_net_send(EOS_NET_MTYPE_CELL, buf, 1, 0);
+            status_msg[0] = '\0';
         }
+        if ((state != VOICE_STATE_IDLE) && (touch->eevt & EVE_TOUCH_EETYPE_TRACK_RIGHT)) {
+            unsigned char *buf = eos_net_alloc();
+
+            buf[0] = EOS_CELL_MTYPE_VOICE | EOS_CELL_MTYPE_VOICE_HANGUP;
+            eos_net_send(EOS_NET_MTYPE_CELL, buf, 1, 0);
+            status_msg[0] = '\0';
+        }
+        return 1;
     }
     return 0;
 }
 
-static uint8_t status_draw(EVEView *v, uint8_t tag0) {
+static uint8_t status_draw(EVEView *view, uint8_t tag0) {
     uint8_t tag_opt = EVE_TOUCH_OPT_TRACK | EVE_TOUCH_OPT_TRACK_XY;
-    if (v->window->tag != EVE_TAG_NOTAG) eve_touch_set_opt(v->window->tag, eve_touch_get_opt(v->window->tag) | tag_opt);
+    if (view->window->tag != EVE_TAG_NOTAG) eve_touch_set_opt(view->window->tag, eve_touch_get_opt(view->window->tag) | tag_opt);
 
     if (tag0 != EVE_TAG_NOTAG) {
         eve_touch_set_opt(tag0, eve_touch_get_opt(tag0) | tag_opt);

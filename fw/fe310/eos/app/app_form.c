@@ -74,6 +74,7 @@ EVEForm *app_form_create(EVEWindow *window, EVEViewStack *stack, EVEWidgetSpec s
             }
             eve_label_init(label, &spec[i].label.g, _font, spec[i].label.title);
             eve_widget_set_label(widget, label);
+            if (label->g.w == 0) label->g.w = eve_font_str_w(_font, label->title);
         }
         if (widget->label && (widget->label->g.w == 0)) eve_font_str_w(label->font, label->title) + APP_LABEL_MARGIN;
         if (widget->g.w == 0) widget->g.w = APP_SCREEN_W - (widget->label ? widget->label->g.w : 0);

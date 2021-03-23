@@ -7,8 +7,8 @@ typedef void (*eve_page_destructor_t) (struct EVEPage *);
 
 typedef struct EVEPage {
     EVEView v;
-    int16_t win_x;
-    int16_t win_y;
+    int win_x;
+    int win_y;
     eve_page_destructor_t destructor;
     EVEViewStack *stack;
     struct EVEWidget *widget_f;

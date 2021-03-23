@@ -73,17 +73,15 @@ void eve_kbd_set_handler(EVEKbd *kbd, eve_kbd_input_handler_t putc, void *param)
     kbd->param = param;
 }
 
-int eve_kbd_touch(EVEKbd *kbd, uint8_t tag0, int touch_idx) {
-    EVETouch *t;
-    uint16_t evt;
+int eve_kbd_touch(EVEKbd *kbd, EVETouch *touch, uint16_t evt, uint8_t tag0) {
     int ret;
 
-    t = eve_touch_evt(tag0, touch_idx, 1, 126, &evt);
-    if (t && evt) {
-        ret = 1;
+    evt = eve_touch_evt(touch, evt, tag0, 1, 126);
+    if (touch && evt) {
+        int8_t touch_idx = eve_touch_get_idx(touch);
 
         if (evt & EVE_TOUCH_ETYPE_TAG) {
-            uint8_t _tag = t->tag;
+            uint8_t _tag = touch->tag;
 
             if (_tag >= TAG_SHIFT && _tag <= TAG_FN) {
                 if (touch_idx == 0) {
@@ -113,7 +111,7 @@ int eve_kbd_touch(EVEKbd *kbd, uint8_t tag0, int touch_idx) {
             }
         }
         if (evt & EVE_TOUCH_ETYPE_TAG_UP) {
-            uint8_t _tag = t->tag_up;
+            uint8_t _tag = touch->tag_up;
 
             if (_tag >= TAG_SHIFT && _tag <= TAG_FN) {
                 if (touch_idx == 0) {
@@ -132,6 +130,7 @@ int eve_kbd_touch(EVEKbd *kbd, uint8_t tag0, int touch_idx) {
                 }
             }
         }
+        ret = 1;
     } else {
         ret = 0;
     }

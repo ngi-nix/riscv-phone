@@ -106,11 +106,11 @@ static void handle_cell_msg(unsigned char type, unsigned char *buffer, uint16_t 
     }
 }
 
-static int modem_touch(EVEView *view, uint8_t tag0, int touch_idx) {
+static int modem_touch(EVEView *view, EVETouch *touch, uint16_t evt, uint8_t tag0) {
     VParam *param = view->param;
     EVEText *text = &param->text;
 
-    return eve_text_touch(text, tag0, touch_idx);
+    return eve_text_touch(text, touch, evt, tag0);
 }
 
 static uint8_t modem_draw(EVEView *view, uint8_t tag) {

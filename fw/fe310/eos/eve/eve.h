@@ -2,6 +2,7 @@
 
 #include "eve_def.h"
 #include "eve_touch.h"
+#include "eve_phy.h"
 #include "eve_vtrack.h"
 #include "eve_platform.h"
 
