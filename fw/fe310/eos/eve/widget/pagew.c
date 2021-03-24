@@ -7,9 +7,7 @@
 #include "eve_kbd.h"
 #include "eve_font.h"
 
-#include "screen/screen.h"
 #include "screen/window.h"
-#include "screen/view.h"
 #include "screen/page.h"
 
 #include "label.h"

@@ -6,15 +6,12 @@
 #include "eve/eve_kbd.h"
 #include "eve/eve_font.h"
 
-#include "eve/screen/screen.h"
 #include "eve/screen/window.h"
-#include "eve/screen/view.h"
 #include "eve/screen/page.h"
 #include "eve/screen/form.h"
 
 #include "eve/widget/widgets.h"
 
-#include "app_screen.h"
 #include "app_form.h"
 
 static EVEFont font;
@@ -77,7 +74,7 @@ EVEForm *app_form_create(EVEWindow *window, EVEViewStack *stack, EVEWidgetSpec s
             if (label->g.w == 0) label->g.w = eve_font_str_w(_font, label->title);
         }
         if (widget->label && (widget->label->g.w == 0)) eve_font_str_w(label->font, label->title) + APP_LABEL_MARGIN;
-        if (widget->g.w == 0) widget->g.w = APP_SCREEN_W - (widget->label ? widget->label->g.w : 0);
+        if (widget->g.w == 0) widget->g.w = window->g.w - (widget->label ? widget->label->g.w : 0);
         widget = eve_widget_next(widget);
     }
 

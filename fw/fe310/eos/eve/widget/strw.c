@@ -8,9 +8,7 @@
 #include "eve_kbd.h"
 #include "eve_font.h"
 
-#include "screen/screen.h"
 #include "screen/window.h"
-#include "screen/view.h"
 #include "screen/page.h"
 
 #include "label.h"
@@ -172,7 +170,7 @@ int eve_strw_touch(EVEWidget *_widget, EVEPage *page, EVETouch *t, uint16_t evt)
     return ret;
 }
 
-static void _draw_str(EVEStrWidget *widget, EVEWindow *window, uint16_t ch, uint16_t len, uint16_t x1, uint16_t x2, char s) {
+static void _draw_str(EVEStrWidget *widget, EVEPage *page, uint16_t ch, uint16_t len, uint16_t x1, uint16_t x2, char s) {
     int16_t x;
     EVEWidget *_widget = &widget->w;
 
@@ -190,9 +188,9 @@ static void _draw_str(EVEStrWidget *widget, EVEWindow *window, uint16_t ch, uint
         }
         eve_cmd_dl(END());
         if (len) {
-            if (s) eve_cmd_dl(COLOR_RGBC(window->color_bg));
+            if (s) eve_cmd_dl(COLOR_RGBC(page->v.color_bg));
             eve_cmd(CMD_TEXT, "hhhhpb", x + x1, _widget->g.y, _widget->font->id, 0, widget->str + ch, len, 0);
-            if (s) eve_cmd_dl(COLOR_RGBC(window->color_fg));
+            if (s) eve_cmd_dl(COLOR_RGBC(page->v.color_fg));
         }
     }
 }
@@ -223,7 +221,6 @@ uint8_t eve_strw_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0) {
 
     if (cut) {
         EVEWindow *window = page->v.window;
-        EVEScreen *screen = window->screen;
         int16_t x = eve_page_scr_x(page, _widget->g.x);
         int16_t y = eve_page_scr_y(page, _widget->g.y);
         uint16_t w = _widget->g.w;
@@ -235,8 +232,8 @@ uint8_t eve_strw_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0) {
 
         if (win_x1 < 0) win_x1 = 0;
         if (win_y1 < 0) win_y1 = 0;
-        if (win_x2 > screen->w) win_x2 = screen->w;
-        if (win_y2 > screen->h) win_y2 = screen->h;
+        if (win_x2 > window->root->g.w) win_x2 = window->root->g.w;
+        if (win_y2 > window->root->g.h) win_y2 = window->root->g.h;
         if (x < win_x1) {
             w += x - win_x1;
             x = win_x1;
@@ -268,12 +265,12 @@ uint8_t eve_strw_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0) {
         l1 = c1->ch;
         l2 = c2->ch - c1->ch;
         l3 = widget->str_len - c2->ch;
-        _draw_str(widget, page->v.window, 0, l1, 0, c1->x, 0);
-        _draw_str(widget, page->v.window, c1->ch, l2, c1->x, c2->x, 1);
-        _draw_str(widget, page->v.window, c2->ch, l3, c2->x, widget->str_g.x + _widget->g.w, 0);
+        _draw_str(widget, page, 0, l1, 0, c1->x, 0);
+        _draw_str(widget, page, c1->ch, l2, c1->x, c2->x, 1);
+        _draw_str(widget, page, c2->ch, l3, c2->x, widget->str_g.x + _widget->g.w, 0);
     } else {
         if (widget->cursor1.on) _draw_cursor(widget, &widget->cursor1);
-        _draw_str(widget, page->v.window, 0, widget->str_len, 0, widget->str_g.x + _widget->g.w, 0);
+        _draw_str(widget, page, 0, widget->str_len, 0, widget->str_g.x + _widget->g.w, 0);
     }
 
     if (cut) {

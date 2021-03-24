@@ -4,11 +4,6 @@
 #include "eve.h"
 #include "eve_kbd.h"
 
-#define KBD_X           0
-#define KBD_Y           575
-#define KBD_W           480
-#define KBD_H           225
-
 #define KEY_SPACERX     3
 #define KEY_SPACERY     5
 #define KEY_FONT        29
@@ -28,14 +23,7 @@
 void eve_kbd_init(EVEKbd *kbd, EVERect *g, uint32_t mem_addr, uint32_t *mem_next) {
     uint16_t mem_size;
 
-    if (g) {
-        kbd->g = *g;
-    } else {
-        kbd->g.x = KBD_X;
-        kbd->g.y = KBD_Y;
-        kbd->g.w = KBD_W;
-        kbd->g.h = KBD_H;
-    }
+    kbd->g = *g;
     kbd->mem_addr = mem_addr;
     kbd->key_modifier = 0;
     kbd->key_modifier_sticky = 0;

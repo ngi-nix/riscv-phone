@@ -17,15 +17,13 @@
 #include <eve/eve_text.h>
 #include <eve/eve_font.h>
 
-#include <eve/screen/screen.h>
 #include <eve/screen/window.h>
-#include <eve/screen/view.h>
 #include <eve/screen/page.h>
 #include <eve/screen/form.h>
 
 #include <eve/widget/widgets.h>
 
-#include <app/app_screen.h>
+#include <app/app_root.h>
 #include <app/app_form.h>
 
 #include "modem.h"
@@ -83,8 +81,8 @@ static void handle_uart(unsigned char type) {
 }
 
 static void handle_cell_msg(unsigned char type, unsigned char *buffer, uint16_t len) {
-    EVEScreen *screen = app_screen();
-    EVEWindow *window = eve_window_get(screen, "main");
+    EVEWindow *root = app_root();
+    EVEWindow *window = eve_window_search(root, "main");
     VParam *param = window->view->param;
 
     if (type == EOS_CELL_MTYPE_UART_DATA) {
@@ -97,13 +95,21 @@ static void handle_cell_msg(unsigned char type, unsigned char *buffer, uint16_t 
         }
         if (text->dirty) {
             text->dirty = 0;
-            eve_screen_draw(window->screen);
+            eve_window_root_draw(root);
         }
         eve_spi_stop();
         eos_net_free(buffer, 0);
     } else {
         param->cell_dev_handler(type, buffer, len);
     }
+}
+
+static uint8_t modem_draw(EVEView *view, uint8_t tag0) {
+    VParam *param = view->param;
+    EVEText *text = &param->text;
+
+    tag0 = eve_view_clear(view, tag0);
+    return eve_text_draw(text, tag0);
 }
 
 static int modem_touch(EVEView *view, EVETouch *touch, uint16_t evt, uint8_t tag0) {
@@ -113,31 +119,24 @@ static int modem_touch(EVEView *view, EVETouch *touch, uint16_t evt, uint8_t tag
     return eve_text_touch(text, touch, evt, tag0);
 }
 
-static uint8_t modem_draw(EVEView *view, uint8_t tag) {
-    VParam *param = view->param;
-    EVEText *text = &param->text;
-
-    return eve_text_draw(text, tag);
-}
-
 void app_modem(EVEWindow *window, EVEViewStack *stack) {
     unsigned char *buf;
-    EVEScreen *screen = window->screen;
-    EVEKbd *kbd = eve_screen_get_kbd(screen);
+    EVEWindowRoot *root = (EVEWindowRoot *)window->root;
+    EVEKbd *kbd = eve_window_kbd(window);
     EVERect g = {0, 60, 480, 512};
     EVEView *view;
     VParam *param;
 
     view = eve_malloc(sizeof(EVEView));
     param = eve_malloc(sizeof(VParam));
-    param->mem = screen->mem_next;
+    param->mem = root->mem_next;
     param->stack = stack;
     param->cell_dev_handler = eos_cell_get_handler(EOS_CELL_MTYPE_DEV);
-    eve_text_init(&param->text, &g, 30, 16, 200, screen->mem_next, &screen->mem_next);
-    eve_view_init(view, window, modem_touch, modem_draw, param);
+    eve_text_init(&param->text, &g, 30, 16, 200, root->mem_next, &root->mem_next);
+    eve_view_init(view, window, modem_draw, modem_touch, param);
 
     eve_kbd_set_handler(kbd, key_down, view);
-    eve_screen_show_kbd(screen);
+    eve_window_kbd_attach(window);
 
     eos_uart_set_handler(EOS_UART_ETYPE_RX, handle_uart);
     eos_cell_set_handler(EOS_CELL_MTYPE_DEV, handle_cell_msg);
@@ -153,7 +152,7 @@ void app_modem_close(EVEView *view) {
     unsigned char *buf = eos_net_alloc();
     VParam *param = view->param;
     EVEWindow *window = view->window;
-    EVEScreen *screen = window->screen;
+    EVEWindowRoot *root = (EVEWindowRoot *)window->root;
     EVEViewStack *stack = param->stack;
 
     buf[0] = EOS_CELL_MTYPE_DEV | EOS_CELL_MTYPE_RESET;
@@ -163,10 +162,10 @@ void app_modem_close(EVEView *view) {
     eos_cell_set_handler(EOS_CELL_MTYPE_DEV, param->cell_dev_handler);
     eos_net_acquire_for_evt(EOS_EVT_UART | EOS_UART_ETYPE_RX, 0);
 
-    screen->mem_next = param->mem;
+    root->mem_next = param->mem;
     eve_free(param);
     eve_free(view);
 
-    eve_screen_hide_kbd(screen);
+    eve_window_kbd_detach(window);
     eve_view_destroy(window, stack);
 }

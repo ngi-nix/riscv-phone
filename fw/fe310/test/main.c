@@ -16,15 +16,13 @@
 #include <eve/eve_kbd.h>
 #include <eve/eve_font.h>
 
-#include <eve/screen/screen.h>
 #include <eve/screen/window.h>
-#include <eve/screen/view.h>
 #include <eve/screen/page.h>
 #include <eve/screen/form.h>
 
 #include <eve/widget/widgets.h>
 
-#include <app/app_screen.h>
+#include <app/app_root.h>
 #include <app/app_form.h>
 
 #include "status.h"
@@ -71,7 +69,7 @@ int main() {
     eos_init();
 
     app_form_init();
-    app_screen_init(app_home_page);
+    app_root_init(app_home_page);
     app_status_init();
     app_phone_init();
     app_wifi_init();

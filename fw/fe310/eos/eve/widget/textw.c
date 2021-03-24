@@ -8,9 +8,7 @@
 #include "eve_kbd.h"
 #include "eve_font.h"
 
-#include "screen/screen.h"
 #include "screen/window.h"
-#include "screen/view.h"
 #include "screen/page.h"
 
 #include "label.h"
@@ -169,7 +167,7 @@ int eve_textw_touch(EVEWidget *_widget, EVEPage *page, EVETouch *t, uint16_t evt
     return ret;
 }
 
-static void _draw_line(EVETextWidget *widget, EVEWindow *window, uint16_t l, uint16_t ch, uint16_t len, uint16_t x1, uint16_t x2, char s) {
+static void _draw_line(EVETextWidget *widget, EVEPage *page, uint16_t l, uint16_t ch, uint16_t len, uint16_t x1, uint16_t x2, char s) {
     EVEWidget *_widget = &widget->w;
 
     if (x1 != x2) {
@@ -185,9 +183,9 @@ static void _draw_line(EVETextWidget *widget, EVEWindow *window, uint16_t l, uin
         }
         eve_cmd_dl(END());
         if (len) {
-            if (s) eve_cmd_dl(COLOR_RGBC(window->color_bg));
+            if (s) eve_cmd_dl(COLOR_RGBC(page->v.color_bg));
             eve_cmd(CMD_TEXT, "hhhhpb", _widget->g.x + x1, _widget->g.y + l * _widget->font->h, _widget->font->id, 0, widget->text + ch, len, 0);
-            if (s) eve_cmd_dl(COLOR_RGBC(window->color_fg));
+            if (s) eve_cmd_dl(COLOR_RGBC(page->v.color_fg));
         }
     }
 }
@@ -258,10 +256,10 @@ uint8_t eve_textw_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0) {
                     l3 = 0;
                     s = 1;
                 }
-                _draw_line(widget, page->v.window, i, LINE_START(widget, i), l1, 0, c1->x, 0);
-                _draw_line(widget, page->v.window, i, c1->ch, l2, c1->x, s ? _widget->g.w : c2->x, 1);
+                _draw_line(widget, page, i, LINE_START(widget, i), l1, 0, c1->x, 0);
+                _draw_line(widget, page, i, c1->ch, l2, c1->x, s ? _widget->g.w : c2->x, 1);
                 if (!s) {
-                    _draw_line(widget, page->v.window, i, c2->ch, l3, c2->x, _widget->g.w, 0);
+                    _draw_line(widget, page, i, c2->ch, l3, c2->x, _widget->g.w, 0);
                     c1 = NULL;
                     c2 = NULL;
                 }
@@ -269,14 +267,14 @@ uint8_t eve_textw_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0) {
                 int l1 = c2->ch - LINE_START(widget, i);
                 int l2 = LINE_START(widget, i) + LINE_LEN(widget, i) - c2->ch;
 
-                _draw_line(widget, page->v.window, i, LINE_START(widget, i), l1, 0, c2->x, 1);
-                _draw_line(widget, page->v.window, i, c2->ch, l2, c2->x, _widget->g.w, 0);
+                _draw_line(widget, page, i, LINE_START(widget, i), l1, 0, c2->x, 1);
+                _draw_line(widget, page, i, c2->ch, l2, c2->x, _widget->g.w, 0);
                 c1 = NULL;
                 c2 = NULL;
                 s = 0;
             } else {
                 if (widget->cursor1.on && (widget->cursor1.line == i)) _draw_cursor(widget, &widget->cursor1);
-                _draw_line(widget, page->v.window, i, LINE_START(widget, i), LINE_LEN(widget, i), 0, _widget->g.w, s);
+                _draw_line(widget, page, i, LINE_START(widget, i), LINE_LEN(widget, i), 0, _widget->g.w, s);
             }
         }
         if (lineNvisible) {
@@ -285,7 +283,7 @@ uint8_t eve_textw_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0) {
                 eve_touch_set_opt(_widget->tagN, TEXTW_TOUCH_OPT);
                 _widget->tagN++;
             }
-            _draw_line(widget, page->v.window, lineN, 0, 0, 0, _widget->g.w, 0);
+            _draw_line(widget, page, lineN, 0, 0, 0, _widget->g.w, 0);
         }
     } else {
         widget->line0 = 0;

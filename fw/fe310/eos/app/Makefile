@@ -2,7 +2,7 @@ include ../../common.mk
 
 CFLAGS += -I..
 
-obj = app_screen.o app_status.o app_form.o
+obj = app_root.o app_status.o app_form.o
 
 
 %.o: %.c %.h

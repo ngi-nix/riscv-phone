@@ -4,6 +4,7 @@
 #define APP_SCREEN_H        800
 #define APP_STATUS_H        60
 
-EVEScreen *app_screen(void);
-void app_screen_init(eve_view_constructor_t home_page);
-void app_screen_refresh(void);
+EVEWindow *app_root(void);
+void app_root_refresh(void);
+
+void app_root_init(eve_view_constructor_t home_page);

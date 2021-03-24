@@ -13,6 +13,7 @@ typedef struct EVEForm {
     eve_form_action_t action;
     int win_x0;
     int win_y0;
+    uint16_t w;
     uint16_t h;
     uint8_t evt_lock;
     EVEPhyLHO lho;

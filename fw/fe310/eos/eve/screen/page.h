@@ -14,7 +14,7 @@ typedef struct EVEPage {
     struct EVEWidget *widget_f;
 } EVEPage;
 
-void eve_page_init(EVEPage *page, EVEWindow *window, EVEViewStack *stack, eve_view_touch_t touch, eve_view_draw_t draw, eve_page_destructor_t destructor);
+void eve_page_init(EVEPage *page, EVEWindow *window, EVEViewStack *stack, eve_view_draw_t draw, eve_view_touch_t touch, eve_page_destructor_t destructor);
 void eve_page_open(EVEPage *parent, eve_view_constructor_t constructor);
 void eve_page_close(EVEPage *page);
 

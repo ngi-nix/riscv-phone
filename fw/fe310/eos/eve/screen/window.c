@@ -4,40 +4,68 @@
 #include "eve.h"
 #include "eve_kbd.h"
 
-#include "screen.h"
 #include "window.h"
 
 #define MIN(X, Y)           (((X) < (Y)) ? (X) : (Y))
 
-void eve_window_init(EVEWindow *window, EVERect *g, EVEScreen *screen, char *name) {
+void eve_window_init(EVEWindow *window, EVERect *g, EVEWindow *parent, char *name) {
     memset(window, 0, sizeof(EVEWindow));
 
     if (g) window->g = *g;
-    window->screen = screen;
+    window->root = parent ? parent->root : NULL;
+    window->parent = parent;
     window->name = name;
-    window->color_fg = 0xffffff;
 }
 
-void eve_window_set_color_bg(EVEWindow *window, uint8_t r, uint8_t g, uint8_t b) {
-    window->color_bg = (r << 16) | (g << 8) | b;
+void eve_window_init_root(EVEWindowRoot *window, EVERect *g, char *name) {
+    EVEWindow *_window = &window->w;
+
+    eve_window_init(_window, g, NULL, name);
+    _window->root = _window;
+    window->mem_next = EVE_RAM_G;
+    window->win_kbd = NULL;
+    eve_touch_set_handler(eve_window_root_touch, window);
 }
 
-void eve_window_set_color_fg(EVEWindow *window, uint8_t r, uint8_t g, uint8_t b) {
-    window->color_fg = (r << 16) | (g << 8) | b;
+static uint8_t kbd_draw(EVEView *view, uint8_t tag0) {
+    EVEKbd *kbd = view->param;
+
+    tag0 = eve_view_clear(view, tag0);
+
+    eve_kbd_draw(kbd);
+    return tag0;
+}
+
+static int kbd_touch(EVEView *view, EVETouch *touch, uint16_t evt, uint8_t tag0) {
+    EVEKbd *kbd = view->param;
+
+    return eve_kbd_touch(kbd, touch, evt, tag0);
+}
+
+void eve_window_init_kbd(EVEWindowKbd *window, EVERect *g, EVEWindowRoot *root, char *name, EVEKbd *kbd) {
+    EVEWindow *_window = &window->w;
+
+    eve_window_init(_window, g, NULL, name);
+    _window->root = (EVEWindow *)root;
+    window->kbd = kbd;
+    root->win_kbd = window;
+    eve_view_init(&window->v, _window, kbd_draw, kbd_touch, kbd);
+}
+
+void eve_window_set_parent(EVEWindow *window, EVEWindow *parent) {
+    window->parent = parent;
+    window->root = parent->root;
 }
 
 int eve_window_visible(EVEWindow *window) {
-    if (window->g.x >= window->screen->w) return 0;
-    if (window->g.y >= window->screen->h) return 0;
+    if (window->g.x >= window->root->g.w) return 0;
+    if (window->g.y >= window->root->g.h) return 0;
     if ((window->g.x + window->g.w) <= 0) return 0;
     if ((window->g.y + window->g.h) <= 0) return 0;
     return 1;
 }
 
-void eve_window_visible_g(EVEWindow *window, EVERect *g) {
-    EVEWindow *w = window->next;
-
-    *g = window->g;
+static void _window_visible_g(EVEWindow *w, EVERect *g) {
     while (w) {
         if (eve_window_visible(w)) {
             if (w->g.x > g->x) g->w = MIN(g->w, w->g.x - g->x);
@@ -53,24 +81,32 @@ void eve_window_visible_g(EVEWindow *window, EVERect *g) {
                 g->h -= y0;
             }
         }
+        if (w->child_head) _window_visible_g(w->child_head, g);
         w = w->next;
     }
 }
 
-void eve_window_append(EVEWindow *window) {
-    EVEScreen *screen = window->screen;
+void eve_window_visible_g(EVEWindow *window, EVERect *g) {
+    *g = window->g;
+    if (window->child_head) _window_visible_g(window->child_head, g);
+    _window_visible_g(window->next, g);
+}
 
-    window->prev = screen->win_tail;
-    if (screen->win_tail) {
-        screen->win_tail->next = window;
+void eve_window_append(EVEWindow *window) {
+    EVEWindow *parent = window->parent;
+
+    window->prev = parent->child_tail;
+    window->next = NULL;
+    if (parent->child_tail) {
+        parent->child_tail->next = window;
     } else {
-        screen->win_head = window;
+        parent->child_head = window;
     }
-    screen->win_tail = window;
+    parent->child_tail = window;
 }
 
 void eve_window_insert_above(EVEWindow *window, EVEWindow *win_prev) {
-    EVEScreen *screen = window->screen;
+    EVEWindow *parent = window->parent;
 
     window->prev = win_prev;
     window->next = win_prev->next;
@@ -78,13 +114,13 @@ void eve_window_insert_above(EVEWindow *window, EVEWindow *win_prev) {
     if (window->next) {
         window->next->prev = window;
     } else {
-        screen->win_tail = window;
+        parent->child_tail = window;
     }
     win_prev->next = window;
 }
 
 void eve_window_insert_below(EVEWindow *window, EVEWindow *win_next) {
-    EVEScreen *screen = window->screen;
+    EVEWindow *parent = window->parent;
 
     window->prev = win_next->prev;
     window->next = win_next;
@@ -93,32 +129,138 @@ void eve_window_insert_below(EVEWindow *window, EVEWindow *win_next) {
     if (window->prev) {
         window->prev->next = window;
     } else {
-        screen->win_head = window;
+        parent->child_head = window;
     }
 }
 
 void eve_window_remove(EVEWindow *window) {
-    EVEScreen *screen = window->screen;
+    EVEWindow *parent = window->parent;
 
     if (window->prev) {
         window->prev->next = window->next;
     } else {
-        screen->win_head = window->next;
+        parent->child_head = window->next;
     }
     if (window->next) {
         window->next->prev = window->prev;
     } else {
-        screen->win_tail = window->prev;
+        parent->child_tail = window->prev;
     }
+    window->parent = NULL;
+    window->prev = NULL;
+    window->next = NULL;
 }
 
-EVEWindow *eve_window_get(EVEScreen *screen, char *name) {
-    EVEWindow *w = screen->win_head;
-
-    while (w) {
-        if (strcmp(name, w->name) == 0) return w;
-        w = w->next;
+EVEWindow *eve_window_search(EVEWindow *window, char *name) {
+    while (window) {
+        if (window->name && (strcmp(name, window->name) == 0)) return window;
+        if (window->child_head) {
+            EVEWindow *ret = eve_window_search(window->child_head, name);
+            if (ret) return ret;
+        }
+        window = window->next;
     }
 
     return NULL;
+}
+
+uint8_t eve_window_draw(EVEWindow *window, uint8_t tag0) {
+    while (window) {
+        if (eve_window_visible(window) && window->view) {
+            int16_t s_x = window->g.x;
+            int16_t s_y = window->g.y;
+            uint16_t s_w = window->g.w;
+            uint16_t s_h = window->g.h;
+
+            if (s_x < 0) {
+                s_w += s_x;
+                s_x = 0;
+            }
+            if (s_y < 0) {
+                s_h += s_y;
+                s_y = 0;
+            }
+            if (s_x + s_w > window->root->g.w) s_w = window->root->g.w - s_x;
+            if (s_y + s_h > window->root->g.h) s_h = window->root->g.h - s_y;
+            eve_cmd_dl(SCISSOR_XY(s_x, s_y));
+            eve_cmd_dl(SCISSOR_SIZE(s_w, s_h));
+            tag0 = window->view->draw(window->view, tag0);
+        }
+        if (window->child_head) tag0 = eve_window_draw(window->child_head, tag0);
+        window = window->next;
+    }
+
+    return tag0;
+}
+
+int eve_window_touch(EVEWindow *window, EVETouch *touch, uint16_t evt, uint8_t tag0) {
+    int ret = 0;
+
+    while (window) {
+        if (window->child_tail) {
+            ret = eve_window_touch(window->child_tail, touch, evt, tag0);
+            if (ret) return 1;
+        }
+        if (eve_window_visible(window) && window->view) {
+            ret = window->view->touch(window->view, touch, evt, tag0);
+            if (ret) return 1;
+        }
+        window = window->prev;
+    }
+
+    return 0;
+}
+
+void eve_window_root_draw(EVEWindow *window) {
+    uint8_t tag0 = 0x80;
+
+    eve_cmd_burst_start();
+	eve_cmd_dl(CMD_DLSTART);
+
+    eve_window_draw(window, tag0);
+
+    eve_cmd_dl(DISPLAY());
+	eve_cmd_dl(CMD_SWAP);
+    eve_cmd_burst_end();
+    eve_cmd_exec(1);
+}
+
+void eve_window_root_touch(EVETouch *touch, uint16_t evt, uint8_t tag0, void *win) {
+    EVEWindow *window = (EVEWindow *)win;
+    int ret = eve_window_touch(window, touch, evt, tag0);
+
+    if (ret) {
+        eve_touch_clear_opt();
+        eve_window_root_draw(window);
+    }
+}
+
+EVEKbd *eve_window_kbd(EVEWindow *window) {
+    EVEWindowRoot *win_root = (EVEWindowRoot *)window->root;
+    EVEWindowKbd *win_kbd = win_root->win_kbd;
+
+    if (win_kbd) return win_kbd->kbd;
+    return NULL;
+}
+
+void eve_window_kbd_attach(EVEWindow *window) {
+    EVEWindowRoot *win_root = (EVEWindowRoot *)window->root;
+    EVEWindowKbd *win_kbd = win_root->win_kbd;
+    EVEKbd *kbd = win_kbd ? win_kbd->kbd : NULL;
+
+    if (kbd) {
+        eve_window_set_parent(&win_kbd->w, window);
+        eve_window_append(&win_kbd->w);
+    }
+}
+
+void eve_window_kbd_detach(EVEWindow *window) {
+    EVEWindowRoot *win_root = (EVEWindowRoot *)window->root;
+    EVEWindowKbd *win_kbd = win_root->win_kbd;
+    EVEKbd *kbd = win_kbd ? win_kbd->kbd : NULL;
+
+    if (kbd && win_kbd->w.parent) {
+        eve_window_remove(&win_kbd->w);
+        eve_kbd_close(kbd);
+    }
 }

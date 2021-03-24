@@ -16,15 +16,13 @@
 #include <eve/eve_kbd.h>
 #include <eve/eve_font.h>
 
-#include <eve/screen/screen.h>
 #include <eve/screen/window.h>
-#include <eve/screen/view.h>
 #include <eve/screen/page.h>
 #include <eve/screen/form.h>
 
 #include <eve/widget/widgets.h>
 
-#include <app/app_screen.h>
+#include <app/app_root.h>
 #include <app/app_form.h>
 
 #include "phone.h"
@@ -38,7 +36,7 @@ static int status_touch(EVEView *view, EVETouch *touch, uint16_t evt, uint8_t ta
 
     if (touch_idx != 0) return 0;
 
-    evt = eve_touch_evt(touch, evt, tag0, view->window->tag, 2);
+    evt = eve_touch_evt(touch, evt, tag0, view->tag, 2);
     if (touch && (evt & EVE_TOUCH_ETYPE_POINT_UP)) {
         if ((state == VOICE_STATE_RING) && (touch->eevt & EVE_TOUCH_EETYPE_TRACK_LEFT)) {
             unsigned char *buf = eos_net_alloc();
@@ -61,7 +59,9 @@ static int status_touch(EVEView *view, EVETouch *touch, uint16_t evt, uint8_t ta
 
 static uint8_t status_draw(EVEView *view, uint8_t tag0) {
     uint8_t tag_opt = EVE_TOUCH_OPT_TRACK | EVE_TOUCH_OPT_TRACK_XY;
-    if (view->window->tag != EVE_TAG_NOTAG) eve_touch_set_opt(view->window->tag, eve_touch_get_opt(view->window->tag) | tag_opt);
+
+    tag0 = eve_view_clear(view, tag0);
+    if (view->tag != EVE_TAG_NOTAG) eve_touch_set_opt(view->tag, eve_touch_get_opt(view->tag) | tag_opt);
 
     if (tag0 != EVE_TAG_NOTAG) {
         eve_touch_set_opt(tag0, eve_touch_get_opt(tag0) | tag_opt);
@@ -77,12 +77,11 @@ static uint8_t status_draw(EVEView *view, uint8_t tag0) {
 void app_status_msg_set(char *msg, int refresh) {
     strcpy(status_msg, msg);
 
-    if (refresh) app_screen_refresh();
+    if (refresh) app_root_refresh();
 }
 
 void app_status_init(void) {
-    EVEScreen *screen = app_screen();
-    EVEWindow *status = eve_window_get(screen, "status");
+    EVEWindow *status = eve_window_search(app_root(), "status");
     status->view->touch = status_touch;
     status->view->draw = status_draw;
 }

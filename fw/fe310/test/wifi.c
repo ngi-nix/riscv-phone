@@ -16,15 +16,13 @@
 #include <eve/eve_kbd.h>
 #include <eve/eve_font.h>
 
-#include <eve/screen/screen.h>
 #include <eve/screen/window.h>
-#include <eve/screen/view.h>
 #include <eve/screen/page.h>
 #include <eve/screen/form.h>
 
 #include <eve/widget/widgets.h>
 
-#include <app/app_screen.h>
+#include <app/app_root.h>
 #include <app/app_form.h>
 
 #include "status.h"
@@ -60,15 +58,14 @@ static void wifi_disconnect(void) {
 }
 
 void wifi_scan_handler(unsigned char type, unsigned char *buffer, uint16_t size) {
-    EVEScreen *screen = app_screen();
-    EVEWindow *window = eve_window_get(screen, "main");
+    EVEWindow *window = eve_window_search(app_root(), "main");
     EVEForm *form = (EVEForm *)window->view;
     EVESelectWidget *select = (EVESelectWidget *)eve_form_widget(form, 0);
 
     eve_selectw_option_set(select, buffer + 1, size - 1);
     eos_net_free(buffer, 0);
 
-    app_screen_refresh();
+    app_root_refresh();
 }
 
 static void wifi_connect_handler(unsigned char type, unsigned char *buffer, uint16_t size) {

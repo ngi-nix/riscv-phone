@@ -7,9 +7,7 @@
 #include "eve_kbd.h"
 #include "eve_font.h"
 
-#include "screen/screen.h"
 #include "screen/window.h"
-#include "screen/view.h"
 #include "screen/page.h"
 
 #include "label.h"
@@ -134,9 +132,9 @@ uint8_t eve_selectw_draw(EVEWidget *_widget, EVEPage *page, uint8_t tag0) {
             eve_cmd_dl(VERTEX2F(x2, y2));
         }
         eve_cmd_dl(END());
-        if (s) eve_cmd_dl(COLOR_RGBC(page->v.window->color_bg));
+        if (s) eve_cmd_dl(COLOR_RGBC(page->v.color_bg));
         eve_cmd(CMD_TEXT, "hhhhs", x1, y1, _widget->font->id, 0, widget->option + o_curr);
-        if (s) eve_cmd_dl(COLOR_RGBC(page->v.window->color_fg));
+        if (s) eve_cmd_dl(COLOR_RGBC(page->v.color_fg));
 
         o_curr += o_len + 1;
         i++;
