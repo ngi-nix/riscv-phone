@@ -1,0 +1,5 @@
+#define EVE_UIEVT_WIN_UPDATE_G          1
+#define EVE_UIEVT_PAGE_UPDATE_G         2
+#define EVE_UIEVT_PAGE_SCROLL_START     3
+#define EVE_UIEVT_PAGE_SCROLL_STOP      4
+#define EVE_UIEVT_WIDGET_UPDATE_G       5
