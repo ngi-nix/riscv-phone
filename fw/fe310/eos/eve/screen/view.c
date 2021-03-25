@@ -3,12 +3,14 @@
 
 #include "eve.h"
 #include "eve_kbd.h"
+#include "eve_font.h"
 
 #include "window.h"
 
-void eve_view_init(EVEView *view, EVEWindow *window, eve_view_draw_t draw, eve_view_touch_t touch, void *param) {
-    view->touch = touch;
+void eve_view_init(EVEView *view, EVEWindow *window, eve_view_draw_t draw, eve_view_touch_t touch, eve_view_uievt_t uievt, void *param) {
     view->draw = draw;
+    view->touch = touch;
+    view->uievt = uievt;
     view->param = param;
     view->window = window;
     view->color_bg = 0x000000;
@@ -56,4 +58,8 @@ void eve_view_destroy(EVEWindow *window, EVEViewStack *stack) {
         constructor = stack->constructor[stack->level - 1];
         constructor(window, stack);
     }
+}
+
+void eve_view_uievt_push(EVEView *view, uint16_t evt, void *param) {
+    if (view->uievt) view->uievt(view, evt, param);
 }

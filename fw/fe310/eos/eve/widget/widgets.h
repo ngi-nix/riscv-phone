@@ -27,14 +27,13 @@ typedef struct EVEWidgetSpec {
     APPLabelSpec label;
     struct {
         EVERect g;
-        EVEFont *font;
         EVEWidgetSpecT spec;
         uint8_t type;
     } widget;
 } EVEWidgetSpec;
 
-typedef int (*eve_widget_create_t) (EVEWidget *, EVERect *g, EVEFont *, EVEWidgetSpecT *);
+typedef int (*eve_widget_create_t) (EVEWidget *, EVERect *, EVEPage *, EVEWidgetSpecT *);
 typedef void (*eve_widget_destroy_t) (EVEWidget *);
 
-int eve_widget_create(EVEWidget *widget, uint8_t type, EVERect *g, EVEFont *font, EVEWidgetSpecT *spec);
+int eve_widget_create(EVEWidget *widget, uint8_t type, EVERect *g, EVEPage *page, EVEWidgetSpecT *spec);
 void eve_widget_destroy(EVEWidget *widget);

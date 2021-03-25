@@ -1,7 +1,5 @@
 #include <stdlib.h>
 
-#include "unicode.h"
-
 #include "eve/eve.h"
 #include "eve/eve_kbd.h"
 #include "eve/eve_font.h"
@@ -13,8 +11,6 @@
 #include "eve/widget/widgets.h"
 
 #include "app_form.h"
-
-static EVEFont font;
 
 static void widgets_destroy(EVEWidget *widget, uint16_t widget_size) {
     int i;
@@ -31,7 +27,6 @@ EVEForm *app_form_create(EVEWindow *window, EVEViewStack *stack, EVEWidgetSpec s
     EVEWidget *widget;
     EVELabel *label;
     EVEForm *form;
-    EVEFont *_font;
     int w_size = 0;
     int i, r;
 
@@ -42,6 +37,8 @@ EVEForm *app_form_create(EVEWindow *window, EVEViewStack *stack, EVEWidgetSpec s
     if (form == NULL) {
         return NULL;
     }
+    if (destructor == NULL) destructor = app_form_destroy;
+    eve_form_init(form, window, stack, NULL, 0, action, destructor);
 
     widgets = eve_malloc(w_size);
     if (widgets == NULL) {
@@ -51,8 +48,7 @@ EVEForm *app_form_create(EVEWindow *window, EVEViewStack *stack, EVEWidgetSpec s
 
     widget = widgets;
     for (i=0; i<spec_size; i++) {
-        _font = spec[i].widget.font ? spec[i].widget.font : &font;
-        r = eve_widget_create(widget, spec[i].widget.type, &spec[i].widget.g, _font, &spec[i].widget.spec);
+        r = eve_widget_create(widget, spec[i].widget.type, &spec[i].widget.g, (EVEPage *)form, &spec[i].widget.spec);
         if (r) {
             widgets_destroy(widgets, i);
             eve_free(widgets);
@@ -60,7 +56,7 @@ EVEForm *app_form_create(EVEWindow *window, EVEViewStack *stack, EVEWidgetSpec s
             return NULL;
         }
         if (spec[i].label.title) {
-            _font = spec[i].label.font ? spec[i].label.font : &font;
+            EVEFont *font = spec[i].label.font ? spec[i].label.font : eve_window_font(window);
             label = eve_malloc(sizeof(EVELabel));
             if (label == NULL) {
                 eve_widget_destroy(widget);
@@ -69,17 +65,15 @@ EVEForm *app_form_create(EVEWindow *window, EVEViewStack *stack, EVEWidgetSpec s
                 eve_free(form);
                 return NULL;
             }
-            eve_label_init(label, &spec[i].label.g, _font, spec[i].label.title);
+            eve_label_init(label, &spec[i].label.g, font, spec[i].label.title);
             eve_widget_set_label(widget, label);
-            if (label->g.w == 0) label->g.w = eve_font_str_w(_font, label->title);
+            if (label->g.w == 0) label->g.w = eve_font_str_w(font, label->title);
         }
         if (widget->label && (widget->label->g.w == 0)) eve_font_str_w(label->font, label->title) + APP_LABEL_MARGIN;
         if (widget->g.w == 0) widget->g.w = window->g.w - (widget->label ? widget->label->g.w : 0);
         widget = eve_widget_next(widget);
     }
-
-    if (destructor == NULL) destructor = app_form_destroy;
-    eve_form_init(form, window, stack, widgets, spec_size, action, destructor);
+    eve_form_update(form, widgets, spec_size, NULL);
 
     return form;
 }
@@ -88,10 +82,4 @@ void app_form_destroy(EVEForm *form) {
     widgets_destroy(form->widget, form->widget_size);
     eve_free(form->widget);
     eve_free(form);
-}
-
-void app_form_init(void) {
-    eve_spi_start();
-    eve_font_init(&font, APP_FONT_HANDLE);
-    eve_spi_stop();
 }

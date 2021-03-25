@@ -1,8 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "unicode.h"
-
 #include "eve.h"
 #include "eve_kbd.h"
 #include "eve_font.h"
@@ -45,6 +43,7 @@ static void form_update_g(EVEForm *form, EVEWidget *_widget) {
 
         widget = eve_widget_next(widget);
     }
+    form->w = form->p.v.window->g.w;
     form->h = h + l_h;
 }
 
@@ -121,13 +120,18 @@ static int form_handle_evt(EVEForm *form, EVEWidget *widget, EVETouch *touch, ui
     return ret;
 }
 
-int eve_form_init(EVEForm *form, EVEWindow *window, EVEViewStack *stack, EVEWidget *widget, uint16_t widget_size, eve_form_action_t action, eve_form_destructor_t destructor) {
+void eve_form_init(EVEForm *form, EVEWindow *window, EVEViewStack *stack, EVEWidget *widget, uint16_t widget_size, eve_form_action_t action, eve_form_destructor_t destructor) {
     memset(form, 0, sizeof(EVEForm));
-    eve_page_init(&form->p, window, stack, eve_form_draw, eve_form_touch, (eve_page_destructor_t)destructor);
+    eve_page_init(&form->p, window, stack, eve_form_draw, eve_form_touch, NULL, (eve_page_destructor_t)destructor);
+    eve_form_update(form, widget, widget_size, action);
+}
 
-    form->widget = widget;
-    form->widget_size = widget_size;
-    form->action = action;
+void eve_form_update(EVEForm *form, EVEWidget *widget, uint16_t widget_size, eve_form_action_t action) {
+    if (widget) {
+        form->widget = widget;
+        form->widget_size = widget_size;
+    }
+    if (action) form->action = action;
     form_update_g(form, NULL);
 }
 
@@ -152,7 +156,7 @@ uint8_t eve_form_draw(EVEView *view, uint8_t tag0) {
         }
         if (eve_page_rect_visible(&form->p, &widget->g)) {
             uint16_t h = widget->g.h;
-            tagN = widget->draw(widget, &form->p, tagN);
+            tagN = widget->draw(widget, tagN);
             if (h != widget->g.h) form_update_g(form, widget);
         }
         widget = eve_widget_next(widget);
@@ -186,7 +190,7 @@ int eve_form_touch(EVEView *view, EVETouch *touch, uint16_t evt, uint8_t tag0) {
         _evt = eve_touch_evt(touch, evt, tag0, widget->tag0, widget->tagN - widget->tag0);
         if (_evt) {
             if (!form->evt_lock) {
-                ret = widget->touch(widget, &form->p, touch, _evt);
+                ret = widget->touch(widget, touch, _evt);
                 if (ret) return 1;
             }
             ret = form_handle_evt(form, widget, touch, _evt, tag0);

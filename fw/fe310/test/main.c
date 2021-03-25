@@ -10,8 +10,6 @@
 #include <net.h>
 #include <cell.h>
 
-#include <unicode.h>
-
 #include <eve/eve.h>
 #include <eve/eve_kbd.h>
 #include <eve/eve_font.h>
@@ -68,7 +66,6 @@ int main() {
 
     eos_init();
 
-    app_form_init();
     app_root_init(app_home_page);
     app_status_init();
     app_phone_init();

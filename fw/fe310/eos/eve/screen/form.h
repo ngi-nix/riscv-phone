@@ -20,10 +20,11 @@ typedef struct EVEForm {
     uint64_t lho_t0;
 } EVEForm;
 
-int eve_form_init(EVEForm *form, EVEWindow *window, EVEViewStack *stack, struct EVEWidget *widget, uint16_t widget_size, eve_form_action_t action, eve_form_destructor_t destructor);
+void eve_form_init(EVEForm *form, EVEWindow *window, EVEViewStack *stack, struct EVEWidget *widget, uint16_t widget_size, eve_form_action_t action, eve_form_destructor_t destructor);
+void eve_form_update(EVEForm *form, struct EVEWidget *widget, uint16_t widget_size, eve_form_action_t action);
 
-int eve_form_touch(EVEView *view, EVETouch *touch, uint16_t evt, uint8_t tag0);
 uint8_t eve_form_draw(EVEView *view, uint8_t tag0);
+int eve_form_touch(EVEView *view, EVETouch *touch, uint16_t evt, uint8_t tag0);
 
 void eve_form_update_g(EVEForm *form, struct EVEWidget *widget);
 int eve_form_handle_evt(EVEForm *form, struct EVEWidget *widget, EVETouch *touch, uint16_t evt);

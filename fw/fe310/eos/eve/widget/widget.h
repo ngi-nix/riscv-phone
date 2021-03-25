@@ -9,14 +9,14 @@
 
 struct EVEWidget;
 
-typedef int (*eve_widget_touch_t) (struct EVEWidget *, EVEPage *, EVETouch *, uint16_t);
-typedef uint8_t (*eve_widget_draw_t) (struct EVEWidget *, EVEPage *, uint8_t);
+typedef uint8_t (*eve_widget_draw_t) (struct EVEWidget *, uint8_t);
+typedef int (*eve_widget_touch_t) (struct EVEWidget *, EVETouch *, uint16_t);
 
 typedef struct EVEWidget {
     EVERect g;
-    EVEFont *font;
-    eve_widget_touch_t touch;
+    EVEPage *page;
     eve_widget_draw_t draw;
+    eve_widget_touch_t touch;
     eve_kbd_input_handler_t putc;
     EVELabel *label;
     uint8_t type;
@@ -24,7 +24,9 @@ typedef struct EVEWidget {
     uint8_t tagN;
 } EVEWidget;
 
-void eve_widget_init(EVEWidget *widget, uint8_t type, EVERect *g, EVEFont *font, eve_widget_touch_t touch, eve_widget_draw_t draw, eve_kbd_input_handler_t putc);
+void eve_widget_init(EVEWidget *widget, uint8_t type, EVERect *g, EVEPage *page, eve_widget_draw_t draw, eve_widget_touch_t touch, eve_kbd_input_handler_t putc);
 size_t eve_widget_size(uint8_t type);
 void eve_widget_set_label(EVEWidget *widget, EVELabel *label);
 EVEWidget *eve_widget_next(EVEWidget *widget);
+
+void eve_widget_uievt_push(EVEWidget *widget, uint16_t evt, void *param);

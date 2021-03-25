@@ -23,11 +23,12 @@ typedef struct EVEWindowKbd {
 typedef struct EVEWindowRoot {
     EVEWindow w;
     uint32_t mem_next;
+    EVEFont *font;
     EVEWindowKbd *win_kbd;
 } EVEWindowRoot;
 
 void eve_window_init(EVEWindow *window, EVERect *g, EVEWindow *parent, char *name);
-void eve_window_init_root(EVEWindowRoot *window, EVERect *g, char *name);
+void eve_window_init_root(EVEWindowRoot *window, EVERect *g, char *name, EVEFont *font);
 void eve_window_init_kbd(EVEWindowKbd *window, EVERect *g, EVEWindowRoot *root, char *name, EVEKbd *kbd);
 void eve_window_set_parent(EVEWindow *window, EVEWindow *parent);
 
@@ -48,3 +49,4 @@ void eve_window_root_touch(EVETouch *touch, uint16_t evt, uint8_t tag0, void *wi
 EVEKbd *eve_window_kbd(EVEWindow *window);
 void eve_window_kbd_attach(EVEWindow *window);
 void eve_window_kbd_detach(EVEWindow *window);
+EVEFont *eve_window_font(EVEWindow *window);

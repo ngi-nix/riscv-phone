@@ -1,8 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "unicode.h"
-
 #include "eve.h"
 #include "eve_kbd.h"
 #include "eve_font.h"
@@ -13,11 +11,9 @@
 #include "widget/label.h"
 #include "widget/widget.h"
 
-#define CH_EOF              0x1a
-
-void eve_page_init(EVEPage *page, EVEWindow *window, EVEViewStack *stack, eve_view_draw_t draw, eve_view_touch_t touch, eve_page_destructor_t destructor) {
+void eve_page_init(EVEPage *page, EVEWindow *window, EVEViewStack *stack, eve_view_draw_t draw, eve_view_touch_t touch, eve_view_uievt_t uievt, eve_page_destructor_t destructor) {
     memset(page, 0, sizeof(EVEPage));
-    eve_view_init(&page->v, window, draw, touch, NULL);
+    eve_view_init(&page->v, window, draw, touch, uievt, NULL);
     page->destructor = destructor;
     page->stack = stack;
     page->widget_f = NULL;
@@ -67,13 +63,13 @@ void eve_page_set_focus(EVEPage *page, EVEWidget *widget, EVERect *f) {
 
         if (widget_f && widget_f->putc) {
             eve_window_kbd_detach(window);
-            widget_f->putc(page, CH_EOF);
+            widget_f->putc(widget_f, EVE_PAGE_KBDCH_CLOSE);
         }
         if (widget && widget->putc) {
             EVEKbd *kbd = eve_window_kbd(window);
 
             if (kbd) {
-                eve_kbd_set_handler(kbd, widget->putc, page);
+                eve_kbd_set_handler(kbd, widget->putc, widget);
                 eve_window_kbd_attach(window);
             }
         }
@@ -112,4 +108,9 @@ int eve_page_rect_visible(EVEPage *page, EVERect *g) {
 
     if (((g->x + g->w) >= page->win_x) && ((g->y + g->h) >= page->win_y) && (g->x <= (page->win_x + w)) && (g->y <= (page->win_y + h))) return 1;
     return 0;
+}
+
+void eve_page_uievt_push(EVEPage *page, uint16_t evt, void *param) {
+    EVEView *view = &page->v;
+    eve_view_uievt_push(view, evt, param ? param : page);
 }

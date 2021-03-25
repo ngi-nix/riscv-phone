@@ -4,6 +4,8 @@
 #define APP_SCREEN_H        800
 #define APP_STATUS_H        60
 
+#define APP_FONT_HANDLE     31
+
 EVEWindow *app_root(void);
 void app_root_refresh(void);
 

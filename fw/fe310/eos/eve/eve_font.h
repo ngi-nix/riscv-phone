@@ -1,5 +1,7 @@
 #include <stdint.h>
 
+#include "unicode.h"
+
 typedef struct EVEFont {
     uint8_t id;
     uint8_t w;

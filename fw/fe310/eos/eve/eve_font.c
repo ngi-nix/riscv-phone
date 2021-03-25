@@ -1,7 +1,5 @@
 #include <stdlib.h>
 
-#include "unicode.h"
-
 #include "eve.h"
 #include "eve_font.h"
 

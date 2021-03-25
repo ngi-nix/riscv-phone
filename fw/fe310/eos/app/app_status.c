@@ -1,9 +1,8 @@
 #include <stdlib.h>
 
-#include "unicode.h"
-
 #include "eve/eve.h"
 #include "eve/eve_kbd.h"
+#include "eve/eve_font.h"
 
 #include "eve/screen/window.h"
 

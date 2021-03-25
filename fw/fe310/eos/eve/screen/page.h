@@ -1,5 +1,7 @@
 #include <stdint.h>
 
+#define EVE_PAGE_KBDCH_CLOSE    0x1a
+
 struct EVEWidget;
 struct EVEPage;
 
@@ -14,7 +16,7 @@ typedef struct EVEPage {
     struct EVEWidget *widget_f;
 } EVEPage;
 
-void eve_page_init(EVEPage *page, EVEWindow *window, EVEViewStack *stack, eve_view_draw_t draw, eve_view_touch_t touch, eve_page_destructor_t destructor);
+void eve_page_init(EVEPage *page, EVEWindow *window, EVEViewStack *stack, eve_view_draw_t draw, eve_view_touch_t touch, eve_view_uievt_t uievt, eve_page_destructor_t destructor);
 void eve_page_open(EVEPage *parent, eve_view_constructor_t constructor);
 void eve_page_close(EVEPage *page);
 
@@ -26,3 +28,5 @@ int16_t eve_page_scr_y(EVEPage *page, int16_t y);
 void eve_page_set_focus(EVEPage *page, struct EVEWidget *widget, EVERect *focus);
 struct EVEWidget *eve_page_get_focus(EVEPage *page);
 int eve_page_rect_visible(EVEPage *page, EVERect *g);
+
+void eve_page_uievt_push(EVEPage *page, uint16_t evt, void *param);

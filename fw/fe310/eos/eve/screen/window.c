@@ -3,6 +3,7 @@
 
 #include "eve.h"
 #include "eve_kbd.h"
+#include "eve_font.h"
 
 #include "window.h"
 
@@ -17,12 +18,13 @@ void eve_window_init(EVEWindow *window, EVERect *g, EVEWindow *parent, char *nam
     window->name = name;
 }
 
-void eve_window_init_root(EVEWindowRoot *window, EVERect *g, char *name) {
+void eve_window_init_root(EVEWindowRoot *window, EVERect *g, char *name, EVEFont *font) {
     EVEWindow *_window = &window->w;
 
     eve_window_init(_window, g, NULL, name);
     _window->root = _window;
     window->mem_next = EVE_RAM_G;
+    window->font = font;
     window->win_kbd = NULL;
     eve_touch_set_handler(eve_window_root_touch, window);
 }
@@ -49,7 +51,7 @@ void eve_window_init_kbd(EVEWindowKbd *window, EVERect *g, EVEWindowRoot *root, 
     _window->root = (EVEWindow *)root;
     window->kbd = kbd;
     root->win_kbd = window;
-    eve_view_init(&window->v, _window, kbd_draw, kbd_touch, kbd);
+    eve_view_init(&window->v, _window, kbd_draw, kbd_touch, NULL, kbd);
 }
 
 void eve_window_set_parent(EVEWindow *window, EVEWindow *parent) {
@@ -263,4 +265,10 @@ void eve_window_kbd_detach(EVEWindow *window) {
         eve_window_remove(&win_kbd->w);
         eve_kbd_close(kbd);
     }
+}
+
+EVEFont *eve_window_font(EVEWindow *window) {
+    EVEWindowRoot *win_root = (EVEWindowRoot *)window->root;
+
+    return win_root->font;
 }

@@ -10,8 +10,6 @@
 #include <net.h>
 #include <wifi.h>
 
-#include <unicode.h>
-
 #include <eve/eve.h>
 #include <eve/eve_kbd.h>
 #include <eve/eve_font.h>

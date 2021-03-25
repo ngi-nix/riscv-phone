@@ -10,8 +10,6 @@
 #include <net.h>
 #include <cell.h>
 
-#include <unicode.h>
-
 #include <eve/eve.h>
 #include <eve/eve_kbd.h>
 #include <eve/eve_text.h>
@@ -133,7 +131,7 @@ void app_modem(EVEWindow *window, EVEViewStack *stack) {
     param->stack = stack;
     param->cell_dev_handler = eos_cell_get_handler(EOS_CELL_MTYPE_DEV);
     eve_text_init(&param->text, &g, 30, 16, 200, root->mem_next, &root->mem_next);
-    eve_view_init(view, window, modem_draw, modem_touch, param);
+    eve_view_init(view, window, modem_draw, modem_touch, NULL, param);
 
     eve_kbd_set_handler(kbd, key_down, view);
     eve_window_kbd_attach(window);
@@ -153,6 +151,7 @@ void app_modem_close(EVEView *view) {
     VParam *param = view->param;
     EVEWindow *window = view->window;
     EVEWindowRoot *root = (EVEWindowRoot *)window->root;
+    EVEKbd *kbd = eve_window_kbd(window);
     EVEViewStack *stack = param->stack;
 
     buf[0] = EOS_CELL_MTYPE_DEV | EOS_CELL_MTYPE_RESET;
@@ -163,9 +162,10 @@ void app_modem_close(EVEView *view) {
     eos_net_acquire_for_evt(EOS_EVT_UART | EOS_UART_ETYPE_RX, 0);
 
     root->mem_next = param->mem;
+    eve_window_kbd_detach(window);
+    eve_kbd_set_handler(kbd, NULL, NULL);
+
     eve_free(param);
     eve_free(view);
-
-    eve_window_kbd_detach(window);
     eve_view_destroy(window, stack);
 }

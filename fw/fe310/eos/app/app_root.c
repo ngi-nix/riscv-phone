@@ -1,7 +1,6 @@
 #include <stdlib.h>
 
 #include "net.h"
-#include "unicode.h"
 
 #include "eve/eve.h"
 #include "eve/eve_kbd.h"
@@ -22,6 +21,7 @@
 #define KBD_H           225
 
 static EVEKbd kbd;
+static EVEFont font;
 static EVEWindowRoot win_root;
 static EVEWindowKbd win_kbd;
 static EVEWindow win_status;
@@ -46,11 +46,13 @@ void app_root_init(eve_view_constructor_t home_page) {
 
     eve_brightness(0x40);
 
+    eve_font_init(&font, APP_FONT_HANDLE);
+
     g.x = 0;
     g.y = 0;
     g.w = APP_SCREEN_W;
     g.h = APP_SCREEN_H;
-    eve_window_init_root(&win_root, &g, "root");
+    eve_window_init_root(&win_root, &g, "root", &font);
 
     g.x = KBD_X;
     g.y = KBD_Y;
@@ -64,7 +66,7 @@ void app_root_init(eve_view_constructor_t home_page) {
     g.w = APP_SCREEN_W;
     g.h = APP_STATUS_H;
     eve_window_init(&win_status, &g, (EVEWindow *)&win_root, "status");
-    eve_view_init(&view_status, &win_status, app_status_draw, app_status_touch, NULL);
+    eve_view_init(&view_status, &win_status, app_status_draw, app_status_touch, NULL, NULL);
 
     g.x = 0;
     g.y = APP_STATUS_H;

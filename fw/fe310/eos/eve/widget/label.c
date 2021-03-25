@@ -1,8 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "unicode.h"
-
 #include "eve.h"
 #include "eve_kbd.h"
 #include "eve_font.h"
