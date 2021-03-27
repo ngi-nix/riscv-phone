@@ -9,20 +9,20 @@
 #include "page.h"
 #include "form.h"
 
-#include "widget/label.h"
-#include "widget/widget.h"
+#include "widget/widgets.h"
 
 #define MIN(X, Y)               (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y)               (((X) > (Y)) ? (X) : (Y))
 
 static void form_update_g(EVEForm *form, EVEWidget *_widget) {
-    EVEWidget *widget = form->widget;
+    EVEPage *page = &form->p;
+    EVEWidget *widget = page->widget;
     int i;
     uint16_t w = 0;
     uint16_t h = 0;
     uint16_t l_h = 0;
 
-    for (i=0; i<form->widget_size; i++) {
+    for (i=0; i<page->widget_size; i++) {
         if (widget->label) {
             h += l_h;
             w = widget->label->g.w;
@@ -43,173 +43,124 @@ static void form_update_g(EVEForm *form, EVEWidget *_widget) {
 
         widget = eve_widget_next(widget);
     }
-    form->w = form->p.v.window->g.w;
-    form->h = h + l_h;
+    page->g.w = page->v.window->g.w;
+    page->g.h = h + l_h;
 }
 
-static int form_handle_evt(EVEForm *form, EVEWidget *widget, EVETouch *touch, uint16_t evt, uint8_t tag0) {
-    int ret = 0;
-    EVEPage *page = &form->p;
+static void widgets_destroy(EVEWidget *widget, uint16_t widget_size) {
+    int i;
 
-    if ((evt & EVE_TOUCH_ETYPE_POINT_UP) && !(touch->eevt & (EVE_TOUCH_EETYPE_TRACK_XY | EVE_TOUCH_EETYPE_ABORT))) {
-        if (page->widget_f) eve_page_set_focus(page, NULL, NULL);
-        ret = 1;
+    for (i=0; i<widget_size; i++) {
+        if (widget->label) eve_free(widget->label);
+        eve_widget_destroy(widget);
+        widget = eve_widget_next(widget);
+    }
+}
+
+EVEForm *eve_form_create(EVEWindow *window, EVEViewStack *stack, EVEWidgetSpec spec[], uint16_t spec_size, eve_form_action_t action, eve_form_destructor_t destructor) {
+    EVEWidget *widgets;
+    EVEWidget *widget;
+    EVELabel *label;
+    EVEForm *form;
+    int w_size = 0;
+    int i, r;
+
+    for (i=0; i<spec_size; i++) {
+        w_size += eve_widget_size(spec[i].widget.type);
+    }
+    form = eve_malloc(sizeof(EVEForm));
+    if (form == NULL) {
+        return NULL;
+    }
+    if (destructor == NULL) destructor = eve_form_destroy;
+    eve_form_init(form, window, stack, NULL, 0, action, destructor);
+
+    widgets = eve_malloc(w_size);
+    if (widgets == NULL) {
+        eve_free(form);
+        return NULL;
     }
 
-    /* Scroll start */
-    if ((evt & EVE_TOUCH_ETYPE_TRACK_START) && !(touch->eevt & EVE_TOUCH_EETYPE_ABORT)) {
-        form->evt_lock = 1;
-    }
-
-    /* Scroll stop */
-    if (((evt & EVE_TOUCH_ETYPE_TRACK_STOP) && !(evt & EVE_TOUCH_ETYPE_TRACK_ABORT)) ||
-        ((evt & EVE_TOUCH_ETYPE_POINT_UP) && (touch->eevt & EVE_TOUCH_EETYPE_ABORT) && !(touch->eevt & EVE_TOUCH_EETYPE_TRACK_XY))) {
-        int wmax_x, wmax_y;
-        int lho_x, lho_y;
-        EVERect vg;
-
-        eve_window_visible_g(page->v.window, &vg);
-        wmax_x = form->w > vg.w ? form->w - vg.w : 0;
-        wmax_y = form->h > vg.h ? form->h - vg.h : 0;
-        lho_x = page->win_x < 0 ? 0 : wmax_x;
-        lho_y = page->win_y < 0 ? 0 : wmax_y;
-        if ((page->win_x < 0) || (page->win_x > wmax_x) ||
-            (page->win_y < 0) || (page->win_y > wmax_y)) {
-            EVEPhyLHO *lho = &form->lho;
-            eve_phy_lho_init(lho, lho_x, lho_y, 1000, 0.5, 0);
-            eve_phy_lho_start(lho, page->win_x, page->win_y);
-            form->lho_t0 = eve_time_get_tick();
-            eve_touch_timer_start(tag0, 20);
-        } else {
-            form->evt_lock = 0;
-            if (evt & EVE_TOUCH_ETYPE_TRACK_STOP) {
-                if (touch->eevt & EVE_TOUCH_EETYPE_TRACK_RIGHT) {
-                    eve_page_close((EVEPage *)form);
-                    return 1;
-                }
-                if (touch->eevt & EVE_TOUCH_EETYPE_TRACK_LEFT) {
-                    if (form->action) form->action(form);
-                    return 1;
-                }
+    widget = widgets;
+    for (i=0; i<spec_size; i++) {
+        r = eve_widget_create(widget, spec[i].widget.type, &spec[i].widget.g, (EVEPage *)form, &spec[i].widget.spec);
+        if (r) {
+            widgets_destroy(widgets, i);
+            eve_free(widgets);
+            eve_free(form);
+            return NULL;
+        }
+        if (spec[i].label.title) {
+            EVEFont *font = spec[i].label.font ? spec[i].label.font : eve_window_font(window);
+            label = eve_malloc(sizeof(EVELabel));
+            if (label == NULL) {
+                eve_widget_destroy(widget);
+                widgets_destroy(widgets, i);
+                eve_free(widgets);
+                eve_free(form);
+                return NULL;
             }
+            eve_label_init(label, &spec[i].label.g, font, spec[i].label.title);
+            eve_widget_set_label(widget, label);
+            if (label->g.w == 0) label->g.w = eve_font_str_w(font, label->title);
         }
+        if (widget->label && (widget->label->g.w == 0)) eve_font_str_w(label->font, label->title) + EVE_FORM_LABEL_MARGIN;
+        if (widget->g.w == 0) widget->g.w = window->g.w - (widget->label ? widget->label->g.w : 0);
+        widget = eve_widget_next(widget);
     }
+    eve_form_update(form, widgets, spec_size);
 
-    if (evt & EVE_TOUCH_ETYPE_TRACK_START) {
-        if (touch->eevt & EVE_TOUCH_EETYPE_TRACK_Y) {
-            form->win_y0 = page->win_y;
-        }
-    }
-    if (evt & EVE_TOUCH_ETYPE_TRACK) {
-        if (touch->eevt & EVE_TOUCH_EETYPE_TRACK_Y) {
-            page->win_y = form->win_y0 + touch->y0 - touch->y;
-        }
-        ret = 1;
-    }
-    if (evt & EVE_TOUCH_ETYPE_TIMER) {
-        EVEPhyLHO *lho = &form->lho;
-        int more = eve_phy_lho_tick(lho, eve_time_get_tick() - form->lho_t0, NULL, &page->win_y);
-
-        if (!more) {
-            form->evt_lock = 0;
-            eve_touch_timer_stop();
-        }
-        ret = 1;
-    }
-
-    return ret;
+    return form;
 }
 
 void eve_form_init(EVEForm *form, EVEWindow *window, EVEViewStack *stack, EVEWidget *widget, uint16_t widget_size, eve_form_action_t action, eve_form_destructor_t destructor) {
     memset(form, 0, sizeof(EVEForm));
-    eve_page_init(&form->p, window, stack, eve_form_draw, eve_form_touch, NULL, (eve_page_destructor_t)destructor);
-    eve_form_update(form, widget, widget_size, action);
+    eve_page_init(&form->p, window, stack, NULL, 0, EVE_PAGE_OPT_SCROLL_Y | EVE_PAGE_OPT_SCROLL_BACK | EVE_PAGE_OPT_TRACK_EXT_Y, eve_page_draw, eve_page_touch, eve_form_uievt, (eve_page_destructor_t)destructor);
+    form->action = action;
+    eve_form_update(form, widget, widget_size);
 }
 
-void eve_form_update(EVEForm *form, EVEWidget *widget, uint16_t widget_size, eve_form_action_t action) {
-    if (widget) {
-        form->widget = widget;
-        form->widget_size = widget_size;
-    }
-    if (action) form->action = action;
+void eve_form_update(EVEForm *form, EVEWidget *widget, uint16_t widget_size) {
+    eve_page_update((EVEPage *)form, widget, widget_size);
     form_update_g(form, NULL);
 }
 
-uint8_t eve_form_draw(EVEView *view, uint8_t tag0) {
-    EVEForm *form = (EVEForm *)view;
-    EVEWidget *widget = form->widget;
-    int i;
-    uint8_t tagN = tag0;
-    uint8_t tag_opt = EVE_TOUCH_OPT_TRACK | EVE_TOUCH_OPT_TRACK_XY | EVE_TOUCH_OPT_TRACK_EXT_Y;
-
-    tagN = eve_view_clear(view, tagN);
-
-    eve_cmd_dl(SAVE_CONTEXT());
-    eve_cmd_dl(VERTEX_FORMAT(0));
-    eve_cmd_dl(VERTEX_TRANSLATE_X(eve_page_scr_x(&form->p, 0) * 16));
-    eve_cmd_dl(VERTEX_TRANSLATE_Y(eve_page_scr_y(&form->p, 0) * 16));
-    for (i=0; i<form->widget_size; i++) {
-        if (widget->label && eve_page_rect_visible(&form->p, &widget->label->g)) {
-            eve_cmd_dl(TAG_MASK(0));
-            eve_label_draw(widget->label);
-            eve_cmd_dl(TAG_MASK(1));
-        }
-        if (eve_page_rect_visible(&form->p, &widget->g)) {
-            uint16_t h = widget->g.h;
-            tagN = widget->draw(widget, tagN);
-            if (h != widget->g.h) form_update_g(form, widget);
-        }
-        widget = eve_widget_next(widget);
-    }
-
-    eve_cmd_dl(RESTORE_CONTEXT());
-
-    for (i=tag0; i<tagN; i++) {
-        eve_touch_set_opt(i, eve_touch_get_opt(i) | tag_opt);
-    }
-    if (view->tag != EVE_TAG_NOTAG) eve_touch_set_opt(view->tag, eve_touch_get_opt(view->tag) | tag_opt);
-
-    return tagN;
+void eve_form_destroy(EVEForm *form) {
+    widgets_destroy(form->p.widget, form->p.widget_size);
+    eve_free(form->p.widget);
+    eve_free(form);
 }
 
-int eve_form_touch(EVEView *view, EVETouch *touch, uint16_t evt, uint8_t tag0) {
+int eve_form_uievt(EVEView *view, uint16_t evt, void *param) {
     EVEForm *form = (EVEForm *)view;
-    EVEWidget *widget = form->widget;
-    int8_t touch_idx = eve_touch_get_idx(touch);
-    uint16_t _evt;
-    int i, ret;
 
-    if (touch_idx > 0) return 0;
+    switch (evt) {
+        case EVE_UIEVT_WIDGET_UPDATE_G:
+            form_update_g(form, (EVEWidget *)param);
+            break;
 
-    _evt = eve_touch_evt(touch, evt, tag0, form->p.v.tag, 1);
-    if (_evt) {
-        ret = form_handle_evt(form, NULL, touch, _evt, tag0);
-        if (ret) return 1;
-    }
-    for (i=0; i<form->widget_size; i++) {
-        _evt = eve_touch_evt(touch, evt, tag0, widget->tag0, widget->tagN - widget->tag0);
-        if (_evt) {
-            if (!form->evt_lock) {
-                ret = widget->touch(widget, touch, _evt);
-                if (ret) return 1;
+        case EVE_UIEVT_PAGE_SCROLL_START:
+            break;
+
+        case EVE_UIEVT_PAGE_SCROLL_STOP:
+            break;
+
+        case EVE_UIEVT_PAGE_TRACK_START:
+            break;
+
+        case EVE_UIEVT_PAGE_TRACK_STOP: {
+            EVEUIEvtTouch *touch_p = (EVEUIEvtTouch *)param;
+            if (touch_p->evt & EVE_TOUCH_ETYPE_TRACK_STOP) {
+                if (touch_p->touch->eevt & EVE_TOUCH_EETYPE_TRACK_RIGHT) {
+                    eve_page_close((EVEPage *)form);
+                    return 1;
+                }
+                if (touch_p->touch->eevt & EVE_TOUCH_EETYPE_TRACK_LEFT) {
+                    if (form->action) form->action(form);
+                }
             }
-            ret = form_handle_evt(form, widget, touch, _evt, tag0);
-            if (ret) return 1;
+            break;
         }
-        widget = eve_widget_next(widget);
     }
-
     return 0;
-}
-
-EVEWidget *eve_form_widget(EVEForm *form, uint16_t idx) {
-    EVEWidget *w = form->widget;
-    int i;
-
-    if (idx >= form->widget_size) return NULL;
-
-    for (i=0; i<idx; i++) {
-        w = eve_widget_next(w);
-    }
-    return w;
 }

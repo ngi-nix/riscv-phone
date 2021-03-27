@@ -18,21 +18,22 @@ void eve_window_init(EVEWindow *window, EVERect *g, EVEWindow *parent, char *nam
     window->name = name;
 }
 
-void eve_window_init_root(EVEWindowRoot *window, EVERect *g, char *name, EVEFont *font) {
-    EVEWindow *_window = &window->w;
+void eve_window_init_root(EVEWindowRoot *root, EVERect *g, char *name, EVEFont *font) {
+    EVEWindow *_window = &root->w;
 
     eve_window_init(_window, g, NULL, name);
-    _window->root = _window;
-    window->mem_next = EVE_RAM_G;
-    window->font = font;
-    window->win_kbd = NULL;
-    eve_touch_set_handler(eve_window_root_touch, window);
+    _window->root = root;
+    root->mem_next = EVE_RAM_G;
+    root->font = font;
+    root->win_kbd = NULL;
+    root->tag0 = EVE_NOTAG;
+    eve_touch_set_handler(eve_window_root_touch, root);
 }
 
 static uint8_t kbd_draw(EVEView *view, uint8_t tag0) {
     EVEKbd *kbd = view->param;
 
-    tag0 = eve_view_clear(view, tag0);
+    tag0 = eve_view_clear(view, tag0, 0);
 
     eve_kbd_draw(kbd);
     return tag0;
@@ -44,14 +45,14 @@ static int kbd_touch(EVEView *view, EVETouch *touch, uint16_t evt, uint8_t tag0)
     return eve_kbd_touch(kbd, touch, evt, tag0);
 }
 
-void eve_window_init_kbd(EVEWindowKbd *window, EVERect *g, EVEWindowRoot *root, char *name, EVEKbd *kbd) {
-    EVEWindow *_window = &window->w;
+void eve_window_init_kbd(EVEWindowKbd *win_kbd, EVERect *g, EVEWindowRoot *root, char *name, EVEKbd *kbd) {
+    EVEWindow *_window = &win_kbd->w;
 
     eve_window_init(_window, g, NULL, name);
-    _window->root = (EVEWindow *)root;
-    window->kbd = kbd;
-    root->win_kbd = window;
-    eve_view_init(&window->v, _window, kbd_draw, kbd_touch, NULL, kbd);
+    _window->root = root;
+    win_kbd->kbd = kbd;
+    root->win_kbd = win_kbd;
+    eve_view_init(&win_kbd->v, _window, kbd_draw, kbd_touch, NULL, kbd);
 }
 
 void eve_window_set_parent(EVEWindow *window, EVEWindow *parent) {
@@ -60,8 +61,8 @@ void eve_window_set_parent(EVEWindow *window, EVEWindow *parent) {
 }
 
 int eve_window_visible(EVEWindow *window) {
-    if (window->g.x >= window->root->g.w) return 0;
-    if (window->g.y >= window->root->g.h) return 0;
+    if (window->g.x >= window->root->w.g.w) return 0;
+    if (window->g.y >= window->root->w.g.h) return 0;
     if ((window->g.x + window->g.w) <= 0) return 0;
     if ((window->g.y + window->g.h) <= 0) return 0;
     return 1;
@@ -182,8 +183,8 @@ uint8_t eve_window_draw(EVEWindow *window, uint8_t tag0) {
                 s_h += s_y;
                 s_y = 0;
             }
-            if (s_x + s_w > window->root->g.w) s_w = window->root->g.w - s_x;
-            if (s_y + s_h > window->root->g.h) s_h = window->root->g.h - s_y;
+            if (s_x + s_w > window->root->w.g.w) s_w = window->root->w.g.w - s_x;
+            if (s_y + s_h > window->root->w.g.h) s_h = window->root->w.g.h - s_y;
             eve_cmd_dl(SCISSOR_XY(s_x, s_y));
             eve_cmd_dl(SCISSOR_SIZE(s_w, s_h));
             tag0 = window->view->draw(window->view, tag0);
@@ -213,13 +214,14 @@ int eve_window_touch(EVEWindow *window, EVETouch *touch, uint16_t evt, uint8_t t
     return 0;
 }
 
-void eve_window_root_draw(EVEWindow *window) {
+void eve_window_root_draw(EVEWindowRoot *root) {
     uint8_t tag0 = 0x80;
 
     eve_cmd_burst_start();
 	eve_cmd_dl(CMD_DLSTART);
 
-    eve_window_draw(window, tag0);
+    if (root->tag0 != EVE_NOTAG) tag0 = EVE_NOTAG;
+    eve_window_draw(&root->w, tag0);
 
     eve_cmd_dl(DISPLAY());
 	eve_cmd_dl(CMD_SWAP);
@@ -228,26 +230,28 @@ void eve_window_root_draw(EVEWindow *window) {
 }
 
 void eve_window_root_touch(EVETouch *touch, uint16_t evt, uint8_t tag0, void *win) {
-    EVEWindow *window = (EVEWindow *)win;
-    int ret = eve_window_touch(window, touch, evt, tag0);
+    EVEWindowRoot *root = (EVEWindowRoot *)win;
+    int ret;
 
+    if (root->tag0 != EVE_NOTAG) tag0 = root->tag0;
+    ret = eve_window_touch(&root->w, touch, evt, tag0);
     if (ret) {
         eve_touch_clear_opt();
-        eve_window_root_draw(window);
+        eve_window_root_draw(root);
     }
 }
 
 EVEKbd *eve_window_kbd(EVEWindow *window) {
-    EVEWindowRoot *win_root = (EVEWindowRoot *)window->root;
-    EVEWindowKbd *win_kbd = win_root->win_kbd;
+    EVEWindowRoot *root = window->root;
+    EVEWindowKbd *win_kbd = root->win_kbd;
 
     if (win_kbd) return win_kbd->kbd;
     return NULL;
 }
 
 void eve_window_kbd_attach(EVEWindow *window) {
-    EVEWindowRoot *win_root = (EVEWindowRoot *)window->root;
-    EVEWindowKbd *win_kbd = win_root->win_kbd;
+    EVEWindowRoot *root = window->root;
+    EVEWindowKbd *win_kbd = root->win_kbd;
     EVEKbd *kbd = win_kbd ? win_kbd->kbd : NULL;
 
     if (kbd) {
@@ -257,8 +261,8 @@ void eve_window_kbd_attach(EVEWindow *window) {
 }
 
 void eve_window_kbd_detach(EVEWindow *window) {
-    EVEWindowRoot *win_root = (EVEWindowRoot *)window->root;
-    EVEWindowKbd *win_kbd = win_root->win_kbd;
+    EVEWindowRoot *root = window->root;
+    EVEWindowKbd *win_kbd = root->win_kbd;
     EVEKbd *kbd = win_kbd ? win_kbd->kbd : NULL;
 
     if (kbd && win_kbd->w.parent) {
@@ -268,7 +272,26 @@ void eve_window_kbd_detach(EVEWindow *window) {
 }
 
 EVEFont *eve_window_font(EVEWindow *window) {
-    EVEWindowRoot *win_root = (EVEWindowRoot *)window->root;
+    EVEWindowRoot *root = window->root;
 
-    return win_root->font;
+    return root->font;
+}
+
+EVEWindow *eve_window_scroll(EVEWindowRoot *root, uint8_t *tag) {
+    if (tag) *tag = root->tag0;
+    return root->win_scroll;
+}
+
+void eve_window_scroll_start(EVEWindow *window, uint8_t tag) {
+    EVEWindowRoot *root = window->root;
+
+    root->win_scroll = window;
+    root->tag0 = tag;
+}
+
+void eve_window_scroll_stop(EVEWindow *window) {
+    EVEWindowRoot *root = window->root;
+
+    root->win_scroll = NULL;
+    root->tag0 = EVE_NOTAG;
 }

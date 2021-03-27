@@ -26,13 +26,30 @@ void eve_view_set_color_fg(EVEView *view, uint8_t r, uint8_t g, uint8_t b) {
     view->color_fg = (r << 16) | (g << 8) | b;
 }
 
-uint8_t eve_view_clear(EVEView *view, uint8_t tag0) {
+uint8_t eve_view_clear(EVEView *view, uint8_t tag0, uint8_t tag_opt) {
+    EVEWindow *win_scroll = NULL;
+    EVEWindow *window = view->window;
+    uint8_t _tag;
+
+    win_scroll = eve_window_scroll(window->root, &_tag);
     eve_cmd_dl(CLEAR_COLOR_RGBC(view->color_bg));
     eve_cmd_dl(COLOR_RGBC(view->color_fg));
-    view->tag = tag0;
-    if (tag0 != EVE_TAG_NOTAG) {
-        eve_cmd_dl(CLEAR_TAG(tag0));
-        tag0++;
+    if (win_scroll == window) {
+        view->tag = _tag;
+        eve_touch_set_opt(view->tag, tag_opt);
+        eve_cmd_dl(TAG(view->tag));
+        eve_cmd_dl(CLEAR_TAG(view->tag));
+    } else if (win_scroll) {
+        view->tag = EVE_NOTAG;
+        eve_cmd_dl(TAG(view->tag));
+        eve_cmd_dl(CLEAR_TAG(view->tag));
+    } else {
+        view->tag = tag0;
+        if (tag0 != EVE_NOTAG) {
+            eve_touch_set_opt(tag0, tag_opt);
+            eve_cmd_dl(CLEAR_TAG(tag0));
+            tag0++;
+        }
     }
     eve_cmd_dl(CLEAR(1,1,1));
     return tag0;
@@ -62,4 +79,16 @@ void eve_view_destroy(EVEWindow *window, EVEViewStack *stack) {
 
 void eve_view_uievt_push(EVEView *view, uint16_t evt, void *param) {
     if (view->uievt) view->uievt(view, evt, param);
+}
+
+int eve_view_uievt_tpush(EVEView *view, uint16_t evt, EVETouch *touch, uint16_t t_evt, uint8_t tag0) {
+    if (view->uievt) {
+        EVEUIEvtTouch param;
+
+        param.touch = touch;
+        param.evt = t_evt;
+        param.tag0 = tag0;
+        view->uievt(view, evt, &param);
+    }
+    return 0;
 }

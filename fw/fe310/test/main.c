@@ -21,7 +21,6 @@
 #include <eve/widget/widgets.h>
 
 #include <app/app_root.h>
-#include <app/app_form.h>
 
 #include "status.h"
 #include "cell_dev.h"
@@ -58,7 +57,7 @@ void app_home_page(EVEWindow *window, EVEViewStack *stack) {
         },
     };
 
-    EVEForm *form = app_form_create(window, stack, spec, 4, NULL, NULL);
+    EVEForm *form = eve_form_create(window, stack, spec, 4, NULL, NULL);
 }
 
 int main() {

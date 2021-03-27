@@ -70,7 +70,8 @@ void eve_widget_destroy(EVEWidget *widget) {
     if (_widget_destroy[widget->type]) _widget_destroy[widget->type](widget);
 }
 
-void eve_widget_uievt_push(EVEWidget *widget, uint16_t evt, void *param) {
-    EVEView *view = &widget->page->v;
-    eve_view_uievt_push(view, evt, param ? param : widget);
+void eve_widget_focus(EVEWidget *widget, EVERect *rect) {
+    EVEPage *page = widget->page;
+
+    eve_page_focus_widget(page, widget, rect);
 }

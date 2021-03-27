@@ -21,7 +21,6 @@
 #include <eve/widget/widgets.h>
 
 #include <app/app_root.h>
-#include <app/app_form.h>
 
 #include "status.h"
 #include "cell_pdp.h"
@@ -92,19 +91,19 @@ void app_cell_pdp(EVEWindow *window, EVEViewStack *stack) {
         },
     };
 
-    EVEForm *form = app_form_create(window, stack, spec, 3, app_cell_pdp_action, app_cell_pdp_close);
+    EVEForm *form = eve_form_create(window, stack, spec, 3, app_cell_pdp_action, app_cell_pdp_close);
 }
 
 void app_cell_pdp_action(EVEForm *form) {
-    EVEStrWidget *apn = (EVEStrWidget *)eve_form_widget(form, 0);
-    EVEStrWidget *user = (EVEStrWidget *)eve_form_widget(form, 1);
-    EVEStrWidget *pass = (EVEStrWidget *)eve_form_widget(form, 2);
+    EVEStrWidget *apn = (EVEStrWidget *)eve_page_widget(&form->p, 0);
+    EVEStrWidget *user = (EVEStrWidget *)eve_page_widget(&form->p, 1);
+    EVEStrWidget *pass = (EVEStrWidget *)eve_page_widget(&form->p, 2);
 
     cell_pdp_connect(apn->str, user->str, pass->str);
 }
 
 void app_cell_pdp_close(EVEForm *form) {
-    app_form_destroy(form);
+    eve_form_destroy(form);
 }
 
 void app_cell_pdp_init(void) {

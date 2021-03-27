@@ -22,7 +22,6 @@
 #include <eve/widget/widgets.h>
 
 #include <app/app_root.h>
-#include <app/app_form.h>
 
 #include "modem.h"
 
@@ -79,8 +78,8 @@ static void handle_uart(unsigned char type) {
 }
 
 static void handle_cell_msg(unsigned char type, unsigned char *buffer, uint16_t len) {
-    EVEWindow *root = app_root();
-    EVEWindow *window = eve_window_search(root, "main");
+    EVEWindowRoot *root = app_root();
+    EVEWindow *window = eve_window_search(&root->w, "main");
     VParam *param = window->view->param;
 
     if (type == EOS_CELL_MTYPE_UART_DATA) {
@@ -106,7 +105,7 @@ static uint8_t modem_draw(EVEView *view, uint8_t tag0) {
     VParam *param = view->param;
     EVEText *text = &param->text;
 
-    tag0 = eve_view_clear(view, tag0);
+    tag0 = eve_view_clear(view, tag0, 0);
     return eve_text_draw(text, tag0);
 }
 
@@ -119,7 +118,7 @@ static int modem_touch(EVEView *view, EVETouch *touch, uint16_t evt, uint8_t tag
 
 void app_modem(EVEWindow *window, EVEViewStack *stack) {
     unsigned char *buf;
-    EVEWindowRoot *root = (EVEWindowRoot *)window->root;
+    EVEWindowRoot *root = window->root;
     EVEKbd *kbd = eve_window_kbd(window);
     EVERect g = {0, 60, 480, 512};
     EVEView *view;
@@ -150,7 +149,7 @@ void app_modem_close(EVEView *view) {
     unsigned char *buf = eos_net_alloc();
     VParam *param = view->param;
     EVEWindow *window = view->window;
-    EVEWindowRoot *root = (EVEWindowRoot *)window->root;
+    EVEWindowRoot *root = window->root;
     EVEKbd *kbd = eve_window_kbd(window);
     EVEViewStack *stack = param->stack;
 

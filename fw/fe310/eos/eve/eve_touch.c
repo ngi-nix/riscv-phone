@@ -334,7 +334,7 @@ uint16_t eve_touch_evt(EVETouch *touch, uint16_t evt, uint8_t tag0, uint8_t tag_
     uint8_t _tag;
     uint16_t _evt;
 
-    if (tag_min == EVE_TAG_NOTAG) return 0;
+    if (tag_min == EVE_NOTAG) return 0;
 
     tag_max = tag_min + tag_n;
     if ((tag0 < tag_min) || (tag0 >= tag_max)) return 0;

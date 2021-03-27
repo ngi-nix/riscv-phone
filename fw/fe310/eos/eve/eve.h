@@ -18,8 +18,6 @@
 #define EVE_PSTATE_STANDBY  1
 #define EVE_PSTATE_SLEEP    3
 
-#define EVE_TAG_NOTAG       0
-
 #define COLOR_RGBC(c)       ((4UL<<24)|((c)&16777215UL))
 #define CLEAR_COLOR_RGBC(c) ((2UL<<24)|((c)&16777215UL))
 

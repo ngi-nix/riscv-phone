@@ -21,7 +21,6 @@
 #include <eve/widget/widgets.h>
 
 #include <app/app_root.h>
-#include <app/app_form.h>
 
 #include "status.h"
 #include "wifi.h"
@@ -56,9 +55,10 @@ static void wifi_disconnect(void) {
 }
 
 void wifi_scan_handler(unsigned char type, unsigned char *buffer, uint16_t size) {
-    EVEWindow *window = eve_window_search(app_root(), "main");
+    EVEWindowRoot *root = app_root();
+    EVEWindow *window = eve_window_search(&root->w, "main");
     EVEForm *form = (EVEForm *)window->view;
-    EVESelectWidget *select = (EVESelectWidget *)eve_form_widget(form, 0);
+    EVESelectWidget *select = (EVESelectWidget *)eve_page_widget(&form->p, 0);
 
     eve_selectw_option_set(select, buffer + 1, size - 1);
     eos_net_free(buffer, 0);
@@ -99,20 +99,20 @@ void app_wifi(EVEWindow *window, EVEViewStack *stack) {
         },
     };
 
-    EVEForm *form = app_form_create(window, stack, spec, 3, app_wifi_action, app_wifi_close);
+    EVEForm *form = eve_form_create(window, stack, spec, 3, app_wifi_action, app_wifi_close);
     wifi_scan();
 }
 
 void app_wifi_action(EVEForm *form) {
-    EVESelectWidget *sel = (EVESelectWidget *)eve_form_widget(form, 0);
-    EVEStrWidget *str = (EVEStrWidget *)eve_form_widget(form, 2);
+    EVESelectWidget *sel = (EVESelectWidget *)eve_page_widget(&form->p, 0);
+    EVEStrWidget *str = (EVEStrWidget *)eve_page_widget(&form->p, 2);
     char *ssid = eve_selectw_option_get_select(sel);
 
     if (ssid) wifi_connect(ssid, str->str);
 }
 
 void app_wifi_close(EVEForm *form) {
-    app_form_destroy(form);
+    eve_form_destroy(form);
 }
 
 void app_wifi_init(void) {

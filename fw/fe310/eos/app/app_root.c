@@ -29,8 +29,8 @@ static EVEWindow win_main;
 static EVEView view_status;
 static EVEViewStack view_stack;
 
-EVEWindow *app_root(void) {
-    return (EVEWindow *)&win_root;
+EVEWindowRoot *app_root(void) {
+    return &win_root;
 }
 
 void app_root_refresh(void) {
@@ -80,7 +80,7 @@ void app_root_init(eve_view_constructor_t home_page) {
     eve_window_append(&win_status);
     eve_window_append(&win_main);
 
-    eve_window_root_draw((EVEWindow *)&win_root);
+    eve_window_root_draw(&win_root);
 
     eve_spi_stop();
 

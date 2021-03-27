@@ -21,7 +21,6 @@
 #include <eve/widget/widgets.h>
 
 #include <app/app_root.h>
-#include <app/app_form.h>
 
 #include "status.h"
 #include "phone.h"
@@ -93,12 +92,12 @@ void app_phone(EVEWindow *window, EVEViewStack *stack) {
         },
     };
 
-    EVEForm *form = app_form_create(window, stack, spec, 1, app_phone_action, NULL);
+    EVEForm *form = eve_form_create(window, stack, spec, 1, app_phone_action, NULL);
 }
 
 void app_phone_action(EVEForm *form) {
     char msg[128];
-    EVEStrWidget *w = (EVEStrWidget *)eve_form_widget(form, 0);
+    EVEStrWidget *w = (EVEStrWidget *)eve_page_widget(&form->p, 0);
     unsigned char *buf = eos_net_alloc();
 
     buf[0] = EOS_CELL_MTYPE_VOICE | EOS_CELL_MTYPE_VOICE_DIAL;

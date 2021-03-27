@@ -16,9 +16,9 @@
 
 #define STRW_TOUCH_OPT          EVE_TOUCH_OPT_TRACK | EVE_TOUCH_OPT_TRACK_X | EVE_TOUCH_OPT_TRACK_EXT_X | EVE_TOUCH_OPT_LPRESS
 
-#define STRW_TRACK_NONE         0
-#define STRW_TRACK_CRSR         1
-#define STRW_TRACK_TXT          2
+#define STRW_TMODE_NONE         0
+#define STRW_TMODE_CRSR         1
+#define STRW_TMODE_TXT          2
 
 #define CH_BS                   0x08
 #define CH_DEL                  0x7f
@@ -45,28 +45,20 @@ int eve_strw_create(EVEStrWidget *widget, EVERect *g, EVEPage *page, EVEStrSpec 
 
 void eve_strw_init(EVEStrWidget *widget, EVERect *g, EVEPage *page, EVEFont *font, utf8_t *str, uint16_t str_size) {
     EVEWidget *_widget = &widget->w;
+    int rv, str_len;
 
     memset(widget, 0, sizeof(EVEStrWidget));
     eve_widget_init(_widget, EVE_WIDGET_TYPE_STR, g, page, eve_strw_draw, eve_strw_touch, eve_strw_putc);
-    eve_strw_update(widget, font, str, str_size);
-}
-
-void eve_strw_update(EVEStrWidget *widget, EVEFont *font, utf8_t *str, uint16_t str_size) {
-    int rv, str_len;
-    EVEWidget *_widget = &widget->w;
-
-    if (font) widget->font = font;
-    if (str) {
-        widget->str = str;
-        widget->str_size = str_size;
-        rv = utf8_verify(str, str_size, &str_len);
-        if (rv != UTF_OK) {
-            if (str_len >= str_size) str_len = 0;
-            widget->str[str_len] = '\0';
-        }
-        widget->str_len = str_len;
-        widget->str_g.w = eve_font_str_w(widget->font, str);
+    widget->font = font;
+    rv = utf8_verify(str, str_size, &str_len);
+    if (rv != UTF_OK) {
+        if (str_len >= str_size) str_len = 0;
+        str[str_len] = '\0';
     }
+    widget->str = str;
+    widget->str_size = str_size;
+    widget->str_len = str_len;
+    widget->str_g.w = eve_font_str_w(widget->font, str);
     if (_widget->g.h == 0) _widget->g.h = eve_font_h(widget->font);
 }
 
@@ -76,14 +68,13 @@ void eve_strw_destroy(EVEStrWidget *widget) {
 
 static void set_focus(EVEStrWidget *widget) {
     EVEWidget *_widget = &widget->w;
-    EVEPage *page = _widget->page;
     EVERect focus;
 
     focus.x = _widget->g.x;
     focus.y = _widget->g.y;
     focus.w = _widget->g.w;
     focus.h = 2 * widget->font->h;
-    eve_page_set_focus(page, _widget, &focus);
+    eve_widget_focus(_widget, &focus);
 }
 
 static EVEStrCursor *cursor_prox(EVEStrWidget *widget, EVEStrCursor *cursor, EVETouch *touch, short *dx) {
@@ -142,7 +133,7 @@ uint8_t eve_strw_draw(EVEWidget *_widget, uint8_t tag0) {
     char cut = widget->str_g.x || (widget->str_g.w > _widget->g.w);
 
     _widget->tag0 = tag0;
-    if (tag0 != EVE_TAG_NOTAG) {
+    if (tag0 != EVE_NOTAG) {
         eve_cmd_dl(TAG(tag0));
         eve_touch_set_opt(tag0, STRW_TOUCH_OPT);
         tag0++;
@@ -163,8 +154,8 @@ uint8_t eve_strw_draw(EVEWidget *_widget, uint8_t tag0) {
 
         if (win_x1 < 0) win_x1 = 0;
         if (win_y1 < 0) win_y1 = 0;
-        if (win_x2 > window->root->g.w) win_x2 = window->root->g.w;
-        if (win_y2 > window->root->g.h) win_y2 = window->root->g.h;
+        if (win_x2 > window->root->w.g.w) win_x2 = window->root->w.g.w;
+        if (win_y2 > window->root->w.g.h) win_y2 = window->root->w.g.h;
         if (x < win_x1) {
             w += x - win_x1;
             x = win_x1;
@@ -227,11 +218,11 @@ int eve_strw_touch(EVEWidget *_widget, EVETouch *touch, uint16_t evt) {
         }
         if (evt & EVE_TOUCH_ETYPE_TRACK_START) {
             if (t_cursor) {
-                widget->track.mode = STRW_TRACK_CRSR;
+                widget->track.mode = STRW_TMODE_CRSR;
                 widget->track.cursor = t_cursor;
                 widget->track.dx = dx;
             } else if (touch->eevt & EVE_TOUCH_EETYPE_TRACK_X) {
-                widget->track.mode = STRW_TRACK_TXT;
+                widget->track.mode = STRW_TMODE_TXT;
             }
         }
     }
@@ -240,7 +231,7 @@ int eve_strw_touch(EVEWidget *_widget, EVETouch *touch, uint16_t evt) {
         int x, w1;
 
         switch (widget->track.mode) {
-            case STRW_TRACK_TXT:
+            case STRW_TMODE_TXT:
                 if (evt & EVE_TOUCH_ETYPE_TRACK_START) {
                     widget->str_g.x0 = widget->str_g.x;
                 }
@@ -251,7 +242,7 @@ int eve_strw_touch(EVEWidget *_widget, EVETouch *touch, uint16_t evt) {
                 widget->str_g.x = x;
                 break;
 
-            case STRW_TRACK_CRSR:
+            case STRW_TMODE_CRSR:
                 eve_strw_cursor_set(widget, widget->track.cursor, eve_page_x(page, touch->x) + widget->track.dx);
                 break;
         }
@@ -277,7 +268,7 @@ int eve_strw_touch(EVEWidget *_widget, EVETouch *touch, uint16_t evt) {
     }
 
     if (evt & EVE_TOUCH_ETYPE_TRACK_STOP) {
-        widget->track.mode = STRW_TRACK_NONE;
+        widget->track.mode = STRW_TMODE_NONE;
         widget->track.cursor = NULL;
         widget->track.dx = 0;
     }

@@ -25,15 +25,9 @@ void eve_pagew_init(EVEPageWidget *widget, EVERect *g, EVEPage *page, EVEFont *f
 
     memset(widget, 0, sizeof(EVEPageWidget));
     eve_widget_init(_widget, EVE_WIDGET_TYPE_PAGE, g, page, eve_pagew_draw, eve_pagew_touch, NULL);
-    eve_pagew_update(widget, font, title, constructor);
-}
-
-void eve_pagew_update(EVEPageWidget *widget, EVEFont *font, char *title, eve_view_constructor_t constructor) {
-    EVEWidget *_widget = &widget->w;
-
-    if (font) widget->font = font;
-    if (title) widget->title = title;
-    if (constructor) widget->constructor = constructor;
+    widget->font = font;
+    widget->title = title;
+    widget->constructor = constructor;
     if (_widget->g.h == 0) _widget->g.h = eve_font_h(widget->font);
 }
 
@@ -41,7 +35,7 @@ uint8_t eve_pagew_draw(EVEWidget *_widget, uint8_t tag0) {
     EVEPageWidget *widget = (EVEPageWidget *)_widget;
 
     _widget->tag0 = tag0;
-    if (tag0 != EVE_TAG_NOTAG) {
+    if (tag0 != EVE_NOTAG) {
         eve_cmd_dl(TAG(tag0));
         tag0++;
     }

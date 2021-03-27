@@ -28,5 +28,4 @@ void eve_widget_init(EVEWidget *widget, uint8_t type, EVERect *g, EVEPage *page,
 size_t eve_widget_size(uint8_t type);
 void eve_widget_set_label(EVEWidget *widget, EVELabel *label);
 EVEWidget *eve_widget_next(EVEWidget *widget);
-
-void eve_widget_uievt_push(EVEWidget *widget, uint16_t evt, void *param);
+void eve_widget_focus(EVEWidget *widget, EVERect *rect);

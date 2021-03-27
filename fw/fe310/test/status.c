@@ -21,7 +21,6 @@
 #include <eve/widget/widgets.h>
 
 #include <app/app_root.h>
-#include <app/app_form.h>
 
 #include "phone.h"
 #include "status.h"
@@ -58,10 +57,9 @@ static int status_touch(EVEView *view, EVETouch *touch, uint16_t evt, uint8_t ta
 static uint8_t status_draw(EVEView *view, uint8_t tag0) {
     uint8_t tag_opt = EVE_TOUCH_OPT_TRACK | EVE_TOUCH_OPT_TRACK_XY;
 
-    tag0 = eve_view_clear(view, tag0);
-    if (view->tag != EVE_TAG_NOTAG) eve_touch_set_opt(view->tag, eve_touch_get_opt(view->tag) | tag_opt);
+    tag0 = eve_view_clear(view, tag0, tag_opt);
 
-    if (tag0 != EVE_TAG_NOTAG) {
+    if (tag0 != EVE_NOTAG) {
         eve_touch_set_opt(tag0, eve_touch_get_opt(tag0) | tag_opt);
         eve_cmd_dl(TAG(tag0));
         tag0++;
@@ -79,7 +77,8 @@ void app_status_msg_set(char *msg, int refresh) {
 }
 
 void app_status_init(void) {
-    EVEWindow *status = eve_window_search(app_root(), "status");
+    EVEWindowRoot *root = app_root();
+    EVEWindow *status = eve_window_search(&root->w, "status");
     status->view->touch = status_touch;
     status->view->draw = status_draw;
 }

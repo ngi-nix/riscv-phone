@@ -7,6 +7,7 @@
 #define EVE_TOUCH_THRESHOLD_Y           5
 #define EVE_TOUCH_TRAVG                 3
 
+#define EVE_NOTAG                       0
 #define EVE_NOTOUCH                     0x80008000
 #define EVE_MAX_TOUCH                   5
 

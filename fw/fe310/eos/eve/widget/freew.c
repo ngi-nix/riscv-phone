@@ -23,19 +23,15 @@ void eve_freew_init(EVEFreeWidget *widget, EVERect *g, EVEPage *page, eve_freew_
 
     memset(widget, 0, sizeof(EVEFreeWidget));
     eve_widget_init(_widget, EVE_WIDGET_TYPE_FREE, g, page, eve_freew_draw, eve_freew_touch, putc);
-    eve_freew_update(widget, draw, touch, NULL);
-}
-
-void eve_freew_update(EVEFreeWidget *widget, eve_freew_draw_t draw, eve_freew_touch_t touch, eve_kbd_input_handler_t putc) {
-    if (draw) widget->_draw = draw;
-    if (touch) widget->_touch = touch;
-    if (putc) widget->w.putc = putc;
+    widget->_draw = draw;
+    widget->_touch = touch;
+    widget->w.putc = putc;
 }
 
 void eve_freew_tag(EVEFreeWidget *widget) {
     EVEWidget *_widget = &widget->w;
 
-    if (_widget->tagN != EVE_TAG_NOTAG) {
+    if (_widget->tagN != EVE_NOTAG) {
         eve_cmd_dl(TAG(_widget->tagN));
         _widget->tagN++;
     }

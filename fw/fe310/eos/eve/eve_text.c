@@ -36,7 +36,7 @@ void eve_text_init(EVEText *box, EVERect *g, uint16_t w, uint16_t h, uint16_t li
     box->g = *g;
     box->w = w;
     box->h = h;
-    box->tag = EVE_TAG_NOTAG;
+    box->tag = EVE_NOTAG;
     box->transform_a = 256 / scale_x;
     box->transform_e = 256 / scale_y;
     box->ch_w = scale_x * 8;
@@ -146,7 +146,7 @@ int eve_text_touch(EVEText *box, EVETouch *touch, uint16_t evt, uint8_t tag0) {
 uint8_t eve_text_draw(EVEText *box, uint8_t tag) {
     eve_cmd_dl(SAVE_CONTEXT());
     box->tag = tag;
-    if (tag != EVE_TAG_NOTAG) {
+    if (tag != EVE_NOTAG) {
         eve_cmd_dl(TAG(tag));
         eve_touch_set_opt(tag, EVE_TOUCH_OPT_TRACK | EVE_TOUCH_OPT_TRACK_EXT_Y);
         tag++;
