@@ -227,44 +227,49 @@ int eve_strw_touch(EVEWidget *_widget, EVETouch *touch, uint16_t evt) {
         }
     }
 
-    if ((evt & EVE_TOUCH_ETYPE_TRACK) && widget->track.mode) {
+    if (widget->track.mode) {
         int x, w1;
 
-        switch (widget->track.mode) {
-            case STRW_TMODE_TXT:
-                if (evt & EVE_TOUCH_ETYPE_TRACK_START) {
-                    widget->str_g.x0 = widget->str_g.x;
-                }
-                x = widget->str_g.x0 + touch->x0 - touch->x;
-                w1 = _widget->g.w - widget->font->w;
-                if (x > widget->str_g.w - w1) x = widget->str_g.w - w1;
-                if (x < 0) x = 0;
-                widget->str_g.x = x;
-                break;
+        if (evt & EVE_TOUCH_ETYPE_TRACK) {
+            switch (widget->track.mode) {
+                case STRW_TMODE_TXT:
+                    if (evt & EVE_TOUCH_ETYPE_TRACK_START) {
+                        widget->str_g.x0 = widget->str_g.x;
+                    }
+                    x = widget->str_g.x0 + touch->x0 - touch->x;
+                    w1 = _widget->g.w - widget->font->w;
+                    if (x > widget->str_g.w - w1) x = widget->str_g.w - w1;
+                    if (x < 0) x = 0;
+                    widget->str_g.x = x;
+                    break;
 
-            case STRW_TMODE_CRSR:
-                eve_strw_cursor_set(widget, widget->track.cursor, eve_page_x(page, touch->x) + widget->track.dx);
-                break;
-        }
-        ret = 1;
-    } else if (evt & EVE_TOUCH_ETYPE_LPRESS) {
-        if (widget->cursor2.on) {
-            // copy
-        } else if (widget->cursor1.on) {
-            if (t_cursor) {
-                // paste
-            } else {
-                eve_strw_cursor_set(widget, &widget->cursor2, eve_page_x(page, touch->x));
+                case STRW_TMODE_CRSR:
+                    eve_strw_cursor_set(widget, widget->track.cursor, eve_page_x(page, touch->x) + widget->track.dx);
+                    break;
             }
-        } else {
-            // select
         }
         ret = 1;
-    } else if ((evt & EVE_TOUCH_ETYPE_POINT_UP) && !(touch->eevt & EVE_TOUCH_EETYPE_LPRESS)) {
-        eve_strw_cursor_set(widget, &widget->cursor1, eve_page_x(page, touch->x0));
-        if (widget->cursor2.on) eve_strw_cursor_clear(widget, &widget->cursor2);
-        set_focus(widget);
-        ret = 1;
+    } else {
+        if (evt & EVE_TOUCH_ETYPE_LPRESS) {
+            if (widget->cursor2.on) {
+                // copy
+            } else if (widget->cursor1.on) {
+                if (t_cursor) {
+                    // paste
+                } else {
+                    eve_strw_cursor_set(widget, &widget->cursor2, eve_page_x(page, touch->x));
+                }
+            } else {
+                // select
+            }
+            ret = 1;
+        }
+        if ((evt & EVE_TOUCH_ETYPE_POINT_UP) && !(touch->eevt & (EVE_TOUCH_EETYPE_TRACK_XY | EVE_TOUCH_EETYPE_ABORT | EVE_TOUCH_EETYPE_LPRESS))) {
+            eve_strw_cursor_set(widget, &widget->cursor1, eve_page_x(page, touch->x0));
+            if (widget->cursor2.on) eve_strw_cursor_clear(widget, &widget->cursor2);
+            set_focus(widget);
+            ret = 1;
+        }
     }
 
     if (evt & EVE_TOUCH_ETYPE_TRACK_STOP) {

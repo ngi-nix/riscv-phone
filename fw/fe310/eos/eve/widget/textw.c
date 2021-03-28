@@ -257,27 +257,30 @@ int eve_textw_touch(EVEWidget *_widget, EVETouch *touch, uint16_t evt) {
         }
     }
 
-    if ((evt & EVE_TOUCH_ETYPE_TRACK) && widget->track.cursor) {
-        eve_textw_cursor_set(widget, widget->track.cursor, touch->tag + widget->track.dl, eve_page_x(page, touch->x) + widget->track.dx);
+    if (widget->track.cursor) {
+        if (evt & EVE_TOUCH_ETYPE_TRACK) eve_textw_cursor_set(widget, widget->track.cursor, touch->tag + widget->track.dl, eve_page_x(page, touch->x) + widget->track.dx);
         ret = 1;
-    } else if (evt & EVE_TOUCH_ETYPE_LPRESS) {
-        if (widget->cursor2.on) {
-            // copy
-        } else if (widget->cursor1.on) {
-            if (t_cursor && (dl == 0)) {
-                // paste
+    } else {
+        if (evt & EVE_TOUCH_ETYPE_LPRESS) {
+            if (widget->cursor2.on) {
+                // copy
+            } else if (widget->cursor1.on) {
+                if (t_cursor && (dl == 0)) {
+                    // paste
+                } else {
+                    eve_textw_cursor_set(widget, &widget->cursor2, touch->tag, eve_page_x(page, touch->x));
+                }
             } else {
-                eve_textw_cursor_set(widget, &widget->cursor2, touch->tag, eve_page_x(page, touch->x));
+                // select
             }
-        } else {
-            // select
+            ret = 1;
         }
-        ret = 1;
-    } else if ((evt & EVE_TOUCH_ETYPE_POINT_UP) && !(touch->eevt & EVE_TOUCH_EETYPE_LPRESS)) {
-        eve_textw_cursor_set(widget, &widget->cursor1, touch->tag_up, eve_page_x(page, touch->x0));
-        if (widget->cursor2.on) eve_textw_cursor_clear(widget, &widget->cursor2);
-        set_focus(widget, &widget->cursor1);
-        ret = 1;
+        if ((evt & EVE_TOUCH_ETYPE_POINT_UP) && !(touch->eevt & (EVE_TOUCH_EETYPE_TRACK_XY | EVE_TOUCH_EETYPE_ABORT | EVE_TOUCH_EETYPE_LPRESS))) {
+            eve_textw_cursor_set(widget, &widget->cursor1, touch->tag_up, eve_page_x(page, touch->x0));
+            if (widget->cursor2.on) eve_textw_cursor_clear(widget, &widget->cursor2);
+            set_focus(widget, &widget->cursor1);
+            ret = 1;
+        }
     }
 
     if (evt & EVE_TOUCH_ETYPE_TRACK_STOP) {
