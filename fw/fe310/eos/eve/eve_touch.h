@@ -37,8 +37,7 @@
 /* extended events */
 #define EVE_TOUCH_EETYPE_NOTOUCH        0x0001
 #define EVE_TOUCH_EETYPE_LPRESS         0x0002
-#define EVE_TOUCH_EETYPE_TAP1           0x0004
-#define EVE_TOUCH_EETYPE_TAP2           0x0008
+#define EVE_TOUCH_EETYPE_TAP2           0x0004
 
 #define EVE_TOUCH_EETYPE_TRACK_LEFT     0x0010
 #define EVE_TOUCH_EETYPE_TRACK_RIGHT    0x0020

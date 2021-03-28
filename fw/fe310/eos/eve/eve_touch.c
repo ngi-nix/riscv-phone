@@ -267,7 +267,6 @@ void eve_handle_time(void) {
         }
         if (_touch_timer.evt & EVE_TOUCH_ETYPE_TAP2) {
             touch_evt |= EVE_TOUCH_ETYPE_TAP1;
-            if (touch) touch->eevt |= EVE_TOUCH_EETYPE_TAP1;
         }
         if (_touch_timer.evt & EVE_TOUCH_ETYPE_TRACK) {
             EVEVTrack *vtrack = eve_vtrack_get();
