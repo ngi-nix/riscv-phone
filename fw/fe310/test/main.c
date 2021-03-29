@@ -4,11 +4,6 @@
 #include <string.h>
 
 #include <eos.h>
-#include <event.h>
-#include <spi.h>
-#include <i2s.h>
-#include <net.h>
-#include <cell.h>
 
 #include <eve/eve.h>
 #include <eve/eve_kbd.h>
@@ -28,6 +23,7 @@
 #include "phone.h"
 #include "modem.h"
 #include "wifi.h"
+#include "test.h"
 
 void app_home_page(EVEWindow *window, EVEViewStack *stack) {
     EVEWidgetSpec spec[] = {
@@ -57,7 +53,7 @@ void app_home_page(EVEWindow *window, EVEViewStack *stack) {
         },
     };
 
-    EVEForm *form = eve_form_create(window, stack, spec, 4, NULL, NULL);
+    EVEForm *form = eve_form_create(window, stack, spec, 4, NULL, NULL, NULL);
 }
 
 int main() {

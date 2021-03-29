@@ -4,9 +4,6 @@
 #include <string.h>
 
 #include <eos.h>
-#include <event.h>
-#include <spi.h>
-#include <i2s.h>
 #include <net.h>
 #include <cell.h>
 

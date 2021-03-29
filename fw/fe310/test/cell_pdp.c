@@ -4,9 +4,6 @@
 #include <string.h>
 
 #include <eos.h>
-#include <event.h>
-#include <spi.h>
-#include <uart.h>
 #include <net.h>
 #include <cell.h>
 
@@ -91,7 +88,7 @@ void app_cell_pdp(EVEWindow *window, EVEViewStack *stack) {
         },
     };
 
-    EVEForm *form = eve_form_create(window, stack, spec, 3, app_cell_pdp_action, app_cell_pdp_close);
+    EVEForm *form = eve_form_create(window, stack, spec, 3, NULL, app_cell_pdp_action, app_cell_pdp_close);
 }
 
 void app_cell_pdp_action(EVEForm *form) {

@@ -4,9 +4,6 @@
 #include <string.h>
 
 #include <eos.h>
-#include <event.h>
-#include <spi.h>
-#include <uart.h>
 #include <net.h>
 #include <wifi.h>
 
@@ -99,7 +96,7 @@ void app_wifi(EVEWindow *window, EVEViewStack *stack) {
         },
     };
 
-    EVEForm *form = eve_form_create(window, stack, spec, 3, app_wifi_action, app_wifi_close);
+    EVEForm *form = eve_form_create(window, stack, spec, 3, NULL, app_wifi_action, app_wifi_close);
     wifi_scan();
 }
 

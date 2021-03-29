@@ -4,8 +4,6 @@
 #include <string.h>
 
 #include <eos.h>
-#include <event.h>
-#include <spi.h>
 #include <i2s.h>
 #include <net.h>
 #include <cell.h>
@@ -92,7 +90,7 @@ void app_phone(EVEWindow *window, EVEViewStack *stack) {
         },
     };
 
-    EVEForm *form = eve_form_create(window, stack, spec, 1, app_phone_action, NULL);
+    EVEForm *form = eve_form_create(window, stack, spec, 1, NULL, app_phone_action, NULL);
 }
 
 void app_phone_action(EVEForm *form) {

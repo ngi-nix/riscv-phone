@@ -4,8 +4,6 @@
 #include <string.h>
 
 #include <eos.h>
-#include <event.h>
-#include <spi.h>
 #include <uart.h>
 #include <net.h>
 #include <cell.h>
