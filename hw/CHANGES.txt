@@ -1,0 +1,7 @@
+REV2:
+  - Replaced FT813 with BT817 display/touch controller. 
+    BT817 24bit parallel output is serialized using DS90C185
+    i.MX8M LVDS output and BT817 output are multiplexed using TS3DV520E
+  - Added 2nd MAX98357A amplifier for stereo sound
+  - Added FT230X USB to UART interface. Allows programming both fe310 and esp32 without JTAG programmer
+  - Added LSM9DS1 accelerometer/gyroscope/magnetometer sensor
