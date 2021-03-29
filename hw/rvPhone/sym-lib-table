@@ -1,5 +1,5 @@
 (sym_lib_table
-  (lib (name ft81x)(type Legacy)(uri ${KIPRJMOD}/../library/ft81x.lib)(options "")(descr ""))
+  (lib (name ftdi)(type Legacy)(uri ${KIPRJMOD}/../library/ftdi.lib)(options "")(descr ""))
   (lib (name myPower)(type Legacy)(uri ${KIPRJMOD}/../library/myPower.lib)(options "")(descr ""))
   (lib (name sn74)(type Legacy)(uri ${KIPRJMOD}/../library/sn74.lib)(options "")(descr ""))
   (lib (name sn65)(type Legacy)(uri ${KIPRJMOD}/../library/sn65.lib)(options "")(descr ""))
@@ -19,5 +19,5 @@
   (lib (name bq)(type Legacy)(uri ${KIPRJMOD}/../library/bq.lib)(options "")(descr ""))
   (lib (name tps)(type Legacy)(uri ${KIPRJMOD}/../library/tps.lib)(options "")(descr ""))
   (lib (name tx)(type Legacy)(uri ${KIPRJMOD}/../library/tx.lib)(options "")(descr ""))
-  (lib (name st)(type Legacy)(uri /Volumes/rvPhone/repo/hw/library/st.lib)(options "")(descr ""))
+  (lib (name st)(type Legacy)(uri ${KIPRJMOD}/../library/st.lib)(options "")(descr ""))
 )

@@ -1,4 +1,4 @@
-update=Friday, December 04, 2020 at 01:18:44 AM
+update=Friday, January 22, 2021 at 12:50:44 AM
 version=1
 last_client=kicad
 [cvpcb]
@@ -34,7 +34,7 @@ MinViaDiameter=0.5
 MinViaDrill=0.2
 MinMicroViaDiameter=0.2
 MinMicroViaDrill=0.09999999999999999
-MinHoleToHole=0.25
+MinHoleToHole=0.4
 TrackWidth1=0.25
 ViaDiameter1=0.6
 ViaDrill1=0.3
@@ -61,8 +61,8 @@ OthersTextSizeH=1
 OthersTextSizeThickness=0.15
 OthersTextItalic=0
 OthersTextUpright=1
-SolderMaskClearance=0.045
-SolderMaskMinWidth=0.11
+SolderMaskClearance=0.05
+SolderMaskMinWidth=0
 SolderPasteClearance=0
 SolderPasteRatio=-0
 [pcbnew/Layer.F.Cu]
@@ -310,9 +310,20 @@ dPairWidth=0.2
 dPairGap=0.25
 dPairViaGap=0.25
 [pcbnew/Netclasses/7]
-Name=MODEM_USB
+Name=USB
+Clearance=0.2
+TrackWidth=0.2
+ViaDiameter=0.6
+ViaDrill=0.3
+uViaDiameter=0.3
+uViaDrill=0.1
+dPairWidth=0.2
+dPairGap=0.25
+dPairViaGap=0.25
+[pcbnew/Netclasses/8]
+Name=USB2DIFF
 Clearance=0.1524
-TrackWidth=0.1524
+TrackWidth=0.2288
 ViaDiameter=0.508
 ViaDrill=0.254
 uViaDiameter=0.3
