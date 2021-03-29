@@ -39,4 +39,4 @@ void eve_view_create(struct EVEWindow *window, EVEViewStack *stack, eve_view_con
 void eve_view_destroy(struct EVEWindow *window, EVEViewStack *stack);
 
 void eve_view_uievt_push(EVEView *view, uint16_t evt, void *param);
-int eve_view_uievt_tpush(EVEView *view, uint16_t evt, EVETouch *touch, uint16_t t_evt, uint8_t tag0);
+int eve_view_uievt_pusht(EVEView *view, uint16_t evt, EVETouch *touch, uint16_t t_evt, uint8_t tag0);

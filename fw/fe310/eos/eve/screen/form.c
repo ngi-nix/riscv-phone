@@ -57,7 +57,7 @@ static void widgets_destroy(EVEWidget *widget, uint16_t widget_size) {
     }
 }
 
-EVEForm *eve_form_create(EVEWindow *window, EVEViewStack *stack, EVEWidgetSpec spec[], uint16_t spec_size, eve_form_action_t action, eve_form_destructor_t destructor) {
+EVEForm *eve_form_create(EVEWindow *window, EVEViewStack *stack, EVEWidgetSpec spec[], uint16_t spec_size, eve_form_uievt_t uievt, eve_form_action_t action, eve_form_destructor_t destructor) {
     EVEWidget *widgets;
     EVEWidget *widget;
     EVELabel *label;
@@ -72,8 +72,9 @@ EVEForm *eve_form_create(EVEWindow *window, EVEViewStack *stack, EVEWidgetSpec s
     if (form == NULL) {
         return NULL;
     }
+    if (uievt == NULL) uievt = eve_form_uievt;
     if (destructor == NULL) destructor = eve_form_destroy;
-    eve_form_init(form, window, stack, NULL, 0, action, destructor);
+    eve_form_init(form, window, stack, NULL, 0, uievt, action, destructor);
 
     widgets = eve_malloc(w_size);
     if (widgets == NULL) {
@@ -113,9 +114,9 @@ EVEForm *eve_form_create(EVEWindow *window, EVEViewStack *stack, EVEWidgetSpec s
     return form;
 }
 
-void eve_form_init(EVEForm *form, EVEWindow *window, EVEViewStack *stack, EVEWidget *widget, uint16_t widget_size, eve_form_action_t action, eve_form_destructor_t destructor) {
+void eve_form_init(EVEForm *form, EVEWindow *window, EVEViewStack *stack, EVEWidget *widget, uint16_t widget_size, eve_form_uievt_t uievt, eve_form_action_t action, eve_form_destructor_t destructor) {
     memset(form, 0, sizeof(EVEForm));
-    eve_page_init(&form->p, window, stack, NULL, 0, EVE_PAGE_OPT_SCROLL_Y | EVE_PAGE_OPT_SCROLL_BACK | EVE_PAGE_OPT_TRACK_EXT_Y, eve_page_draw, eve_page_touch, eve_form_uievt, (eve_page_destructor_t)destructor);
+    eve_page_init(&form->p, window, stack, NULL, 0, EVE_PAGE_OPT_SCROLL_Y | EVE_PAGE_OPT_SCROLL_BACK | EVE_PAGE_OPT_TRACK_EXT_Y, eve_page_draw, eve_page_touch, (eve_view_uievt_t)uievt, (eve_page_destructor_t)destructor);
     form->action = action;
     eve_form_update(form, widget, widget_size);
 }
@@ -131,9 +132,7 @@ void eve_form_destroy(EVEForm *form) {
     eve_free(form);
 }
 
-int eve_form_uievt(EVEView *view, uint16_t evt, void *param) {
-    EVEForm *form = (EVEForm *)view;
-
+int eve_form_uievt(EVEForm *form, uint16_t evt, void *param) {
     switch (evt) {
         case EVE_UIEVT_WIDGET_UPDATE_G:
             form_update_g(form, (EVEWidget *)param);

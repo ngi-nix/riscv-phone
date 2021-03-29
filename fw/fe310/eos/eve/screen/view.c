@@ -81,7 +81,7 @@ void eve_view_uievt_push(EVEView *view, uint16_t evt, void *param) {
     if (view->uievt) view->uievt(view, evt, param);
 }
 
-int eve_view_uievt_tpush(EVEView *view, uint16_t evt, EVETouch *touch, uint16_t t_evt, uint8_t tag0) {
+int eve_view_uievt_pusht(EVEView *view, uint16_t evt, EVETouch *touch, uint16_t t_evt, uint8_t tag0) {
     if (view->uievt) {
         EVEUIEvtTouch param;
 

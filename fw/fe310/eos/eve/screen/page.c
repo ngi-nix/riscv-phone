@@ -25,10 +25,8 @@ void eve_page_init(EVEPage *page, EVEWindow *window, EVEViewStack *stack, EVEWid
 }
 
 void eve_page_update(EVEPage *page, EVEWidget *widget, uint16_t widget_size) {
-    if (widget) {
-        page->widget = widget;
-        page->widget_size = widget_size;
-    }
+    page->widget = widget;
+    page->widget_size = widget_size;
 }
 
 void eve_page_open(EVEPage *parent, eve_view_constructor_t constructor) {
@@ -45,6 +43,8 @@ void eve_page_close(EVEPage *page) {
     EVEViewStack *stack = page->stack;
     eve_page_destructor_t destructor = page->destructor;
 
+    if (stack->level <= 1) return;
+
     if (page->lho_t0) {
         page->lho_t0 = 0;
         eve_touch_timer_stop();
@@ -52,11 +52,10 @@ void eve_page_close(EVEPage *page) {
     if (eve_window_scroll(window->root, NULL) == window) {
         eve_window_scroll_stop(window);
     }
-    if (stack->level > 1) {
-        if (destructor) destructor(page);
-        eve_window_kbd_detach(window);
-        eve_view_destroy(window, stack);
-    }
+
+    if (destructor) destructor(page);
+    eve_window_kbd_detach(window);
+    eve_view_destroy(window, stack);
 }
 
 /* Screen to page coordinates */
@@ -168,7 +167,11 @@ static int page_touch(EVEPage *page, EVETouch *touch, uint16_t evt, uint8_t tag0
     scroll = scroll_x || scroll_y;
 
     if ((evt & EVE_TOUCH_ETYPE_POINT_UP) && !(touch->eevt & (EVE_TOUCH_EETYPE_TRACK_XY | EVE_TOUCH_EETYPE_ABORT))) {
+        int _ret = 0;
+
         if (page->widget_f) eve_page_focus_widget(page, NULL, NULL);
+        _ret = eve_view_uievt_pusht(view, EVE_UIEVT_PAGE_TOUCH, touch, evt, tag0);
+        if (_ret) return _ret;
         ret = 1;
     }
 
@@ -179,10 +182,10 @@ static int page_touch(EVEPage *page, EVETouch *touch, uint16_t evt, uint8_t tag0
         if (scroll) {
             page->track_mode = PAGE_TMODE_SCROLL;
             eve_window_scroll_start(window, touch->tracker.tag);
-            _ret = eve_view_uievt_tpush(view, EVE_UIEVT_PAGE_SCROLL_START, touch, evt, tag0);
+            _ret = eve_view_uievt_pusht(view, EVE_UIEVT_PAGE_SCROLL_START, touch, evt, tag0);
         } else {
             page->track_mode = PAGE_TMODE_TRACK;
-            _ret = eve_view_uievt_tpush(view, EVE_UIEVT_PAGE_TRACK_START, touch, evt, tag0);
+            _ret = eve_view_uievt_pusht(view, EVE_UIEVT_PAGE_TRACK_START, touch, evt, tag0);
         }
         if (_ret) return _ret;
         ret = 1;
@@ -221,10 +224,10 @@ static int page_touch(EVEPage *page, EVETouch *touch, uint16_t evt, uint8_t tag0
             if (page->track_mode == PAGE_TMODE_SCROLL) {
                 page->track_mode = PAGE_TMODE_NONE;
                 eve_window_scroll_stop(window);
-                _ret = eve_view_uievt_tpush(view, EVE_UIEVT_PAGE_SCROLL_STOP, touch, evt, tag0);
+                _ret = eve_view_uievt_pusht(view, EVE_UIEVT_PAGE_SCROLL_STOP, touch, evt, tag0);
             } else if (!(touch->eevt & EVE_TOUCH_EETYPE_ABORT)) {
                 page->track_mode = PAGE_TMODE_NONE;
-                _ret = eve_view_uievt_tpush(view, EVE_UIEVT_PAGE_TRACK_STOP, touch, evt, tag0);
+                _ret = eve_view_uievt_pusht(view, EVE_UIEVT_PAGE_TRACK_STOP, touch, evt, tag0);
             }
             if (_ret) return _ret;
             ret = 1;
@@ -263,7 +266,7 @@ static int page_touch(EVEPage *page, EVETouch *touch, uint16_t evt, uint8_t tag0
                 eve_touch_timer_stop();
                 page->track_mode = PAGE_TMODE_NONE;
                 eve_window_scroll_stop(window);
-                _ret = eve_view_uievt_tpush(view, EVE_UIEVT_PAGE_SCROLL_STOP, touch, evt, tag0);
+                _ret = eve_view_uievt_pusht(view, EVE_UIEVT_PAGE_SCROLL_STOP, touch, evt, tag0);
                 if (_ret) return _ret;
             }
             ret = 1;
