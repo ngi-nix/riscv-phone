@@ -13,7 +13,6 @@
 #include "wifi.h"
 #include "sock.h"
 #include "power.h"
-#include "bq25895.h"
 
 #define ESP_INTR_FLAG_DEFAULT   0
 
@@ -38,9 +37,6 @@ void app_main() {
     eos_sock_init();
 
     eos_power_init();
-
-    eos_i2c_init();
-    eos_bq25895_set_ilim();
 }
 
 

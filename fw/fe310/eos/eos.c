@@ -11,6 +11,7 @@
 #include "wifi.h"
 #include "cell.h"
 #include "sock.h"
+#include "i2c/bq25895.h"
 #include "eve/eve.h"
 
 #include "eos.h"
@@ -33,6 +34,7 @@ void eos_init(void) {
     eos_cell_init();
     eos_sock_init();
     eos_spi_dev_init();
+    eos_bq25895_init();
 
     eos_net_wake(wakeup_cause);
 

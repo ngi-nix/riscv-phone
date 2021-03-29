@@ -1,0 +1,17 @@
+include ../../common.mk
+
+CFLAGS += -I..
+
+obj = bq25895.o
+
+
+%.o: %.c %.h
+	$(CC) $(CFLAGS) -c $<
+
+%.o: %.S
+	$(CC) $(CFLAGS) -c $<
+
+all: $(obj)
+
+clean:
+	rm -f *.o
