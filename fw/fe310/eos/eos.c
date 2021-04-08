@@ -7,6 +7,7 @@
 #include "i2s.h"
 #include "uart.h"
 #include "spi.h"
+#include "spi_dev.h"
 #include "net.h"
 #include "wifi.h"
 #include "cell.h"
@@ -28,6 +29,7 @@ void eos_init(void) {
     eos_i2s_init();
     eos_uart_init();
     eos_spi_init();
+    eos_spi_dev_init();
     eos_net_init();
     eos_power_init();
     eos_wifi_init();

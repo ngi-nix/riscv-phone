@@ -7,6 +7,8 @@
 #include "eos.h"
 #include "event.h"
 #include "timer.h"
+#include "spi.h"
+#include "spi_dev.h"
 #include "net.h"
 #include "eve/eve.h"
 

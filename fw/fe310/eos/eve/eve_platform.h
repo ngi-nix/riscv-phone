@@ -1,6 +1,7 @@
 #include <stdint.h>
 
 #include "spi.h"
+#include "spi_dev.h"
 #include "timer.h"
 
 #define EVE_ETYPE_INTR      1

@@ -11,18 +11,24 @@
 
 #include "board.h"
 
-#include "net.h"
 #include "spi.h"
 #include "spi_priv.h"
+
+#define SPI_MODE0               0x00
+#define SPI_MODE1               0x01
+#define SPI_MODE2               0x02
+#define SPI_MODE3               0x03
+
+#define SPI_FLAG_XCHG           0x10
+
+#define SPI_IOF_MASK            (((uint32_t)1 << IOF_SPI1_SCK) | ((uint32_t)1 << IOF_SPI1_MOSI) | ((uint32_t)1 << IOF_SPI1_MISO)) | SPI_IOF_MASK_CS
 
 #define MIN(X, Y)               (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y)               (((X) > (Y)) ? (X) : (Y))
 
-static uint8_t spi_dev;
 static uint8_t spi_cspin;
-static uint8_t spi_lock;
-static uint16_t spi_div[EOS_SPI_MAX_DEV];
 static volatile uint8_t spi_state_flags;
+static unsigned char spi_evt;
 static unsigned char spi_in_xchg;
 
 static uint32_t spi_state_len = 0;
@@ -30,11 +36,11 @@ static uint32_t spi_state_idx_tx = 0;
 static uint32_t spi_state_idx_rx = 0;
 static unsigned char *spi_state_buf = NULL;
 
-static eos_evt_handler_t evt_handler[EOS_SPI_MAX_DEV];
+static eos_evt_handler_t evt_handler[EOS_SPI_MAX_EVT];
 
 static void spi_handle_evt(unsigned char type, unsigned char *buffer, uint16_t len) {
     unsigned char idx = (type & ~EOS_EVT_MASK) - 1;
-    if (idx < EOS_SPI_MAX_DEV) {
+    if (idx < EOS_SPI_MAX_EVT) {
         evt_handler[idx](type, buffer, len);
     } else {
         eos_evtq_bad_handler(type, buffer, len);
@@ -44,7 +50,7 @@ static void spi_handle_evt(unsigned char type, unsigned char *buffer, uint16_t l
 void eos_spi_init(void) {
     int i;
 
-    for (i=0; i<EOS_SPI_MAX_DEV; i++) {
+    for (i=0; i<EOS_SPI_MAX_EVT; i++) {
         evt_handler[i] = eos_evtq_bad_handler;
     }
     eos_evtq_set_handler(EOS_EVT_SPI, spi_handle_evt);
@@ -61,80 +67,30 @@ void eos_spi_init(void) {
 
     // There is no way here to change the CS polarity.
     // SPI1_REG(SPI_REG_CSDEF) = 0xFFFF;
-
-    for (i=0; i<EOS_SPI_MAX_DEV; i++) {
-        spi_div[i] = spi_cfg[i].div;
-        if (spi_cfg[i].csid == SPI_CSID_NONE) {
-            GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << spi_cfg[i].cspin);
-            GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << spi_cfg[i].cspin);
-            GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << spi_cfg[i].cspin);
-            GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << spi_cfg[i].cspin);
-            GPIO_REG(GPIO_OUTPUT_VAL)   |=  (1 << spi_cfg[i].cspin);
-        }
-    }
 }
 
-int eos_spi_select(unsigned char dev) {
-    if (dev == EOS_SPI_DEV_NET) return EOS_ERR;
-    if (spi_dev != EOS_SPI_DEV_NET) return EOS_ERR;
-
-    eos_net_stop();
+void eos_spi_start(uint8_t div, uint8_t csid, uint8_t cspin, unsigned char evt) {
     spi_state_flags = 0;
-    SPI1_REG(SPI_REG_SCKDIV) = spi_div[dev];
-    SPI1_REG(SPI_REG_CSID) = spi_cfg[dev].csid;
-    if (spi_cfg[dev].csid != SPI_CSID_NONE) {
+    spi_evt = evt;
+    SPI1_REG(SPI_REG_SCKDIV) = div;
+    SPI1_REG(SPI_REG_CSID) = csid;
+    if (csid != SPI_CSID_NONE) {
         SPI1_REG(SPI_REG_CSMODE) = SPI_CSMODE_AUTO;
     } else {
         SPI1_REG(SPI_REG_CSMODE) = SPI_CSMODE_OFF;
-        spi_cspin = spi_cfg[dev].cspin;
+        spi_cspin = cspin;
     }
     eos_intr_set_handler(INT_SPI1_BASE, eos_spi_handle_xchg);
-
-    return EOS_OK;
 }
 
-int eos_spi_deselect(void) {
-    if (spi_dev == EOS_SPI_DEV_NET) return EOS_ERR;
-    if (spi_lock) return EOS_ERR_BUSY;
-
+void eos_spi_stop(void) {
     eos_spi_flush();
-    eos_net_start();
-    spi_dev = EOS_SPI_DEV_NET;
-
-    return EOS_OK;
+    spi_evt = 0;
 }
 
-uint8_t eos_spi_dev(void) {
-    return spi_dev;
-}
-
-uint16_t eos_spi_div(unsigned char dev) {
-    return spi_div[dev];
-}
-
-uint16_t eos_spi_csid(unsigned char dev) {
-    return spi_cfg[dev].csid;
-}
-
-uint16_t eos_spi_cspin(unsigned char dev) {
-    return spi_cfg[dev].cspin;
-}
-
-void eos_spi_lock(void) {
-    spi_lock = 1;
-}
-
-void eos_spi_unlock(void) {
-    spi_lock = 0;
-}
-
-void eos_spi_set_div(unsigned char dev, uint16_t div) {
-    spi_div[dev] = div;
-}
-
-void eos_spi_set_handler(unsigned char dev, eos_evt_handler_t handler) {
+void eos_spi_set_handler(unsigned char evt, eos_evt_handler_t handler) {
     if (handler == NULL) handler = eos_evtq_bad_handler;
-    if (dev && (dev <= EOS_SPI_MAX_DEV)) evt_handler[dev - 1] = handler;
+    if (evt && (evt <= EOS_SPI_MAX_EVT)) evt_handler[evt - 1] = handler;
 }
 
 void _eos_spi_xchg_init(unsigned char *buffer, uint16_t len, uint8_t flags) {
@@ -192,7 +148,7 @@ void eos_spi_handle_xchg(void) {
             spi_state_flags &= ~SPI_FLAG_XCHG;
             if (!(spi_state_flags & EOS_SPI_FLAG_MORE)) eos_spi_cs_clear();
             SPI1_REG(SPI_REG_IE) = 0x0;
-            if (spi_dev != EOS_SPI_DEV_NET) eos_evtq_push_isr(EOS_EVT_SPI | spi_dev, spi_state_buf, spi_state_len);
+            if (spi_evt) eos_evtq_push_isr(EOS_EVT_SPI | spi_evt, spi_state_buf, spi_state_len);
         } else {
             SPI1_REG(SPI_REG_RXCTRL) = SPI_RXWM(MIN(spi_state_len - spi_state_idx_rx - 1, SPI_SIZE_WM - 1));
             SPI1_REG(SPI_REG_IE) = SPI_IP_RXWM;

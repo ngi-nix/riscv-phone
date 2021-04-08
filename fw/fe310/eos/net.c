@@ -15,6 +15,7 @@
 
 #include "spi.h"
 #include "spi_priv.h"
+#include "spi_dev.h"
 
 #include "net.h"
 

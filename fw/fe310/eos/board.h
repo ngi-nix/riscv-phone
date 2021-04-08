@@ -13,6 +13,8 @@
 #define SPI_CSPIN_SDC           SPI_CSPIN_NONE
 #define SPI_CSPIN_CAM           23
 
+#define SPI_IOF_MASK_CS         (((uint32_t)1 << IOF_SPI1_SS0) | ((uint32_t)1 << IOF_SPI1_SS2) | ((uint32_t)1 << IOF_SPI1_SS3))
+
 #define NET_PIN_RTS             20
 #define NET_PIN_CTS             22
 
