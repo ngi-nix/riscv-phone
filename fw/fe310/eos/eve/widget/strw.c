@@ -90,7 +90,7 @@ static EVEStrCursor *cursor_prox(EVEStrWidget *widget, EVEStrCursor *cursor, EVE
     return NULL;
 }
 
-static void _draw_str(EVEStrWidget *widget, uint16_t ch, uint16_t len, uint16_t x1, uint16_t x2, char s) {
+static void draw_string(EVEStrWidget *widget, uint16_t ch, uint16_t len, uint16_t x1, uint16_t x2, char s) {
     int16_t x;
     EVEWidget *_widget = &widget->w;
     EVEPage *page = _widget->page;
@@ -116,7 +116,7 @@ static void _draw_str(EVEStrWidget *widget, uint16_t ch, uint16_t len, uint16_t 
     }
 }
 
-static void _draw_cursor(EVEStrWidget *widget, EVEStrCursor *cursor) {
+static void draw_cursor(EVEStrWidget *widget, EVEStrCursor *cursor) {
     uint16_t x, y;
     EVEWidget *_widget = &widget->w;
 
@@ -187,12 +187,12 @@ uint8_t eve_strw_draw(EVEWidget *_widget, uint8_t tag0) {
         l1 = c1->ch;
         l2 = c2->ch - c1->ch;
         l3 = widget->str_len - c2->ch;
-        _draw_str(widget, 0, l1, 0, c1->x, 0);
-        _draw_str(widget, c1->ch, l2, c1->x, c2->x, 1);
-        _draw_str(widget, c2->ch, l3, c2->x, widget->str_g.x + _widget->g.w, 0);
+        draw_string(widget, 0, l1, 0, c1->x, 0);
+        draw_string(widget, c1->ch, l2, c1->x, c2->x, 1);
+        draw_string(widget, c2->ch, l3, c2->x, widget->str_g.x + _widget->g.w, 0);
     } else {
-        if (widget->cursor1.on) _draw_cursor(widget, &widget->cursor1);
-        _draw_str(widget, 0, widget->str_len, 0, widget->str_g.x + _widget->g.w, 0);
+        if (widget->cursor1.on) draw_cursor(widget, &widget->cursor1);
+        draw_string(widget, 0, widget->str_len, 0, widget->str_g.x + _widget->g.w, 0);
     }
 
     if (cut) {

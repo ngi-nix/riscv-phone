@@ -68,7 +68,7 @@ int eve_window_visible(EVEWindow *window) {
     return 1;
 }
 
-static void _window_visible_g(EVEWindow *w, EVERect *g) {
+static void window_visible_g(EVEWindow *w, EVERect *g) {
     while (w) {
         if (eve_window_visible(w)) {
             if (w->g.x > g->x) g->w = MIN(g->w, w->g.x - g->x);
@@ -84,15 +84,15 @@ static void _window_visible_g(EVEWindow *w, EVERect *g) {
                 g->h -= y0;
             }
         }
-        if (w->child_head) _window_visible_g(w->child_head, g);
+        if (w->child_head) window_visible_g(w->child_head, g);
         w = w->next;
     }
 }
 
 void eve_window_visible_g(EVEWindow *window, EVERect *g) {
     *g = window->g;
-    if (window->child_head) _window_visible_g(window->child_head, g);
-    _window_visible_g(window->next, g);
+    if (window->child_head) window_visible_g(window->child_head, g);
+    window_visible_g(window->next, g);
 }
 
 void eve_window_append(EVEWindow *window) {

@@ -10,7 +10,6 @@
 #include "event.h"
 
 #include "uart.h"
-#include "irq_def.h"
 
 static eos_uart_handler_t uart_handler[EOS_UART_MAX_ETYPE];
 

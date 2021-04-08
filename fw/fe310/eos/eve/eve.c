@@ -6,15 +6,15 @@
 
 #define EVE_MEM_WRITE           0x800000
 
-static char _cmd_burst;
-static uint16_t _cmd_offset;
+static char cmd_burst;
+static uint16_t cmd_offset;
 
-static char _dl_burst;
-static uint32_t _dl_addr;
+static char dl_burst;
+static uint32_t dl_addr;
 
-static uint32_t *_touch_calib;
-static uint8_t _brigtness;
-static uint8_t _power_state;
+static uint32_t *touch_calib;
+static uint8_t brigtness;
+static uint8_t power_state;
 
 void eve_command(uint8_t command, uint8_t parameter) {
     eve_spi_cs_set();
@@ -95,13 +95,13 @@ void eve_writeb(uint32_t addr, uint8_t *b, size_t size) {
     eve_spi_cs_clear();
 }
 
-static void _dl_inc(uint32_t i) {
-    _dl_addr += i;
+static void dl_inc(uint32_t i) {
+    dl_addr += i;
 }
 
 void eve_dl_start(uint32_t addr, char burst) {
-    _dl_addr = addr;
-    _dl_burst = burst;
+    dl_addr = addr;
+    dl_burst = burst;
     if (burst) {
         eve_spi_lock();
         eve_spi_cs_set();
@@ -110,20 +110,20 @@ void eve_dl_start(uint32_t addr, char burst) {
 }
 
 void eve_dl_write(uint32_t dl) {
-    if (_dl_burst) {
+    if (dl_burst) {
         eve_spi_xchg32(dl, EVE_SPI_FLAG_TX | EVE_SPI_FLAG_BSWAP);
     } else {
-        eve_write32(_dl_addr, dl);
+        eve_write32(dl_addr, dl);
     }
-    _dl_inc(4);
+    dl_inc(4);
 }
 
 void eve_dl_end(void) {
-    if (_dl_burst) {
+    if (dl_burst) {
         eve_spi_flush();
         eve_spi_cs_clear();
         eve_spi_unlock();
-        _dl_burst = 0;
+        dl_burst = 0;
     }
 }
 
@@ -132,33 +132,33 @@ void eve_dl_swap(void) {
 }
 
 uint32_t eve_dl_get_addr(void) {
-    return _dl_addr;
+    return dl_addr;
 }
 
-static void _cmd_inc(uint16_t i) {
-    _cmd_offset += i;
-    _cmd_offset &= 0x0fff;
+static void cmd_inc(uint16_t i) {
+    cmd_offset += i;
+    cmd_offset &= 0x0fff;
 }
 
-static void _cmd_begin(uint32_t command) {
+static void cmd_begin(uint32_t command) {
     uint8_t flags = 0;
 
-    if (_cmd_burst) {
+    if (cmd_burst) {
         flags = EVE_SPI_FLAG_TX;
     } else {
-        uint32_t addr = EVE_RAM_CMD + _cmd_offset;
+        uint32_t addr = EVE_RAM_CMD + cmd_offset;
         eve_spi_cs_set();
         eve_spi_xchg24(addr | EVE_MEM_WRITE, 0);
     }
     eve_spi_xchg32(command, EVE_SPI_FLAG_BSWAP | flags);
-    _cmd_inc(4);
+    cmd_inc(4);
 }
 
-static void _cmd_end(void) {
-    if (!_cmd_burst) eve_spi_cs_clear();
+static void cmd_end(void) {
+    if (!cmd_burst) eve_spi_cs_clear();
 }
 
-static void _cmd_string(const char *s, uint8_t flags) {
+static void cmd_string(const char *s, uint8_t flags) {
     int i = 0;
 
     while (s[i] != 0) {
@@ -167,68 +167,68 @@ static void _cmd_string(const char *s, uint8_t flags) {
     }
     eve_spi_xchg8(0, flags);
     i++;
-    _cmd_inc(i);
+    cmd_inc(i);
 }
 
-static void _cmd_buffer(const char *b, int size, uint8_t flags) {
+static void cmd_buffer(const char *b, int size, uint8_t flags) {
     int i = 0;
 
     for (i=0; i<size; i++) {
         eve_spi_xchg8(b[i], flags);
     }
-    _cmd_inc(size);
+    cmd_inc(size);
 }
 
 void eve_cmd(uint32_t cmd, const char *fmt, ...) {
-    uint8_t flags = _cmd_burst ? (EVE_SPI_FLAG_TX | EVE_SPI_FLAG_BSWAP) : EVE_SPI_FLAG_BSWAP;
+    uint8_t flags = cmd_burst ? (EVE_SPI_FLAG_TX | EVE_SPI_FLAG_BSWAP) : EVE_SPI_FLAG_BSWAP;
     va_list argv;
     uint16_t *p;
     int i = 0;
 
     va_start(argv, fmt);
-    _cmd_begin(cmd);
+    cmd_begin(cmd);
     while (fmt[i]) {
         switch (fmt[i]) {
             case 'b':
                 eve_spi_xchg8(va_arg(argv, int), flags);
-                _cmd_inc(1);
+                cmd_inc(1);
                 break;
             case 'h':
                 eve_spi_xchg16(va_arg(argv, int), flags);
-                _cmd_inc(2);
+                cmd_inc(2);
                 break;
             case 'w':
                 eve_spi_xchg32(va_arg(argv, int), flags);
-                _cmd_inc(4);
+                cmd_inc(4);
                 break;
             case '&':
                 p = va_arg(argv, uint16_t *);
-                *p = _cmd_offset;
+                *p = cmd_offset;
                 eve_spi_xchg32(0, flags);
-                _cmd_inc(4);
+                cmd_inc(4);
                 break;
             case 's':
-                _cmd_string(va_arg(argv, const char *), flags);
+                cmd_string(va_arg(argv, const char *), flags);
                 break;
             case 'p':
-                _cmd_buffer(va_arg(argv, const char *), va_arg(argv, int), flags);
+                cmd_buffer(va_arg(argv, const char *), va_arg(argv, int), flags);
                 break;
         }
         i++;
     }
     va_end(argv);
     /* padding */
-    i = _cmd_offset & 3;  /* equivalent to _cmd_offset % 4 */
+    i = cmd_offset & 3;  /* equivalent to cmd_offset % 4 */
     if (i) {
         i = 4 - i;  /* 3, 2 or 1 */
-        _cmd_inc(i);
+        cmd_inc(i);
 
         while (i > 0) {
             eve_spi_xchg8(0, flags);
             i--;
         }
     }
-    _cmd_end();
+    cmd_end();
 }
 
 uint32_t eve_cmd_result(uint16_t offset) {
@@ -236,14 +236,14 @@ uint32_t eve_cmd_result(uint16_t offset) {
 }
 
 void eve_cmd_dl(uint32_t dl) {
-    _cmd_begin(dl);
-    _cmd_end();
+    cmd_begin(dl);
+    cmd_end();
 }
 
 int eve_cmd_done(void) {
     uint16_t r = eve_read16(REG_CMD_READ);
     if (r == 0xfff) {
-        _cmd_offset = 0;
+        cmd_offset = 0;
         eve_write8(REG_CPURESET, 1);
         eve_write16(REG_CMD_READ, 0);
         eve_write16(REG_CMD_WRITE, 0);
@@ -251,11 +251,11 @@ int eve_cmd_done(void) {
         eve_write8(REG_CPURESET, 0);
         return -1;
     }
-    return (r == _cmd_offset);
+    return (r == cmd_offset);
 }
 
 int eve_cmd_exec(int w) {
-    eve_write16(REG_CMD_WRITE, _cmd_offset);
+    eve_write16(REG_CMD_WRITE, cmd_offset);
     if (w) {
         int r;
         do {
@@ -267,46 +267,46 @@ int eve_cmd_exec(int w) {
 }
 
 void eve_cmd_burst_start(void) {
-    uint32_t addr = EVE_RAM_CMD + _cmd_offset;
+    uint32_t addr = EVE_RAM_CMD + cmd_offset;
     eve_spi_lock();
     eve_spi_cs_set();
     eve_spi_xchg24(addr | EVE_MEM_WRITE, EVE_SPI_FLAG_TX);
-    _cmd_burst = 1;
+    cmd_burst = 1;
 }
 
 void eve_cmd_burst_end(void) {
     eve_spi_flush();
     eve_spi_cs_clear();
     eve_spi_unlock();
-    _cmd_burst = 0;
+    cmd_burst = 0;
 }
 
 void eve_active(void) {
     eve_command(EVE_ACTIVE, 0);
-    if (_power_state == EVE_PSTATE_SLEEP) eve_time_sleep(40);
+    if (power_state == EVE_PSTATE_SLEEP) eve_time_sleep(40);
 
-    eve_write8(REG_PWM_DUTY, _brigtness);
-    if (_power_state != EVE_PSTATE_SLEEP) return;
+    eve_write8(REG_PWM_DUTY, brigtness);
+    if (power_state != EVE_PSTATE_SLEEP) return;
 
     eve_write8(REG_TOUCH_MODE, EVE_TMODE_CONTINUOUS);
     eve_write8(REG_CTOUCH_EXTENDED, 0x00);
 
-    _power_state = EVE_PSTATE_ACTIVE;
+    power_state = EVE_PSTATE_ACTIVE;
 }
 
 void eve_standby(void) {
-    if (_power_state != EVE_PSTATE_ACTIVE) return;
+    if (power_state != EVE_PSTATE_ACTIVE) return;
 
-    _brigtness = eve_read8(REG_PWM_DUTY);
+    brigtness = eve_read8(REG_PWM_DUTY);
     eve_command(EVE_STANDBY, 0);
 
-    _power_state = EVE_PSTATE_STANDBY;
+    power_state = EVE_PSTATE_STANDBY;
 }
 
 void eve_sleep(void) {
-    if (_power_state != EVE_PSTATE_ACTIVE) return;
+    if (power_state != EVE_PSTATE_ACTIVE) return;
 
-    _brigtness = eve_read8(REG_PWM_DUTY);
+    brigtness = eve_read8(REG_PWM_DUTY);
     eve_write8(REG_PWM_DUTY, 0x0);
 
     eve_write8(REG_CTOUCH_EXTENDED, 0x01);
@@ -315,7 +315,7 @@ void eve_sleep(void) {
     eve_time_sleep(500);
     eve_command(EVE_SLEEP, 0);
 
-    _power_state = EVE_PSTATE_SLEEP;
+    power_state = EVE_PSTATE_SLEEP;
 }
 
 void eve_brightness(uint8_t b) {
@@ -323,7 +323,7 @@ void eve_brightness(uint8_t b) {
 }
 
 void eve_set_touch_calibration(uint32_t *matrix) {
-    _touch_calib = matrix;
+    touch_calib = matrix;
 }
 
 static int _init(void) {
@@ -382,13 +382,13 @@ static int _init(void) {
     eve_write8(REG_TOUCH_MODE, EVE_TMODE_CONTINUOUS);       /* enable touch */
     eve_write16(REG_TOUCH_RZTHRESH, EVE_TOUCH_RZTHRESH);    /* eliminate any false touches */
 
-    if (_touch_calib) {
-        eve_write32(REG_TOUCH_TRANSFORM_A, _touch_calib[0]);
-        eve_write32(REG_TOUCH_TRANSFORM_B, _touch_calib[1]);
-        eve_write32(REG_TOUCH_TRANSFORM_C, _touch_calib[2]);
-        eve_write32(REG_TOUCH_TRANSFORM_D, _touch_calib[3]);
-        eve_write32(REG_TOUCH_TRANSFORM_E, _touch_calib[4]);
-        eve_write32(REG_TOUCH_TRANSFORM_F, _touch_calib[5]);
+    if (touch_calib) {
+        eve_write32(REG_TOUCH_TRANSFORM_A, touch_calib[0]);
+        eve_write32(REG_TOUCH_TRANSFORM_B, touch_calib[1]);
+        eve_write32(REG_TOUCH_TRANSFORM_C, touch_calib[2]);
+        eve_write32(REG_TOUCH_TRANSFORM_D, touch_calib[3]);
+        eve_write32(REG_TOUCH_TRANSFORM_E, touch_calib[4]);
+        eve_write32(REG_TOUCH_TRANSFORM_F, touch_calib[5]);
     } else {
         uint32_t touch_calib[6];
         eve_cmd_dl(CMD_DLSTART);
@@ -427,7 +427,7 @@ int eve_init(int pwr_on) {
         int rv = _init();
         if (rv) return rv;
     } else {
-        _power_state = EVE_PSTATE_SLEEP;
+        power_state = EVE_PSTATE_SLEEP;
         eve_active();
     }
 

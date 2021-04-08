@@ -21,30 +21,16 @@
 #define SPI1_CTRL_ADDR    0x10024000
 #include "sifive/devices/spi.h"
 
-#include "evt_def.h"
-#include "msgq_def.h"
-#include "i2s_def.h"
-
 #define INT_PWM0_BASE     40
 #define INT_PWM1_BASE     44
 #define INT_PWM2_BASE     48
 
-#define I2S_PWM_CTRL_ADDR_CK      PWM0_CTRL_ADDR
-#define I2S_PWM_CTRL_ADDR_WS_MIC  PWM1_CTRL_ADDR
-#define I2S_PWM_CTRL_ADDR_WS_SPK  PWM2_CTRL_ADDR
-
-#define IOF_SPI1_SS0      2
-#define IOF_SPI1_SS1      8
-#define IOF_SPI1_SS2      9
-#define IOF_SPI1_SS3      10
-
-#define INT_SPI1_BASE     6
-#define INT_GPIO_BASE     8
-
-#include "net_def.h"
-#include "spi_def.h"
+#include "board.h"
 #include "irq_def.h"
-
+#include "evt_def.h"
+#include "i2s_def.h"
+#include "i2s_priv.h"
+#include "msgq_priv.h"
 
   .section      .data.entry
   .align 4
@@ -99,7 +85,7 @@ evtq_push:
 
 i2s_handle_sd:
   # exit if too early
-  li x18, I2S_PWM_CTRL_ADDR_WS_SPK
+  li x18, I2S_CTRL_ADDR_WS_SPK
   lw x8, PWM_COUNT(x18)
   lw x9, PWM_CMP3(x18)
   bltu x8, x9, i2s_handle_sd_exit
@@ -156,7 +142,7 @@ i2s_abuf_pop:
   # push to event queue
   jal x22, evtq_push
   beqz x21, i2s_decode
-  li x18, (EOS_EVT_I2S | I2S_ETYPE_SPK)
+  li x18, (EOS_EVT_I2S | EOS_I2S_ETYPE_SPK)
   sb x18, MSGQ_ITEM_OFF_TYPE(x21)
 
 i2s_decode:
@@ -349,7 +335,7 @@ i2s_abuf_push:
   # push to event queue
   jal x22, evtq_push
   beqz x21, i2s_handle_sd_exit
-  li x18, (EOS_EVT_I2S | I2S_ETYPE_MIC)
+  li x18, (EOS_EVT_I2S | EOS_I2S_ETYPE_MIC)
   sb x18, MSGQ_ITEM_OFF_TYPE(x21)
 
 i2s_handle_sd_exit:
@@ -387,9 +373,9 @@ _eos_i2s_start_pwm:
   STORE x22, 6*REGBYTES(sp)
   STORE x23, 7*REGBYTES(sp)
 
-  li x18, I2S_PWM_CTRL_ADDR_CK
-  li x19, I2S_PWM_CTRL_ADDR_WS_MIC
-  li x20, I2S_PWM_CTRL_ADDR_WS_SPK
+  li x18, I2S_CTRL_ADDR_CK
+  li x19, I2S_CTRL_ADDR_WS_MIC
+  li x20, I2S_CTRL_ADDR_WS_SPK
   li x21, PWM_CFG_ENALWAYS | PWM_CFG_ZEROCMP | I2S_PWM_SCALE_CK
   li x22, PWM_CFG_ENALWAYS | PWM_CFG_ZEROCMP | PWM_CFG_CMP2GANG
   li x23, PWM_CFG_ENALWAYS | PWM_CFG_ZEROCMP | PWM_CFG_CMP1GANG

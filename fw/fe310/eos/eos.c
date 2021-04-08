@@ -33,7 +33,6 @@ void eos_init(void) {
     eos_wifi_init();
     eos_cell_init();
     eos_sock_init();
-    eos_spi_dev_init();
     eos_bq25895_init();
 
     eos_net_wake(wakeup_cause);

@@ -9,13 +9,14 @@
 #include "interrupt.h"
 #include "event.h"
 
-#include "i2s.h"
-#include "i2s_def.h"
-#include "irq_def.h"
+#include "board.h"
 
-#define I2S_PWM_REG_CK      PWM0_REG
-#define I2S_PWM_REG_WS_MIC  PWM1_REG
-#define I2S_PWM_REG_WS_SPK  PWM2_REG
+#include "i2s.h"
+#include "i2s_priv.h"
+
+#define I2S_REG_CK(o)       _REG32(I2S_CTRL_ADDR_CK, o)
+#define I2S_REG_WS_MIC(o)   _REG32(I2S_CTRL_ADDR_WS_MIC, o)
+#define I2S_REG_WS_SPK(o)   _REG32(I2S_CTRL_ADDR_WS_SPK, o)
 
 #define MIN(X, Y)           (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y)           (((X) > (Y)) ? (X) : (Y))
@@ -112,22 +113,22 @@ static void i2s_handle_evt(unsigned char type, unsigned char *buffer, uint16_t l
 }
 
 static void _mic_vol_set(uint8_t vol) {
-    I2S_PWM_REG_WS_MIC(PWM_CMP2) = i2s_clk_period * (vol + 1);
-    I2S_PWM_REG_WS_MIC(PWM_CMP3) = I2S_PWM_REG_WS_MIC(PWM_CMP2) + i2s_clk_period * 16;
+    I2S_REG_WS_MIC(PWM_CMP2) = i2s_clk_period * (vol + 1);
+    I2S_REG_WS_MIC(PWM_CMP3) = I2S_REG_WS_MIC(PWM_CMP2) + i2s_clk_period * 16;
 }
 
 static void _spk_vol_set(uint8_t vol) {
     int spk_cmp = vol + i2s_mic_volume - 16;
 
     if (spk_cmp <= 0) {
-        I2S_PWM_REG_WS_SPK(PWM_CMP1) = i2s_clk_period * (32 + spk_cmp);
-        I2S_PWM_REG_WS_SPK(PWM_CMP2) = i2s_clk_period * (64 + spk_cmp);
-        I2S_PWM_REG_WS_SPK(PWM_CMP3) = i2s_clk_period * 33;
+        I2S_REG_WS_SPK(PWM_CMP1) = i2s_clk_period * (32 + spk_cmp);
+        I2S_REG_WS_SPK(PWM_CMP2) = i2s_clk_period * (64 + spk_cmp);
+        I2S_REG_WS_SPK(PWM_CMP3) = i2s_clk_period * 33;
         GPIO_REG(GPIO_OUTPUT_XOR) &= ~(1 << I2S_PIN_WS_SPK);
     } else {
-        I2S_PWM_REG_WS_SPK(PWM_CMP1) = i2s_clk_period * spk_cmp;
-        I2S_PWM_REG_WS_SPK(PWM_CMP2) = i2s_clk_period * (32 + spk_cmp);
-        I2S_PWM_REG_WS_SPK(PWM_CMP3) = i2s_clk_period * (33 + spk_cmp);
+        I2S_REG_WS_SPK(PWM_CMP1) = i2s_clk_period * spk_cmp;
+        I2S_REG_WS_SPK(PWM_CMP2) = i2s_clk_period * (32 + spk_cmp);
+        I2S_REG_WS_SPK(PWM_CMP3) = i2s_clk_period * (33 + spk_cmp);
         GPIO_REG(GPIO_OUTPUT_XOR) |= (1 << I2S_PIN_WS_SPK);
     }
 }
@@ -179,21 +180,21 @@ void eos_i2s_init(void) {
 void eos_i2s_start(uint32_t sample_rate, unsigned char fmt) {
     i2s_clk_period = ((PRCI_get_cpu_freq() / (sample_rate * 64)) & ~I2S_PWM_SCALE_CK_MASK) + 1;
 
-    I2S_PWM_REG_CK(PWM_CMP0)            = i2s_clk_period >> I2S_PWM_SCALE_CK;
-    I2S_PWM_REG_CK(PWM_CMP1)            = I2S_PWM_REG_CK(PWM_CMP0) / 2;
-    I2S_PWM_REG_CK(PWM_CMP2)            = 0;
-    I2S_PWM_REG_CK(PWM_CMP3)            = 0;
+    I2S_REG_CK(PWM_CMP0)        = i2s_clk_period >> I2S_PWM_SCALE_CK;
+    I2S_REG_CK(PWM_CMP1)        = I2S_REG_CK(PWM_CMP0) / 2;
+    I2S_REG_CK(PWM_CMP2)        = 0;
+    I2S_REG_CK(PWM_CMP3)        = 0;
 
-    I2S_PWM_REG_WS_MIC(PWM_CMP0)        = i2s_clk_period * 64 - 1;
-    I2S_PWM_REG_WS_MIC(PWM_CMP1)        = i2s_clk_period * 32;
+    I2S_REG_WS_MIC(PWM_CMP0)    = i2s_clk_period * 64 - 1;
+    I2S_REG_WS_MIC(PWM_CMP1)    = i2s_clk_period * 32;
     _mic_vol_set(i2s_mic_volume);
 
-    I2S_PWM_REG_WS_SPK(PWM_CMP0)        = i2s_clk_period * 64 - 1;
+    I2S_REG_WS_SPK(PWM_CMP0)    = i2s_clk_period * 64 - 1;
     _spk_vol_set(i2s_spk_volume);
 
-    I2S_PWM_REG_CK(PWM_COUNT)           = 0;
-    I2S_PWM_REG_WS_MIC(PWM_COUNT)       = 0;
-    I2S_PWM_REG_WS_SPK(PWM_COUNT)       = i2s_clk_period / 2;
+    I2S_REG_CK(PWM_COUNT)       = 0;
+    I2S_REG_WS_MIC(PWM_COUNT)   = 0;
+    I2S_REG_WS_SPK(PWM_COUNT)   = i2s_clk_period / 2;
 
     _eos_i2s_fmt = fmt;
     _eos_i2s_mic_evt_enable = 1;
@@ -206,9 +207,9 @@ void eos_i2s_start(uint32_t sample_rate, unsigned char fmt) {
 
     _eos_i2s_start_pwm();
     /*
-    I2S_PWM_REG_CK(PWM_CFG)         = PWM_CFG_ENALWAYS | PWM_CFG_ZEROCMP | I2S_PWM_SCALE_CK;
-    I2S_PWM_REG_WS_MIC(PWM_CFG)     = PWM_CFG_ENALWAYS | PWM_CFG_ZEROCMP | PWM_CFG_CMP2GANG;
-    I2S_PWM_REG_WS_SPK(PWM_CFG)     = PWM_CFG_ENALWAYS | PWM_CFG_ZEROCMP | PWM_CFG_CMP1GANG;
+    I2S_REG_CK(PWM_CFG)         = PWM_CFG_ENALWAYS | PWM_CFG_ZEROCMP | I2S_PWM_SCALE_CK;
+    I2S_REG_WS_MIC(PWM_CFG)     = PWM_CFG_ENALWAYS | PWM_CFG_ZEROCMP | PWM_CFG_CMP2GANG;
+    I2S_REG_WS_SPK(PWM_CFG)     = PWM_CFG_ENALWAYS | PWM_CFG_ZEROCMP | PWM_CFG_CMP1GANG;
     */
 
     GPIO_REG(GPIO_INPUT_EN)     |=  (1 << I2S_PIN_SD_IN);
@@ -228,12 +229,12 @@ void eos_i2s_start(uint32_t sample_rate, unsigned char fmt) {
 }
 
 void eos_i2s_stop(void) {
-    I2S_PWM_REG_CK(PWM_CFG)         = 0;
-    I2S_PWM_REG_WS_MIC(PWM_CFG)     = 0;
-    I2S_PWM_REG_WS_SPK(PWM_CFG)     = 0;
-    I2S_PWM_REG_CK(PWM_COUNT)       = 0;
-    I2S_PWM_REG_WS_MIC(PWM_COUNT)   = 0;
-    I2S_PWM_REG_WS_SPK(PWM_COUNT)   = 0;
+    I2S_REG_CK(PWM_CFG)         = 0;
+    I2S_REG_WS_MIC(PWM_CFG)     = 0;
+    I2S_REG_WS_SPK(PWM_CFG)     = 0;
+    I2S_REG_CK(PWM_COUNT)       = 0;
+    I2S_REG_WS_MIC(PWM_COUNT)   = 0;
+    I2S_REG_WS_SPK(PWM_COUNT)   = 0;
 
     _eos_i2s_mic_evt_enable = 0;
     _eos_i2s_spk_evt_enable = 0;

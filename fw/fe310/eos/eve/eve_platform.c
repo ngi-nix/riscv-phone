@@ -5,10 +5,10 @@
 #include "eos.h"
 #include "interrupt.h"
 #include "event.h"
+
 #include "eve.h"
 #include "eve_platform.h"
 
-#include "irq_def.h"
 
 static void handle_time(unsigned char type) {
     eve_handle_time();
@@ -55,15 +55,15 @@ void eve_platform_init(void) {
     GPIO_REG(GPIO_LOW_IE)       |=  (1 << EVE_PIN_INTR);
     eos_intr_set(INT_GPIO_BASE + EVE_PIN_INTR, IRQ_PRIORITY_UI, handle_intr);
 
-    eos_spi_dev_set_div(EOS_DEV_DISP, 4);
+    eos_spi_set_div(EOS_SPI_DEV_EVE, 4);
 }
 
 void eve_spi_start(void) {
-    eos_spi_dev_select(EOS_DEV_DISP);
+    eos_spi_select(EOS_SPI_DEV_EVE);
 }
 
 void eve_spi_stop(void) {
-    eos_spi_dev_deselect();
+    eos_spi_deselect();
 }
 
 #include <stdio.h>

@@ -16,7 +16,7 @@
 
 #define DIVC(x,y)               ((x) / (y) + ((x) % (y) != 0))
 
-static int _selectw_verify(utf8_t *option, uint16_t option_size) {
+static int selectw_verify(utf8_t *option, uint16_t option_size) {
     int o_len;
     uint16_t o_curr;
     int rv;
@@ -32,7 +32,7 @@ static int _selectw_verify(utf8_t *option, uint16_t option_size) {
     return EVE_OK;
 }
 
-static int _selectw_count(EVESelectWidget *widget) {
+static int selectw_count(EVESelectWidget *widget) {
     int o_len;
     int o_curr;
     int i;
@@ -51,7 +51,7 @@ static int _selectw_count(EVESelectWidget *widget) {
     return i;
 }
 
-static void _selectw_update_sz(EVESelectWidget *widget, int uievt) {
+static void selectw_update_sz(EVESelectWidget *widget, int uievt) {
     EVEWidget *_widget = &widget->w;
     EVEPage *page = _widget->page;
 
@@ -81,12 +81,12 @@ void eve_selectw_init(EVESelectWidget *widget, EVERect *g, EVEPage *page, EVEFon
     memset(widget, 0, sizeof(EVESelectWidget));
     eve_widget_init(_widget, EVE_WIDGET_TYPE_SELECT, g, page, eve_selectw_draw, eve_selectw_touch, NULL);
     widget->font = font;
-    rv = _selectw_verify(option, option_size);
+    rv = selectw_verify(option, option_size);
     if (rv == EVE_OK) {
         widget->option = option;
         widget->option_size = option_size;
-        widget->option_count = _selectw_count(widget);
-        _selectw_update_sz(widget, 0);
+        widget->option_count = selectw_count(widget);
+        selectw_update_sz(widget, 0);
     }
     widget->multi = multi;
     widget->select = widget->multi ? 0 : SELECTW_NOSELECT;
@@ -226,7 +226,7 @@ int eve_selectw_option_add(EVESelectWidget *widget, utf8_t *option) {
     strcpy(widget->option + o_curr, option);
 
     widget->option_count = i + 1;
-    _selectw_update_sz(widget, 1);
+    selectw_update_sz(widget, 1);
 
     return EVE_OK;
 }
@@ -234,15 +234,15 @@ int eve_selectw_option_add(EVESelectWidget *widget, utf8_t *option) {
 int eve_selectw_option_set(EVESelectWidget *widget, utf8_t *option, uint16_t option_size) {
     int rv, i;
 
-    rv = _selectw_verify(option, option_size);
+    rv = selectw_verify(option, option_size);
     if (rv) return rv;
     if (option_size > widget->option_size) return EVE_ERR_FULL;
 
     memcpy(widget->option, option, option_size);
     memset(widget->option + option_size, 0, widget->option_size - option_size);
 
-    widget->option_count = _selectw_count(widget);
-    _selectw_update_sz(widget, 1);
+    widget->option_count = selectw_count(widget);
+    selectw_update_sz(widget, 1);
 
     return EVE_OK;
 }

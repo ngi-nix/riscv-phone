@@ -1,12 +1,6 @@
 #include <stdint.h>
 
-#define EOS_I2S_FMT_ALAW        0
-#define EOS_I2S_FMT_PCM16       1
-
-/* should match i2s_def.h definitions */
-#define EOS_I2S_ETYPE_MIC       1
-#define EOS_I2S_ETYPE_SPK       2
-
+#include "i2s_def.h"
 
 typedef struct EOSABuf {
     uint16_t idx_r;

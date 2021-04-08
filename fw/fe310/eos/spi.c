@@ -9,18 +9,19 @@
 #include "interrupt.h"
 #include "event.h"
 
+#include "board.h"
+
 #include "net.h"
 #include "spi.h"
-#include "spi_def.h"
-#include "irq_def.h"
+#include "spi_priv.h"
 
 #define MIN(X, Y)               (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y)               (((X) > (Y)) ? (X) : (Y))
-#define SPI_IOF_MASK            (((uint32_t)1 << IOF_SPI1_SCK) | ((uint32_t)1 << IOF_SPI1_MOSI) | ((uint32_t)1 << IOF_SPI1_MISO)) | ((uint32_t)1 << IOF_SPI1_SS0) | ((uint32_t)1 << IOF_SPI1_SS2) | ((uint32_t)1 << IOF_SPI1_SS3)
 
 static uint8_t spi_dev;
-static uint8_t spi_dev_cs_pin;
+static uint8_t spi_cspin;
 static uint8_t spi_lock;
+static uint16_t spi_div[EOS_SPI_MAX_DEV];
 static volatile uint8_t spi_state_flags;
 static unsigned char spi_in_xchg;
 
@@ -60,28 +61,45 @@ void eos_spi_init(void) {
 
     // There is no way here to change the CS polarity.
     // SPI1_REG(SPI_REG_CSDEF) = 0xFFFF;
+
+    for (i=0; i<EOS_SPI_MAX_DEV; i++) {
+        spi_div[i] = spi_cfg[i].div;
+        if (spi_cfg[i].csid == SPI_CSID_NONE) {
+            GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << spi_cfg[i].cspin);
+            GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << spi_cfg[i].cspin);
+            GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << spi_cfg[i].cspin);
+            GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << spi_cfg[i].cspin);
+            GPIO_REG(GPIO_OUTPUT_VAL)   |=  (1 << spi_cfg[i].cspin);
+        }
+    }
 }
 
-int eos_spi_start(unsigned char dev, uint32_t div, uint32_t csid, uint8_t pin) {
-    spi_dev = dev;
+int eos_spi_select(unsigned char dev) {
+    if (dev == EOS_SPI_DEV_NET) return EOS_ERR;
+    if (spi_dev != EOS_SPI_DEV_NET) return EOS_ERR;
+
+    eos_net_stop();
     spi_state_flags = 0;
-    SPI1_REG(SPI_REG_SCKDIV) = div;
-    SPI1_REG(SPI_REG_CSID) = csid;
-    if (csid != SPI_CSID_NONE) {
+    SPI1_REG(SPI_REG_SCKDIV) = spi_div[dev];
+    SPI1_REG(SPI_REG_CSID) = spi_cfg[dev].csid;
+    if (spi_cfg[dev].csid != SPI_CSID_NONE) {
         SPI1_REG(SPI_REG_CSMODE) = SPI_CSMODE_AUTO;
     } else {
         SPI1_REG(SPI_REG_CSMODE) = SPI_CSMODE_OFF;
-        spi_dev_cs_pin = pin;
+        spi_cspin = spi_cfg[dev].cspin;
     }
     eos_intr_set_handler(INT_SPI1_BASE, eos_spi_handle_xchg);
 
     return EOS_OK;
 }
 
-int eos_spi_stop(void) {
+int eos_spi_deselect(void) {
+    if (spi_dev == EOS_SPI_DEV_NET) return EOS_ERR;
     if (spi_lock) return EOS_ERR_BUSY;
+
     eos_spi_flush();
-    spi_dev = 0;
+    eos_net_start();
+    spi_dev = EOS_SPI_DEV_NET;
 
     return EOS_OK;
 }
@@ -90,12 +108,28 @@ uint8_t eos_spi_dev(void) {
     return spi_dev;
 }
 
+uint16_t eos_spi_div(unsigned char dev) {
+    return spi_div[dev];
+}
+
+uint16_t eos_spi_csid(unsigned char dev) {
+    return spi_cfg[dev].csid;
+}
+
+uint16_t eos_spi_cspin(unsigned char dev) {
+    return spi_cfg[dev].cspin;
+}
+
 void eos_spi_lock(void) {
     spi_lock = 1;
 }
 
 void eos_spi_unlock(void) {
     spi_lock = 0;
+}
+
+void eos_spi_set_div(unsigned char dev, uint16_t div) {
+    spi_div[dev] = div;
 }
 
 void eos_spi_set_handler(unsigned char dev, eos_evt_handler_t handler) {
@@ -127,7 +161,7 @@ static void spi_xchg_finish(void) {
 void eos_spi_xchg(unsigned char *buffer, uint16_t len, uint8_t flags) {
     if (spi_in_xchg) spi_xchg_finish();
 
-    spi_in_xchg=1;
+    spi_in_xchg = 1;
     _eos_spi_xchg_init(buffer, len, flags);
 
     eos_spi_cs_set();
@@ -158,7 +192,7 @@ void eos_spi_handle_xchg(void) {
             spi_state_flags &= ~SPI_FLAG_XCHG;
             if (!(spi_state_flags & EOS_SPI_FLAG_MORE)) eos_spi_cs_clear();
             SPI1_REG(SPI_REG_IE) = 0x0;
-            if (spi_dev) eos_evtq_push_isr(EOS_EVT_SPI | spi_dev, spi_state_buf, spi_state_len);
+            if (spi_dev != EOS_SPI_DEV_NET) eos_evtq_push_isr(EOS_EVT_SPI | spi_dev, spi_state_buf, spi_state_len);
         } else {
             SPI1_REG(SPI_REG_RXCTRL) = SPI_RXWM(MIN(spi_state_len - spi_state_idx_rx - 1, SPI_SIZE_WM - 1));
             SPI1_REG(SPI_REG_IE) = SPI_IP_RXWM;
@@ -169,7 +203,7 @@ void eos_spi_handle_xchg(void) {
 void eos_spi_cs_set(void) {
 	/* cs low */
     if (SPI1_REG(SPI_REG_CSMODE) == SPI_CSMODE_OFF) {
-        GPIO_REG(GPIO_OUTPUT_VAL) &= ~(1 << spi_dev_cs_pin);
+        GPIO_REG(GPIO_OUTPUT_VAL) &= ~(1 << spi_cspin);
     } else {
         SPI1_REG(SPI_REG_CSMODE) = SPI_CSMODE_HOLD;
     }
@@ -178,7 +212,7 @@ void eos_spi_cs_set(void) {
 void eos_spi_cs_clear(void) {
 	/* cs high */
     if (SPI1_REG(SPI_REG_CSMODE) == SPI_CSMODE_OFF) {
-        GPIO_REG(GPIO_OUTPUT_VAL) |= (1 << spi_dev_cs_pin);
+        GPIO_REG(GPIO_OUTPUT_VAL) |= (1 << spi_cspin);
     } else {
         SPI1_REG(SPI_REG_CSMODE) = SPI_CSMODE_AUTO;
     }

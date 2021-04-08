@@ -4,16 +4,16 @@
 
 #include "eve.h"
 
-static int _intr_mask = EVE_INT_TAG | EVE_INT_TOUCH;
-static int _multitouch;
-static uint8_t _tag0;
+static int touch_intr_mask = EVE_INT_TAG | EVE_INT_TOUCH;
+static int touch_multi;
+static uint8_t touch_tag0;
 
-static EVETouch _touch[EVE_MAX_TOUCH];
-static EVETouchTimer _touch_timer;
+static EVETouch touch_obj[EVE_MAX_TOUCH];
+static EVETouchTimer touch_timer;
 
-static eve_touch_handler_t _touch_handler;
-static void *_touch_handler_param;
-static uint8_t _tag_opt[256];
+static eve_touch_handler_t touch_handler;
+static void *touch_handler_param;
+static uint8_t touch_tag_opt[256];
 
 static const uint32_t _reg_touch[] = {
     REG_CTOUCH_TOUCH0_XY,
@@ -46,14 +46,14 @@ void eve_handle_touch(void) {
 
     eve_spi_start();
 
-    flags = eve_read8(REG_INT_FLAGS) & _intr_mask;
-    if (!_multitouch && (flags & EVE_INT_TOUCH)) _multitouch = 1;
+    flags = eve_read8(REG_INT_FLAGS) & touch_intr_mask;
+    if (!touch_multi && (flags & EVE_INT_TOUCH)) touch_multi = 1;
     for (i=0; i<EVE_MAX_TOUCH; i++) {
         uint8_t touch_tag;
         uint32_t touch_xy;
         uint64_t now = 0;
         uint16_t touch_evt = 0;
-        EVETouch *touch = &_touch[i];
+        EVETouch *touch = &touch_obj[i];
 
         touch_xy = i < 4 ? eve_read32(_reg_touch[i]) : (((uint32_t)eve_read16(REG_CTOUCH_TOUCH4_X) << 16) | eve_read16(REG_CTOUCH_TOUCH4_Y));
 
@@ -95,8 +95,8 @@ void eve_handle_touch(void) {
                     }
 
                     eve_touch_timer_clear(touch);
-                    if (_touch_handler && touch_evt) {
-                        _touch_handler(_touch_timer.touch, touch_evt, _touch_timer.tag0, _touch_handler_param);
+                    if (touch_handler && touch_evt) {
+                        touch_handler(touch_timer.touch, touch_evt, touch_timer.tag0, touch_handler_param);
                     }
                 }
                 touch_evt = EVE_TOUCH_ETYPE_POINT | _evt;
@@ -122,7 +122,7 @@ void eve_handle_touch(void) {
             }
             touch->x = touch_x;
             touch->y = touch_y;
-            if (_multitouch || (flags & EVE_INT_TAG)) {
+            if (touch_multi || (flags & EVE_INT_TAG)) {
                 touch_tag = eve_read8(_reg_tag[i]);
             } else {
                 touch_tag = touch->tag;
@@ -139,13 +139,13 @@ void eve_handle_touch(void) {
                     eve_touch_timer_set_evt(touch, _ttevt & ~EVE_TOUCH_ETYPE_LPRESS);
                 }
                 if (touch->tracker.tag && touch->tracker.track) {
-                    uint8_t opt = _tag_opt[touch->tracker.tag];
+                    uint8_t opt = touch_tag_opt[touch->tracker.tag];
                     char track_ext = ((opt & EVE_TOUCH_OPT_TRACK_EXT_X) && (touch->eevt & EVE_TOUCH_EETYPE_TRACK_X)) ||
                                      ((opt & EVE_TOUCH_OPT_TRACK_EXT_Y) && (touch->eevt & EVE_TOUCH_EETYPE_TRACK_Y));
                     if (!eve_touch_timer_get_evt(NULL) && track_ext) {
                         EVEVTrack *vtrack = eve_vtrack_get();
 
-                        eve_touch_timer_set(touch, EVE_TOUCH_ETYPE_TRACK, _tag0, EVE_TOUCH_TIMEOUT_TRACK);
+                        eve_touch_timer_set(touch, EVE_TOUCH_ETYPE_TRACK, touch_tag0, EVE_TOUCH_TIMEOUT_TRACK);
                         if (vtrack->start) vtrack->start(touch, vtrack->param);
                     } else {
                         touch_evt |= EVE_TOUCH_ETYPE_TRACK_STOP;
@@ -155,23 +155,23 @@ void eve_handle_touch(void) {
         }
         if (touch_tag != touch->tag) {
             if (touch_tag) {
-                if (!_tag0) _tag0 = touch_tag;
+                if (!touch_tag0) touch_tag0 = touch_tag;
                 if (!touch->tag0) {
                     touch->tag0 = touch_tag;
-                    if (_tag_opt[touch_tag] & (EVE_TOUCH_OPT_TRACK | EVE_TOUCH_OPT_TRACK_REG)) {
+                    if (touch_tag_opt[touch_tag] & (EVE_TOUCH_OPT_TRACK | EVE_TOUCH_OPT_TRACK_REG)) {
                         touch->tracker.tag = touch_tag;
                     }
-                    if (touch->tracker.tag && !(_tag_opt[touch->tracker.tag] & EVE_TOUCH_OPT_TRACK_XY)) {
+                    if (touch->tracker.tag && !(touch_tag_opt[touch->tracker.tag] & EVE_TOUCH_OPT_TRACK_XY)) {
                         touch_evt |= EVE_TOUCH_ETYPE_TRACK_START;
                         touch->tracker.track = 1;
                         touch->t = now;
                     }
-                    if (!eve_touch_timer_get_evt(NULL) && (_tag_opt[touch_tag] & (EVE_TOUCH_OPT_LPRESS | EVE_TOUCH_OPT_TAP2))) {
+                    if (!eve_touch_timer_get_evt(NULL) && (touch_tag_opt[touch_tag] & (EVE_TOUCH_OPT_LPRESS | EVE_TOUCH_OPT_TAP2))) {
                         uint16_t _evt = 0;
 
-                        if (_tag_opt[touch_tag] & EVE_TOUCH_OPT_LPRESS) _evt |= EVE_TOUCH_ETYPE_LPRESS;
-                        if (_tag_opt[touch_tag] & EVE_TOUCH_OPT_TAP2) _evt |= EVE_TOUCH_ETYPE_TAP2;
-                        eve_touch_timer_set(touch, _evt, _tag0, EVE_TOUCH_TIMEOUT_TAP);
+                        if (touch_tag_opt[touch_tag] & EVE_TOUCH_OPT_LPRESS) _evt |= EVE_TOUCH_ETYPE_LPRESS;
+                        if (touch_tag_opt[touch_tag] & EVE_TOUCH_OPT_TAP2) _evt |= EVE_TOUCH_ETYPE_TAP2;
+                        eve_touch_timer_set(touch, _evt, touch_tag0, EVE_TOUCH_TIMEOUT_TAP);
                     }
                 }
             }
@@ -190,10 +190,10 @@ void eve_handle_touch(void) {
                 dx = dx < 0 ? -dx : dx;
                 dy = dy < 0 ? -dy : dy;
                 if (_track) {
-                    if ((dx > EVE_TOUCH_THRESHOLD_X) && !(_tag_opt[touch->tracker.tag] & EVE_TOUCH_OPT_TRACK_X)) {
+                    if ((dx > EVE_TOUCH_THRESHOLD_X) && !(touch_tag_opt[touch->tracker.tag] & EVE_TOUCH_OPT_TRACK_X)) {
                         touch->tracker.tag = 0;
                     }
-                    if ((dy > EVE_TOUCH_THRESHOLD_Y) && !(_tag_opt[touch->tracker.tag] & EVE_TOUCH_OPT_TRACK_Y)) {
+                    if ((dy > EVE_TOUCH_THRESHOLD_Y) && !(touch_tag_opt[touch->tracker.tag] & EVE_TOUCH_OPT_TRACK_Y)) {
                         touch->tracker.tag = 0;
                     }
                     if (touch->tracker.tag && ((dx > EVE_TOUCH_THRESHOLD_X) || (dy > EVE_TOUCH_THRESHOLD_Y))) {
@@ -214,8 +214,8 @@ void eve_handle_touch(void) {
                 }
             }
             if (touch->tracker.tag && touch->tracker.track) {
-                if (_tag_opt[touch->tracker.tag] & EVE_TOUCH_OPT_TRACK) touch_evt |= EVE_TOUCH_ETYPE_TRACK;
-                if (_tag_opt[touch->tracker.tag] & EVE_TOUCH_OPT_TRACK_REG) touch_evt |= EVE_TOUCH_ETYPE_TRACK_REG;
+                if (touch_tag_opt[touch->tracker.tag] & EVE_TOUCH_OPT_TRACK) touch_evt |= EVE_TOUCH_ETYPE_TRACK;
+                if (touch_tag_opt[touch->tracker.tag] & EVE_TOUCH_OPT_TRACK_REG) touch_evt |= EVE_TOUCH_ETYPE_TRACK_REG;
             }
             if (touch_evt & EVE_TOUCH_ETYPE_TRACK_REG) {
                 uint32_t touch_track = eve_read32(_reg_track[i]);
@@ -227,48 +227,48 @@ void eve_handle_touch(void) {
             }
             if (touch->tracker.tag || _timer) int_ccomplete = 1;
         }
-        if (_touch_handler && touch_evt) {
-            _touch_handler(touch, touch_evt, _tag0, _touch_handler_param);
+        if (touch_handler && touch_evt) {
+            touch_handler(touch, touch_evt, touch_tag0, touch_handler_param);
         }
-        if (!_multitouch) break;
+        if (!touch_multi) break;
     }
 
     if (!touch_ex) {
-        _tag0 = 0;
-        _multitouch = 0;
+        touch_tag0 = 0;
+        touch_multi = 0;
     }
 
-    if (_multitouch) int_ccomplete = 1;
+    if (touch_multi) int_ccomplete = 1;
 
-    if (int_ccomplete && !(_intr_mask & EVE_INT_CONVCOMPLETE)) {
-        _intr_mask |= EVE_INT_CONVCOMPLETE;
-        eve_write8(REG_INT_MASK, _intr_mask);
+    if (int_ccomplete && !(touch_intr_mask & EVE_INT_CONVCOMPLETE)) {
+        touch_intr_mask |= EVE_INT_CONVCOMPLETE;
+        eve_write8(REG_INT_MASK, touch_intr_mask);
     }
-    if (!int_ccomplete && (_intr_mask & EVE_INT_CONVCOMPLETE)) {
-        _intr_mask &= ~EVE_INT_CONVCOMPLETE;
-        eve_write8(REG_INT_MASK, _intr_mask);
+    if (!int_ccomplete && (touch_intr_mask & EVE_INT_CONVCOMPLETE)) {
+        touch_intr_mask &= ~EVE_INT_CONVCOMPLETE;
+        eve_write8(REG_INT_MASK, touch_intr_mask);
     }
 
     eve_spi_stop();
 }
 
 void eve_handle_time(void) {
-    EVETouch *touch = _touch_timer.touch;
+    EVETouch *touch = touch_timer.touch;
 
-    if (_touch_timer.evt) {
+    if (touch_timer.evt) {
         int more = 0;
         uint16_t touch_evt = 0;
 
         eve_spi_start();
 
-        if (_touch_timer.evt & EVE_TOUCH_ETYPE_LPRESS) {
+        if (touch_timer.evt & EVE_TOUCH_ETYPE_LPRESS) {
             touch_evt |= EVE_TOUCH_ETYPE_LPRESS;
             if (touch) touch->eevt |= EVE_TOUCH_EETYPE_LPRESS;
         }
-        if (_touch_timer.evt & EVE_TOUCH_ETYPE_TAP2) {
+        if (touch_timer.evt & EVE_TOUCH_ETYPE_TAP2) {
             touch_evt |= EVE_TOUCH_ETYPE_TAP1;
         }
-        if (_touch_timer.evt & EVE_TOUCH_ETYPE_TRACK) {
+        if (touch_timer.evt & EVE_TOUCH_ETYPE_TRACK) {
             EVEVTrack *vtrack = eve_vtrack_get();
 
             if (vtrack->tick) {
@@ -280,19 +280,19 @@ void eve_handle_time(void) {
                 if (vtrack->stop) vtrack->stop(touch, vtrack->param);
             }
         }
-        if (_touch_timer.evt & EVE_TOUCH_ETYPE_TIMER) {
+        if (touch_timer.evt & EVE_TOUCH_ETYPE_TIMER) {
             touch_evt |= EVE_TOUCH_ETYPE_TIMER;
             more = 1;
         }
 
         if (more) {
-            eve_timer_set(_touch_timer.to);
+            eve_timer_set(touch_timer.to);
         } else {
-            _touch_timer.evt = 0;
+            touch_timer.evt = 0;
         }
 
-        if (_touch_handler && touch_evt) {
-            _touch_handler(touch, touch_evt, _touch_timer.tag0, _touch_handler_param);
+        if (touch_handler && touch_evt) {
+            touch_handler(touch, touch_evt, touch_timer.tag0, touch_handler_param);
         }
 
         eve_spi_stop();
@@ -305,27 +305,27 @@ void eve_touch_init(void) {
     eve_vtrack_init();
 
     for (i=0; i<EVE_MAX_TOUCH; i++) {
-        EVETouch *touch = &_touch[i];
+        EVETouch *touch = &touch_obj[i];
         touch->eevt |= EVE_TOUCH_EETYPE_NOTOUCH;
     }
 
-    eve_write8(REG_INT_MASK, _intr_mask);
+    eve_write8(REG_INT_MASK, touch_intr_mask);
     eve_write8(REG_INT_EN, 0x01);
     while(eve_read8(REG_INT_FLAGS));
 }
 
 void eve_touch_set_handler(eve_touch_handler_t handler, void *param) {
-    _touch_handler = handler;
-    _touch_handler_param = param;
+    touch_handler = handler;
+    touch_handler_param = param;
 }
 
 EVETouch *eve_touch_get(int i) {
-    return &_touch[i];
+    return &touch_obj[i];
 }
 
 int8_t eve_touch_get_idx(EVETouch *touch) {
     if (touch == NULL) return -1;
-    return touch - _touch;
+    return touch - touch_obj;
 }
 
 uint16_t eve_touch_evt(EVETouch *touch, uint16_t evt, uint8_t tag0, uint8_t tag_min, uint8_t tag_n) {
@@ -363,22 +363,22 @@ uint16_t eve_touch_evt(EVETouch *touch, uint16_t evt, uint8_t tag0, uint8_t tag_
 }
 
 void eve_touch_set_opt(uint8_t tag, uint8_t opt) {
-    _tag_opt[tag] = opt;
+    touch_tag_opt[tag] = opt;
 }
 
 uint8_t eve_touch_get_opt(uint8_t tag) {
-    return _tag_opt[tag];
+    return touch_tag_opt[tag];
 }
 
 void eve_touch_clear_opt(void) {
-    memset(_tag_opt, 0, sizeof(_tag_opt));
+    memset(touch_tag_opt, 0, sizeof(touch_tag_opt));
 }
 
 void eve_touch_timer_set(EVETouch *touch, uint16_t evt, uint8_t tag0, uint32_t to) {
-    _touch_timer.touch = touch;
-    _touch_timer.evt = evt;
-    _touch_timer.tag0 = tag0;
-    _touch_timer.to = to;
+    touch_timer.touch = touch;
+    touch_timer.evt = evt;
+    touch_timer.tag0 = tag0;
+    touch_timer.to = to;
     eve_timer_set(to);
 }
 
@@ -389,21 +389,21 @@ void eve_touch_timer_clear(EVETouch *touch) {
 uint16_t eve_touch_timer_get_evt(EVETouch *touch) {
     uint16_t ret = 0;
 
-    if ((touch == NULL) || (_touch_timer.touch == touch)) {
-        ret = _touch_timer.evt;
-    } else if (_touch_timer.touch == NULL) {
-        ret = _touch_timer.evt & EVE_TOUCH_ETYPE_TIMER;
+    if ((touch == NULL) || (touch_timer.touch == touch)) {
+        ret = touch_timer.evt;
+    } else if (touch_timer.touch == NULL) {
+        ret = touch_timer.evt & EVE_TOUCH_ETYPE_TIMER;
     }
     return ret;
 }
 
 void eve_touch_timer_set_evt(EVETouch *touch, uint16_t evt) {
-    if (touch == _touch_timer.touch) {
-        _touch_timer.evt = evt;
-    } else if (_touch_timer.touch == NULL) {
-        _touch_timer.evt = evt & EVE_TOUCH_ETYPE_TIMER;
+    if (touch == touch_timer.touch) {
+        touch_timer.evt = evt;
+    } else if (touch_timer.touch == NULL) {
+        touch_timer.evt = evt & EVE_TOUCH_ETYPE_TIMER;
     }
-    if (!_touch_timer.evt) eve_timer_clear();
+    if (!touch_timer.evt) eve_timer_clear();
 }
 
 void eve_touch_timer_start(uint8_t tag0, uint32_t to) {
@@ -415,5 +415,5 @@ void eve_touch_timer_stop(void) {
 }
 
 EVETouchTimer *eve_touch_timer_get(void) {
-    return &_touch_timer;
+    return &touch_timer;
 }

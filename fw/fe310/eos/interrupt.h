@@ -1,5 +1,7 @@
 #include <stdint.h>
 
+#include "irq_def.h"
+
 typedef void (*eos_intr_handler_t) (void);
 
 void eos_intr_init(void);

@@ -107,7 +107,7 @@ static EVETextCursor *cursor_prox(EVETextWidget *widget, EVETextCursor *cursor, 
     return NULL;
 }
 
-static void _draw_line(EVETextWidget *widget, uint16_t l, uint16_t ch, uint16_t len, uint16_t x1, uint16_t x2, char s) {
+static void draw_line(EVETextWidget *widget, uint16_t l, uint16_t ch, uint16_t len, uint16_t x1, uint16_t x2, char s) {
     EVEWidget *_widget = &widget->w;
     EVEPage *page = _widget->page;
 
@@ -131,7 +131,7 @@ static void _draw_line(EVETextWidget *widget, uint16_t l, uint16_t ch, uint16_t 
     }
 }
 
-static void _draw_cursor(EVETextWidget *widget, EVETextCursor *cursor) {
+static void draw_cursor(EVETextWidget *widget, EVETextCursor *cursor) {
     uint16_t x, y;
     EVEWidget *_widget = &widget->w;
 
@@ -198,10 +198,10 @@ uint8_t eve_textw_draw(EVEWidget *_widget, uint8_t tag0) {
                     l3 = 0;
                     s = 1;
                 }
-                _draw_line(widget, i, LINE_START(widget, i), l1, 0, c1->x, 0);
-                _draw_line(widget, i, c1->ch, l2, c1->x, s ? _widget->g.w : c2->x, 1);
+                draw_line(widget, i, LINE_START(widget, i), l1, 0, c1->x, 0);
+                draw_line(widget, i, c1->ch, l2, c1->x, s ? _widget->g.w : c2->x, 1);
                 if (!s) {
-                    _draw_line(widget, i, c2->ch, l3, c2->x, _widget->g.w, 0);
+                    draw_line(widget, i, c2->ch, l3, c2->x, _widget->g.w, 0);
                     c1 = NULL;
                     c2 = NULL;
                 }
@@ -209,14 +209,14 @@ uint8_t eve_textw_draw(EVEWidget *_widget, uint8_t tag0) {
                 int l1 = c2->ch - LINE_START(widget, i);
                 int l2 = LINE_START(widget, i) + LINE_LEN(widget, i) - c2->ch;
 
-                _draw_line(widget, i, LINE_START(widget, i), l1, 0, c2->x, 1);
-                _draw_line(widget, i, c2->ch, l2, c2->x, _widget->g.w, 0);
+                draw_line(widget, i, LINE_START(widget, i), l1, 0, c2->x, 1);
+                draw_line(widget, i, c2->ch, l2, c2->x, _widget->g.w, 0);
                 c1 = NULL;
                 c2 = NULL;
                 s = 0;
             } else {
-                if (widget->cursor1.on && (widget->cursor1.line == i)) _draw_cursor(widget, &widget->cursor1);
-                _draw_line(widget, i, LINE_START(widget, i), LINE_LEN(widget, i), 0, _widget->g.w, s);
+                if (widget->cursor1.on && (widget->cursor1.line == i)) draw_cursor(widget, &widget->cursor1);
+                draw_line(widget, i, LINE_START(widget, i), LINE_LEN(widget, i), 0, _widget->g.w, s);
             }
         }
         if (lineNvisible) {
@@ -225,7 +225,7 @@ uint8_t eve_textw_draw(EVEWidget *_widget, uint8_t tag0) {
                 eve_touch_set_opt(_widget->tagN, TEXTW_TOUCH_OPT);
                 _widget->tagN++;
             }
-            _draw_line(widget, lineN, 0, 0, 0, _widget->g.w, 0);
+            draw_line(widget, lineN, 0, 0, 0, _widget->g.w, 0);
         }
     } else {
         widget->line0 = 0;

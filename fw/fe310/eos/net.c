@@ -6,17 +6,25 @@
 
 #include "eos.h"
 #include "msgq.h"
-#include "event.h"
 #include "interrupt.h"
+#include "event.h"
 #include "timer.h"
 #include "power.h"
 
+#include "board.h"
+
 #include "spi.h"
-#include "spi_def.h"
+#include "spi_priv.h"
 
 #include "net.h"
-#include "net_def.h"
-#include "irq_def.h"
+
+#define NET_STATE_FLAG_RUN      0x01
+#define NET_STATE_FLAG_RST      0x02
+#define NET_STATE_FLAG_RTS      0x04
+#define NET_STATE_FLAG_CTS      0x08
+#define NET_STATE_FLAG_INIT     0x10
+#define NET_STATE_FLAG_ONEW     0x20
+#define NET_STATE_FLAG_XCHG     0x40
 
 #define MIN(X, Y)               (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y)               (((X) > (Y)) ? (X) : (Y))
@@ -312,8 +320,8 @@ void eos_net_init(void) {
 
 void eos_net_start(void) {
     eos_intr_set_handler(INT_SPI1_BASE, net_handle_xchg);
-    SPI1_REG(SPI_REG_SCKDIV) = NET_SPI_DIV;
-    SPI1_REG(SPI_REG_CSID) = NET_SPI_CSID;
+    SPI1_REG(SPI_REG_SCKDIV) = eos_spi_div(EOS_SPI_DEV_NET);
+    SPI1_REG(SPI_REG_CSID) = eos_spi_csid(EOS_SPI_DEV_NET);
 
     clear_csr(mstatus, MSTATUS_MIE);
     net_state_flags |= NET_STATE_FLAG_RUN;
@@ -396,8 +404,8 @@ int eos_net_wake(uint8_t source) {
     if (rv) return rv;
 
     eos_intr_set_handler(INT_SPI1_BASE, net_handle_xchg);
-    SPI1_REG(SPI_REG_SCKDIV) = NET_SPI_DIV;
-    SPI1_REG(SPI_REG_CSID) = NET_SPI_CSID;
+    SPI1_REG(SPI_REG_SCKDIV) = eos_spi_div(EOS_SPI_DEV_NET);
+    SPI1_REG(SPI_REG_CSID) = eos_spi_csid(EOS_SPI_DEV_NET);
 
     clear_csr(mstatus, MSTATUS_MIE);
     net_state_flags |= NET_STATE_FLAG_RUN;
@@ -494,7 +502,7 @@ int eos_net_send(unsigned char type, unsigned char *buffer, uint16_t len, unsign
 
         set_csr(mstatus, MSTATUS_MIE);
         spi_dev = eos_spi_dev();
-        rv = eos_spi_dev_deselect();
+        rv = eos_spi_deselect();
         if (rv) return rv;
 
         clear_csr(mstatus, MSTATUS_MIE);
@@ -506,7 +514,7 @@ int eos_net_send(unsigned char type, unsigned char *buffer, uint16_t len, unsign
         net_xchg_start(type, buffer, len);
         set_csr(mstatus, MSTATUS_MIE);
 
-        eos_spi_dev_select(spi_dev);
+        eos_spi_select(spi_dev);
     } else {
         if ((net_state_flags & NET_STATE_FLAG_RUN) && (net_state_flags & NET_STATE_FLAG_CTS)) {
             net_xchg_start(type, buffer, len);

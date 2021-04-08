@@ -3,32 +3,32 @@
 
 #include "eve.h"
 
-static EVEVTrack _vtrack;
-static EVEPhyAcc _vtrack_acc;
+static EVEVTrack vtrack;
+static EVEPhyAcc vtrack_acc;
 
 void eve_vtrack_init(void) {
-    eve_phy_acc_init(&_vtrack_acc, -EVE_VTRACK_ACC_A);
+    eve_phy_acc_init(&vtrack_acc, -EVE_VTRACK_ACC_A);
     eve_vtrack_reset();
 }
 
 EVEVTrack *eve_vtrack_get(void) {
-    return &_vtrack;
+    return &vtrack;
 }
 
 void eve_vtrack_set(eve_vtrack_start_t start, eve_vtrack_tick_t tick, eve_vtrack_stop_t stop, void *param) {
-    _vtrack.start = start;
-    _vtrack.tick = tick;
-    _vtrack.stop = stop;
-    _vtrack.param = param;
+    vtrack.start = start;
+    vtrack.tick = tick;
+    vtrack.stop = stop;
+    vtrack.param = param;
 }
 
 void eve_vtrack_reset(void) {
-    eve_vtrack_set(eve_vtrack_acc_start, eve_vtrack_acc_tick, NULL, &_vtrack_acc);
+    eve_vtrack_set(eve_vtrack_acc_start, eve_vtrack_acc_tick, NULL, &vtrack_acc);
 }
 
 void eve_vtrack_start(EVETouch *touch, uint8_t tag0, uint32_t to) {
     eve_touch_timer_set(touch, EVE_TOUCH_ETYPE_TRACK, tag0, to);
-    if (_vtrack.start) _vtrack.start(touch, _vtrack.param);
+    if (vtrack.start) vtrack.start(touch, vtrack.param);
 }
 
 void eve_vtrack_stop(EVETouch *touch) {
