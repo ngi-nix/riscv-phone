@@ -69,7 +69,7 @@ void eos_spi_init(void) {
     // SPI1_REG(SPI_REG_CSDEF) = 0xFFFF;
 }
 
-void eos_spi_start(uint8_t div, uint8_t csid, uint8_t cspin, unsigned char evt) {
+void eos_spi_start(uint16_t div, uint8_t csid, uint8_t cspin, unsigned char evt) {
     spi_state_flags = 0;
     spi_evt = evt;
     SPI1_REG(SPI_REG_SCKDIV) = div;
@@ -77,8 +77,8 @@ void eos_spi_start(uint8_t div, uint8_t csid, uint8_t cspin, unsigned char evt) 
     if (csid != SPI_CSID_NONE) {
         SPI1_REG(SPI_REG_CSMODE) = SPI_CSMODE_AUTO;
     } else {
-        SPI1_REG(SPI_REG_CSMODE) = SPI_CSMODE_OFF;
         spi_cspin = cspin;
+        SPI1_REG(SPI_REG_CSMODE) = SPI_CSMODE_OFF;
     }
     eos_intr_set_handler(INT_SPI1_BASE, eos_spi_handle_xchg);
 }

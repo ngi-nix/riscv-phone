@@ -1,19 +1,19 @@
 #define SPI_DIV_NET             16
 #define SPI_DIV_EVE             16
-#define SPI_DIV_SDC             16
+#define SPI_DIV_SDC             1024
 #define SPI_DIV_CAM             16
 
 #define SPI_CSID_NET            3
 #define SPI_CSID_EVE            2
-#define SPI_CSID_SDC            0
+#define SPI_CSID_SDC            SPI_CSID_NONE
 #define SPI_CSID_CAM            SPI_CSID_NONE
 
 #define SPI_CSPIN_NET           SPI_CSPIN_NONE
 #define SPI_CSPIN_EVE           SPI_CSPIN_NONE
-#define SPI_CSPIN_SDC           SPI_CSPIN_NONE
+#define SPI_CSPIN_SDC           2
 #define SPI_CSPIN_CAM           23
 
-#define SPI_IOF_MASK_CS         (((uint32_t)1 << IOF_SPI1_SS0) | ((uint32_t)1 << IOF_SPI1_SS2) | ((uint32_t)1 << IOF_SPI1_SS3))
+#define SPI_IOF_MASK_CS         (((uint32_t)1 << IOF_SPI1_SS2) | ((uint32_t)1 << IOF_SPI1_SS3))
 
 #define NET_PIN_RTS             20
 #define NET_PIN_CTS             22

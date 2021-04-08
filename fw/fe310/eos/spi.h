@@ -11,7 +11,7 @@
 #define EOS_SPI_MAX_EVT         2
 
 void eos_spi_init(void);
-void eos_spi_start(uint8_t div, uint8_t csid, uint8_t cspin, unsigned char evt);
+void eos_spi_start(uint16_t div, uint8_t csid, uint8_t cspin, unsigned char evt);
 void eos_spi_stop(void);
 void eos_spi_set_handler(unsigned char evt, eos_evt_handler_t handler);
 

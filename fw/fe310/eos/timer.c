@@ -129,3 +129,7 @@ uint64_t eos_time_get_tick(void) {
     volatile uint64_t *mtime = (uint64_t *) (CLINT_CTRL_ADDR + CLINT_MTIME);
     return *mtime;
 }
+
+uint32_t eos_time_since(uint32_t start) {
+    return (eos_time_get_tick() - start) * 1000 / EOS_TIMER_RTC_FREQ;
+ }

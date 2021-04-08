@@ -20,3 +20,4 @@ void eos_timer_clear(unsigned char evt);
 
 void eos_time_sleep(uint32_t msec);
 uint64_t eos_time_get_tick(void);
+uint32_t eos_time_since(uint32_t start);
