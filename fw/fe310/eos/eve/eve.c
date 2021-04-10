@@ -281,6 +281,34 @@ void eve_cmd_burst_end(void) {
     cmd_burst = 0;
 }
 
+int eve_gpio_get(int gpio) {
+    uint16_t reg = eve_read16(REG_GPIOX);
+    return !!(reg & (1 << gpio));
+}
+
+void eve_gpio_set(int gpio, int val) {
+    uint16_t reg = eve_read16(REG_GPIOX);
+    uint16_t reg_val = (1 << gpio);
+    if (val) {
+        reg |= reg_val;
+    } else {
+        reg &= ~reg_val;
+    }
+    eve_write16(REG_GPIOX, reg);
+}
+
+uint8_t eve_gpio_get_dir(void) {
+    uint16_t reg = eve_read16(REG_GPIOX_DIR);
+    return reg & 0x000f;
+}
+
+void eve_gpio_set_dir(uint8_t dir) {
+    uint16_t reg = eve_read16(REG_GPIOX_DIR);
+    reg &= 0xfff0;
+    reg |= dir & 0x0f;
+    eve_write16(REG_GPIOX_DIR, reg);
+}
+
 void eve_active(void) {
     eve_command(EVE_ACTIVE, 0);
     if (power_state == EVE_PSTATE_SLEEP) eve_time_sleep(40);
@@ -326,7 +354,7 @@ void eve_set_touch_calibration(uint32_t *matrix) {
     touch_calib = matrix;
 }
 
-static int _init(void) {
+static int _init(uint8_t gpio_dir) {
     uint8_t chipid = 0;
     uint16_t timeout = 0;
 
@@ -342,6 +370,7 @@ static int _init(void) {
     }
 
     eve_write8(REG_PWM_DUTY, 0);
+    eve_write16(REG_GPIOX_DIR, 0x8000 | (gpio_dir & 0x0f));
     eve_write16(REG_GPIOX, 0);
 
     /* Initialize Display */
@@ -418,13 +447,13 @@ static int _init(void) {
     return EVE_OK;
 }
 
-int eve_init(int pwr_on) {
+int eve_init(int pwr_on, uint8_t gpio_dir) {
     eve_spi_start();
 
     pwr_on = 1; // override this for now
 
     if (pwr_on) {
-        int rv = _init();
+        int rv = _init(gpio_dir);
         if (rv) return rv;
     } else {
         power_state = EVE_PSTATE_SLEEP;

@@ -16,6 +16,8 @@
 #include "i2c/bq25895.h"
 #include "eve/eve.h"
 
+#include "board.h"
+
 #include "eos.h"
 
 static uint32_t eve_touch[6] = {0xfa46,0xfffffcf6,0x422fe,0xffffff38,0x10002,0xf3cb0};
@@ -42,5 +44,5 @@ void eos_init(void) {
     eos_net_wake(wakeup_cause);
 
     eve_set_touch_calibration(eve_touch);
-    eve_init(wakeup_cause == EOS_PWR_WAKE_RST);
+    eve_init(wakeup_cause == EOS_PWR_WAKE_RST, EVE_GPIO_DIR);
 }
