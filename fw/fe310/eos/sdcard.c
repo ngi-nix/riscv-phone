@@ -20,6 +20,11 @@
 #define SDC_TOKEN_START_BLKM    0xfc
 #define SDC_TOKEN_STOP_TRAN     0xfd
 
+#define SDC_DRESP_MASK          0x1f
+#define SDC_DRESP_ACCEPT        0x05
+#define SDC_DRESP_ERR_CRC       0x0b
+#define SDC_DRESP_ERR_WRITE     0x0d
+
 #define SDC_R1_READY            0x00
 
 #define SDC_R1_IDLE_STATE       0x01
@@ -178,7 +183,7 @@ static int sdc_block_write(uint8_t token, uint8_t *buffer, uint16_t len, uint32_
         sdc_xchg16(0xff); /* dummy CRC */
 
         d = sdc_xchg8(0xff); /* Response */
-        if ((d & 0x1f) != 0x05) return EOS_ERR;
+        if ((d & SDC_DRESP_MASK) != SDC_DRESP_ACCEPT) return EOS_ERR;
     }
 
     return EOS_OK;
@@ -221,12 +226,12 @@ static int sdc_init(uint32_t timeout, uint8_t *type, uint8_t *lba) {
     _type = 0;
     _lba = 0;
 
+    eos_time_sleep(10);
     start = eos_time_get_tick();
-    sdc_select();
-	for (i=10; i--;) sdc_xchg8(0xff);     /* 80 dummy cycles */
-    rv = sdc_cmd(GO_IDLE_STATE, 0, SDC_CMD_FLAG_CRC | SDC_CMD_FLAG_NOCS, timeout);
+    for (i=10; i--;) sdc_xchg8(0xff);     /* 80 dummy cycles */
+
+    rv = sdc_cmd(GO_IDLE_STATE, 0, SDC_CMD_FLAG_CRC, timeout);
     if (rv != SDC_R1_IDLE_STATE) return SDC_ERR(rv);
-    sdc_deselect();
 
     sdc_select();
     rv = sdc_cmd(SEND_IF_COND, 0x1aa, SDC_CMD_FLAG_CRC | SDC_CMD_FLAG_NOCS, sdc_nto(start, timeout));
