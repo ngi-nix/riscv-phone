@@ -34,3 +34,9 @@
 #define I2S_CTRL_ADDR_WS_SPK    PWM2_CTRL_ADDR
 
 #define I2S_IDLE_CYCLES         8
+
+#define EVE_GPIO_DIR            0x0f
+
+#define EVE_GPIO_CAM            0
+#define EVE_GPIO_EXT            1
+#define EVE_GPIO_MOTOR          3
