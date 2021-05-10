@@ -4,6 +4,8 @@
 
 #include "platform.h"
 
+#define PUTC(c)     { while (UART0_REG(UART_REG_TXFIFO) & 0x80000000); UART0_REG(UART_REG_TXFIFO) = (c); }
+
 /* Write to a file.  */
 ssize_t
 _write(int fd, const void *ptr, size_t len)
@@ -15,8 +17,8 @@ _write(int fd, const void *ptr, size_t len)
 
   const char *current = ptr;
   for (size_t i = 0; i < len; i++) {
-    while (UART0_REG(UART_REG_TXFIFO) & 0x80000000);
-    UART0_REG(UART_REG_TXFIFO) = current[i];
+    if (current[i] == '\n') PUTC('\r');
+    PUTC(current[i]);
   }
   return len;
 }
