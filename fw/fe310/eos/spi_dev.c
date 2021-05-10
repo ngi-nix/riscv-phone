@@ -38,9 +38,13 @@ void eos_spi_dev_init(void) {
 
 int eos_spi_select(unsigned char dev) {
     if (dev == EOS_SPI_DEV_NET) return EOS_ERR;
-    if (spi_dev != EOS_SPI_DEV_NET) return EOS_ERR;
+    if (spi_lock) return EOS_ERR_BUSY;
 
-    eos_net_stop();
+    if (spi_dev == EOS_SPI_DEV_NET) {
+        eos_net_stop();
+    } else {
+        eos_spi_stop();
+    }
 
     spi_dev = dev;
     eos_spi_start(spi_div[dev], spi_cfg[dev].csid, spi_cfg[dev].cspin, spi_cfg[dev].evt);
@@ -49,8 +53,8 @@ int eos_spi_select(unsigned char dev) {
 }
 
 int eos_spi_deselect(void) {
-    if (spi_lock) return EOS_ERR_BUSY;
     if (spi_dev == EOS_SPI_DEV_NET) return EOS_ERR;
+    if (spi_lock) return EOS_ERR_BUSY;
 
     eos_spi_stop();
 
