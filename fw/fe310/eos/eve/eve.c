@@ -5,6 +5,7 @@
 #include "eve.h"
 
 #define EVE_MEM_WRITE           0x800000
+#define EVE_SPI_FLAGS(b)        ( (b) ? (EVE_SPI_FLAG_TX | EVE_SPI_FLAG_BSWAP) : EVE_SPI_FLAG_BSWAP )
 
 static char cmd_burst;
 static uint16_t cmd_offset;
@@ -73,24 +74,24 @@ void eve_write32(uint32_t addr, uint32_t data) {
     eve_spi_cs_clear();
 }
 
-void eve_readb(uint32_t addr, uint8_t *b, size_t size) {
+void eve_readb(uint32_t addr, uint8_t *buf, size_t size) {
     int i;
 
     eve_spi_cs_set();
     eve_spi_xchg32(addr << 8, 0);
     for (i=0; i<size; i++) {
-        b[i] = eve_spi_xchg8(0, 0);
+        buf[i] = eve_spi_xchg8(0, 0);
     }
     eve_spi_cs_clear();
 }
 
-void eve_writeb(uint32_t addr, uint8_t *b, size_t size) {
+void eve_writeb(uint32_t addr, uint8_t *buf, size_t size) {
     int i;
 
     eve_spi_cs_set();
     eve_spi_xchg24(addr | EVE_MEM_WRITE, 0);
     for (i=0; i<size; i++) {
-        eve_spi_xchg8(b[i], 0);
+        eve_spi_xchg8(buf[i], 0);
     }
     eve_spi_cs_clear();
 }
@@ -111,7 +112,7 @@ void eve_dl_start(uint32_t addr, char burst) {
 
 void eve_dl_write(uint32_t dl) {
     if (dl_burst) {
-        eve_spi_xchg32(dl, EVE_SPI_FLAG_TX | EVE_SPI_FLAG_BSWAP);
+        eve_spi_xchg32(dl, EVE_SPI_FLAGS(dl_burst));
     } else {
         eve_write32(dl_addr, dl);
     }
@@ -140,17 +141,13 @@ static void cmd_inc(uint16_t i) {
     cmd_offset &= 0x0fff;
 }
 
-static void cmd_begin(uint32_t command) {
-    uint8_t flags = 0;
-
-    if (cmd_burst) {
-        flags = EVE_SPI_FLAG_TX;
-    } else {
+static void cmd_begin(uint32_t command, uint8_t flags) {
+    if (!cmd_burst) {
         uint32_t addr = EVE_RAM_CMD + cmd_offset;
         eve_spi_cs_set();
         eve_spi_xchg24(addr | EVE_MEM_WRITE, 0);
     }
-    eve_spi_xchg32(command, EVE_SPI_FLAG_BSWAP | flags);
+    eve_spi_xchg32(command, flags);
     cmd_inc(4);
 }
 
@@ -158,11 +155,11 @@ static void cmd_end(void) {
     if (!cmd_burst) eve_spi_cs_clear();
 }
 
-static void cmd_string(const char *s, uint8_t flags) {
+static void cmd_string(const char *str, uint8_t flags) {
     int i = 0;
 
-    while (s[i] != 0) {
-        eve_spi_xchg8(s[i], flags);
+    while (str[i] != 0) {
+        eve_spi_xchg8(str[i], flags);
         i++;
     }
     eve_spi_xchg8(0, flags);
@@ -170,23 +167,38 @@ static void cmd_string(const char *s, uint8_t flags) {
     cmd_inc(i);
 }
 
-static void cmd_buffer(const char *b, int size, uint8_t flags) {
+static void cmd_buffer(const char *buf, int size, uint8_t flags) {
     int i = 0;
 
     for (i=0; i<size; i++) {
-        eve_spi_xchg8(b[i], flags);
+        eve_spi_xchg8(buf[i], flags);
     }
     cmd_inc(size);
 }
 
+static void cmd_padding(uint8_t flags) {
+    int i = cmd_offset & 3;  /* equivalent to cmd_offset % 4 */
+
+    if (i) {
+        i = 4 - i;  /* 3, 2 or 1 */
+        cmd_inc(i);
+
+        while (i > 0) {
+            eve_spi_xchg8(0, flags);
+            i--;
+        }
+    }
+}
+
 void eve_cmd(uint32_t cmd, const char *fmt, ...) {
-    uint8_t flags = cmd_burst ? (EVE_SPI_FLAG_TX | EVE_SPI_FLAG_BSWAP) : EVE_SPI_FLAG_BSWAP;
+    uint8_t flags = EVE_SPI_FLAGS(cmd_burst);
     va_list argv;
     uint16_t *p;
     int i = 0;
+    int cont = 0;
 
     va_start(argv, fmt);
-    cmd_begin(cmd);
+    cmd_begin(cmd, flags);
     while (fmt[i]) {
         switch (fmt[i]) {
             case 'b':
@@ -213,21 +225,23 @@ void eve_cmd(uint32_t cmd, const char *fmt, ...) {
             case 'p':
                 cmd_buffer(va_arg(argv, const char *), va_arg(argv, int), flags);
                 break;
+            case '+':
+                cont = 1;
+                break;
         }
+        if (cont) break;
         i++;
     }
     va_end(argv);
-    /* padding */
-    i = cmd_offset & 3;  /* equivalent to cmd_offset % 4 */
-    if (i) {
-        i = 4 - i;  /* 3, 2 or 1 */
-        cmd_inc(i);
+    if (!cont) eve_cmd_end();
+}
 
-        while (i > 0) {
-            eve_spi_xchg8(0, flags);
-            i--;
-        }
-    }
+void eve_cmd_write(uint8_t *buffer, size_t size) {
+    cmd_buffer(buffer, size, EVE_SPI_FLAGS(cmd_burst));
+}
+
+void eve_cmd_end(void) {
+    cmd_padding(EVE_SPI_FLAGS(cmd_burst));
     cmd_end();
 }
 
@@ -236,7 +250,7 @@ uint32_t eve_cmd_result(uint16_t offset) {
 }
 
 void eve_cmd_dl(uint32_t dl) {
-    cmd_begin(dl);
+    cmd_begin(dl, EVE_SPI_FLAGS(cmd_burst));
     cmd_end();
 }
 

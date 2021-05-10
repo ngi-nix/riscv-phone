@@ -214,19 +214,23 @@ int eve_window_touch(EVEWindow *window, EVETouch *touch, uint16_t evt, uint8_t t
     return 0;
 }
 
+#include <stdio.h>
+
 void eve_window_root_draw(EVEWindowRoot *root) {
     uint8_t tag0 = 0x80;
+    int rv;
 
     eve_cmd_burst_start();
-	eve_cmd_dl(CMD_DLSTART);
+    eve_cmd_dl(CMD_DLSTART);
 
     if (root->tag0 != EVE_NOTAG) tag0 = EVE_NOTAG;
     eve_window_draw(&root->w, tag0);
 
     eve_cmd_dl(DISPLAY());
-	eve_cmd_dl(CMD_SWAP);
+    eve_cmd_dl(CMD_SWAP);
     eve_cmd_burst_end();
-    eve_cmd_exec(1);
+    rv = eve_cmd_exec(1);
+    if (rv) printf("EVE EXEC ERR\n");
 }
 
 void eve_window_root_touch(EVETouch *touch, uint16_t evt, uint8_t tag0, void *win) {

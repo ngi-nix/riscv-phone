@@ -307,7 +307,6 @@ uint8_t eve_page_draw(EVEView *view, uint8_t tag0) {
         }
         widget = eve_widget_next(widget);
     }
-
     eve_cmd_dl(RESTORE_CONTEXT());
 
     for (i=tag0; i<tagN; i++) {
