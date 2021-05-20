@@ -2,7 +2,7 @@ include common.mk
 
 CFLAGS += -I./include
 
-subdirs = bsp/drivers bsp/gloss bsp/metal eos eos/i2c eos/eve eos/eve/screen eos/eve/widget eos/app
+subdirs = bsp/drivers bsp/gloss bsp/metal eos eos/i2c eos/eve eos/eve/screen eos/eve/widget eos/app crypto fsfat
 
 all: libeos.a
 
