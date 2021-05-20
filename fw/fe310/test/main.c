@@ -23,6 +23,7 @@
 #include "phone.h"
 #include "modem.h"
 #include "wifi.h"
+#include "cam.h"
 #include "test.h"
 
 void app_home_page(EVEWindow *window, EVEViewStack *stack) {
@@ -51,9 +52,21 @@ void app_home_page(EVEWindow *window, EVEViewStack *stack) {
             .widget.spec.page.title = "Modem",
             .widget.spec.page.constructor = app_modem
         },
+        {
+            .widget.type = EVE_WIDGET_TYPE_PAGE,
+            .widget.g.w = APP_SCREEN_W,
+            .widget.spec.page.title = "Camera",
+            .widget.spec.page.constructor = app_cam
+        },
+        {
+            .widget.type = EVE_WIDGET_TYPE_PAGE,
+            .widget.g.w = APP_SCREEN_W,
+            .widget.spec.page.title = "Test",
+            .widget.spec.page.constructor = app_test
+        },
     };
 
-    EVEForm *form = eve_form_create(window, stack, spec, 4, NULL, NULL, NULL);
+    EVEForm *form = eve_form_create(window, stack, spec, 6, NULL, NULL, NULL);
 }
 
 int main() {

@@ -23,8 +23,8 @@
 #include "status.h"
 #include "phone.h"
 
-#define ABUF_SIZE       512
-#define MIC_WM          128
+#define ABUF_SIZE       128
+#define MIC_WM          64
 
 static uint8_t mic_arr[ABUF_SIZE];
 static uint8_t spk_arr[ABUF_SIZE];
