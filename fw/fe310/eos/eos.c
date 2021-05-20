@@ -20,10 +20,11 @@
 
 #include "eos.h"
 
-static uint32_t eve_touch[6] = {0xfa46,0xfffffcf6,0x422fe,0xffffff38,0x10002,0xf3cb0};
-
 void eos_init(void) {
     uint8_t wakeup_cause = eos_power_wakeup_cause();
+    uint32_t touch_matrix[6] = {0xfa46,0xfffffcf6,0x422fe,0xffffff38,0x10002,0xf3cb0};
+    int touch_calibrate = 0;
+
     printf("WAKE:%d\n", wakeup_cause);
 
     eos_evtq_init();
@@ -43,6 +44,9 @@ void eos_init(void) {
 
     eos_net_wake(wakeup_cause);
 
-    eve_set_touch_calibration(eve_touch);
-    eve_init(wakeup_cause == EOS_PWR_WAKE_RST, EVE_GPIO_DIR);
+    eve_init(wakeup_cause == EOS_PWR_WAKE_RST, touch_calibrate, touch_matrix, EVE_GPIO_DIR);
+    if (touch_calibrate) {
+        printf("TOUCH MATRIX:\n");
+        printf("uint32_t touch_matrix[6] = {0x%x,0x%x,0x%x,0x%x,0x%x,0x%x}\n", touch_matrix[0], touch_matrix[1], touch_matrix[2], touch_matrix[3], touch_matrix[4], touch_matrix[5]);
+    }
 }

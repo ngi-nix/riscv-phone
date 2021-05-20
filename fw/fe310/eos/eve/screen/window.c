@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "eve.h"
 #include "eve_kbd.h"
@@ -213,8 +214,6 @@ int eve_window_touch(EVEWindow *window, EVETouch *touch, uint16_t evt, uint8_t t
 
     return 0;
 }
-
-#include <stdio.h>
 
 void eve_window_root_draw(EVEWindowRoot *root) {
     uint8_t tag0 = 0x80;

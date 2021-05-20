@@ -66,6 +66,5 @@ void eve_standby(void);
 void eve_sleep(void);
 void eve_wake(void);
 void eve_brightness(uint8_t b);
-void eve_set_touch_calibration(uint32_t *matrix);
 
-int eve_init(int pwr_on, uint8_t gpio_dir);
+int eve_init(int pwr_on, int touch_calibrate, uint32_t *touch_matrix, uint8_t gpio_dir);

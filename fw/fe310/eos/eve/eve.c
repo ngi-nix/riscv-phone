@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include <stdarg.h>
-#include <stdio.h>
 
 #include "eve.h"
 
@@ -13,7 +12,6 @@ static uint16_t cmd_offset;
 static char dl_burst;
 static uint32_t dl_addr;
 
-static uint32_t *touch_calib;
 static uint8_t brigtness;
 static uint8_t power_state;
 
@@ -364,11 +362,7 @@ void eve_brightness(uint8_t b) {
     eve_write8(REG_PWM_DUTY, b);
 }
 
-void eve_set_touch_calibration(uint32_t *matrix) {
-    touch_calib = matrix;
-}
-
-static int _init(uint8_t gpio_dir) {
+static int _init(int touch_calibrate, uint32_t *touch_matrix, uint8_t gpio_dir) {
     uint8_t chipid = 0;
     uint16_t timeout = 0;
 
@@ -425,15 +419,8 @@ static int _init(uint8_t gpio_dir) {
     eve_write8(REG_TOUCH_MODE, EVE_TMODE_CONTINUOUS);       /* enable touch */
     eve_write16(REG_TOUCH_RZTHRESH, EVE_TOUCH_RZTHRESH);    /* eliminate any false touches */
 
-    if (touch_calib) {
-        eve_write32(REG_TOUCH_TRANSFORM_A, touch_calib[0]);
-        eve_write32(REG_TOUCH_TRANSFORM_B, touch_calib[1]);
-        eve_write32(REG_TOUCH_TRANSFORM_C, touch_calib[2]);
-        eve_write32(REG_TOUCH_TRANSFORM_D, touch_calib[3]);
-        eve_write32(REG_TOUCH_TRANSFORM_E, touch_calib[4]);
-        eve_write32(REG_TOUCH_TRANSFORM_F, touch_calib[5]);
-    } else {
-        uint32_t touch_calib[6];
+    if (touch_calibrate) {
+        eve_write8(REG_PWM_DUTY, 0x40);
         eve_cmd_dl(CMD_DLSTART);
         eve_cmd_dl(CLEAR_COLOR_RGB(0,0,0));
         eve_cmd_dl(CLEAR(1,1,1));
@@ -442,15 +429,21 @@ static int _init(uint8_t gpio_dir) {
         eve_cmd_dl(DISPLAY());
         eve_cmd_dl(CMD_SWAP);
         eve_cmd_exec(1);
+        eve_write8(REG_PWM_DUTY, 0);
 
-        touch_calib[0] = eve_read32(REG_TOUCH_TRANSFORM_A);
-        touch_calib[1] = eve_read32(REG_TOUCH_TRANSFORM_B);
-        touch_calib[2] = eve_read32(REG_TOUCH_TRANSFORM_C);
-        touch_calib[3] = eve_read32(REG_TOUCH_TRANSFORM_D);
-        touch_calib[4] = eve_read32(REG_TOUCH_TRANSFORM_E);
-        touch_calib[5] = eve_read32(REG_TOUCH_TRANSFORM_F);
-
-        printf("TOUCH TRANSFORM:{0x%x,0x%x,0x%x,0x%x,0x%x,0x%x}\n", touch_calib[0], touch_calib[1], touch_calib[2], touch_calib[3], touch_calib[4], touch_calib[5]);
+        touch_matrix[0] = eve_read32(REG_TOUCH_TRANSFORM_A);
+        touch_matrix[1] = eve_read32(REG_TOUCH_TRANSFORM_B);
+        touch_matrix[2] = eve_read32(REG_TOUCH_TRANSFORM_C);
+        touch_matrix[3] = eve_read32(REG_TOUCH_TRANSFORM_D);
+        touch_matrix[4] = eve_read32(REG_TOUCH_TRANSFORM_E);
+        touch_matrix[5] = eve_read32(REG_TOUCH_TRANSFORM_F);
+    } else {
+        eve_write32(REG_TOUCH_TRANSFORM_A, touch_matrix[0]);
+        eve_write32(REG_TOUCH_TRANSFORM_B, touch_matrix[1]);
+        eve_write32(REG_TOUCH_TRANSFORM_C, touch_matrix[2]);
+        eve_write32(REG_TOUCH_TRANSFORM_D, touch_matrix[3]);
+        eve_write32(REG_TOUCH_TRANSFORM_E, touch_matrix[4]);
+        eve_write32(REG_TOUCH_TRANSFORM_F, touch_matrix[5]);
     }
 
     eve_write8(REG_CTOUCH_EXTENDED, 0x00);
@@ -461,13 +454,13 @@ static int _init(uint8_t gpio_dir) {
     return EVE_OK;
 }
 
-int eve_init(int pwr_on, uint8_t gpio_dir) {
+int eve_init(int pwr_on, int touch_calibrate, uint32_t *touch_matrix, uint8_t gpio_dir) {
     eve_spi_start();
 
     pwr_on = 1; // override this for now
 
     if (pwr_on) {
-        int rv = _init(gpio_dir);
+        int rv = _init(touch_calibrate, touch_matrix, gpio_dir);
         if (rv) return rv;
     } else {
         power_state = EVE_PSTATE_SLEEP;
