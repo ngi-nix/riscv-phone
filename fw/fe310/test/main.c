@@ -24,6 +24,7 @@
 #include "modem.h"
 #include "wifi.h"
 #include "cam.h"
+#include "fs.h"
 #include "test.h"
 
 void app_home_page(EVEWindow *window, EVEViewStack *stack) {
@@ -61,12 +62,18 @@ void app_home_page(EVEWindow *window, EVEViewStack *stack) {
         {
             .widget.type = EVE_WIDGET_TYPE_PAGE,
             .widget.g.w = APP_SCREEN_W,
+            .widget.spec.page.title = "File system",
+            .widget.spec.page.constructor = app_fs
+        },
+        {
+            .widget.type = EVE_WIDGET_TYPE_PAGE,
+            .widget.g.w = APP_SCREEN_W,
             .widget.spec.page.title = "Test",
             .widget.spec.page.constructor = app_test
         },
     };
 
-    EVEForm *form = eve_form_create(window, stack, spec, 6, NULL, NULL, NULL);
+    EVEForm *form = eve_form_create(window, stack, spec, 7, NULL, NULL, NULL);
 }
 
 int main() {
@@ -80,6 +87,7 @@ int main() {
     app_wifi_init();
     app_cell_dev_init();
     app_cell_pdp_init();
+    app_fs_init();
 
     eos_evtq_loop();
 }
