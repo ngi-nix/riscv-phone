@@ -34,6 +34,7 @@ typedef struct EVEStrSpec {
 int eve_strw_create(EVEStrWidget *widget, EVERect *g, EVEPage *page, EVEStrSpec *spec);
 void eve_strw_init(EVEStrWidget *widget, EVERect *g, EVEPage *page, EVEFont *font, utf8_t *str, uint16_t str_size);
 void eve_strw_destroy(EVEStrWidget *widget);
+int eve_strw_update(EVEStrWidget *widget);
 
 uint8_t eve_strw_draw(EVEWidget *_widget, uint8_t tag0);
 int eve_strw_touch(EVEWidget *_widget, EVETouch *touch, uint16_t evt);

@@ -62,6 +62,18 @@ void eve_strw_init(EVEStrWidget *widget, EVERect *g, EVEPage *page, EVEFont *fon
     if (_widget->g.h == 0) _widget->g.h = eve_font_h(widget->font);
 }
 
+int eve_strw_update(EVEStrWidget *widget) {
+    int rv, str_len;
+
+    rv = utf8_verify(widget->str, widget->str_size, &str_len);
+    if (rv != UTF_OK) {
+        if (str_len >= widget->str_size) str_len = 0;
+        widget->str[str_len] = '\0';
+    }
+    widget->str_len = str_len;
+    return (rv == UTF_OK) ? EVE_OK : EVE_ERR;
+}
+
 void eve_strw_destroy(EVEStrWidget *widget) {
     eve_free(widget->str);
 }
