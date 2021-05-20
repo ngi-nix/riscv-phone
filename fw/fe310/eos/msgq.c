@@ -42,40 +42,54 @@ void eos_msgq_pop(EOSMsgQ *msgq, unsigned char *type, unsigned char **buffer, ui
     }
 }
 
-int eos_msgq_get(EOSMsgQ *msgq, unsigned char type, unsigned char *selector, uint16_t sel_len, unsigned char **buffer, uint16_t *len) {
+int eos_msgq_find(EOSMsgQ *msgq, unsigned char type, unsigned char *selector, uint16_t sel_len, unsigned char **buffer, uint16_t *len) {
     uint8_t i, j, idx;
+    unsigned char *_buffer;
+    uint16_t _len;
 
     if (msgq->idx_r == msgq->idx_w) {
-        *buffer = NULL;
-        *len = 0;
+        if (buffer && len) {
+            *buffer = NULL;
+            *len = 0;
+        }
         return 0;
     }
 
     idx = IDX_MASK(msgq->idx_r, msgq->size);
     if (type == msgq->array[idx].type) {
-        *buffer = msgq->array[idx].buffer;
-        *len = msgq->array[idx].len;
-        if ((selector == NULL) || (sel_len == 0) || ((sel_len <= *len) && (memcmp(selector, *buffer, sel_len) == 0))) {
+        _buffer = msgq->array[idx].buffer;
+        _len = msgq->array[idx].len;
+        if ((selector == NULL) || (sel_len == 0) || ((sel_len <= _len) && (memcmp(selector, _buffer, sel_len) == 0))) {
             msgq->idx_r++;
+            if (buffer && len) {
+                *buffer = _buffer;
+                *len = _len;
+            }
             return 1;
         }
     }
     for (i = msgq->idx_r + 1; IDX_LT(i, msgq->idx_w); i++) {
         idx = IDX_MASK(i, msgq->size);
         if (type== msgq->array[idx].type) {
-            *buffer = msgq->array[idx].buffer;
-            *len = msgq->array[idx].len;
-            if ((selector == NULL) || (sel_len == 0) || ((sel_len <= *len) && (memcmp(selector, *buffer, sel_len) == 0))) {
+            _buffer = msgq->array[idx].buffer;
+            _len = msgq->array[idx].len;
+            if ((selector == NULL) || (sel_len == 0) || ((sel_len <= _len) && (memcmp(selector, _buffer, sel_len) == 0))) {
                 for (j = i + 1; IDX_LT(j, msgq->idx_w); j++) {
                     msgq->array[IDX_MASK(j - 1, msgq->size)] = msgq->array[IDX_MASK(j, msgq->size)];
                 }
                 msgq->idx_w--;
+                if (buffer && len) {
+                    *buffer = _buffer;
+                    *len = _len;
+                }
                 return 1;
             }
         }
     }
-    *buffer = NULL;
-    *len = 0;
+    if (buffer && len) {
+        *buffer = NULL;
+        *len = 0;
+    }
     return 0;
 }
 

@@ -55,12 +55,28 @@ void eos_evtq_pop_isr(unsigned char *type, unsigned char **buffer, uint16_t *len
     eos_msgq_pop(&_eos_event_q, type, buffer, len);
 }
 
+int eos_evtq_get(unsigned char type, unsigned char **buffer, uint16_t *len) {
+    int rv = 0;
+
+    clear_csr(mstatus, MSTATUS_MIE);
+    rv = eos_msgq_find(&_eos_event_q, type, NULL, 0, buffer, len);
+    set_csr(mstatus, MSTATUS_MIE);
+}
+
+int eos_evtq_find(unsigned char type, unsigned char *selector, uint16_t sel_len, unsigned char **buffer, uint16_t *len) {
+    int rv = 0;
+
+    clear_csr(mstatus, MSTATUS_MIE);
+    rv = eos_msgq_find(&_eos_event_q, type, selector, sel_len, buffer, len);
+    set_csr(mstatus, MSTATUS_MIE);
+}
+
 void eos_evtq_wait(unsigned char type, unsigned char *selector, uint16_t sel_len, unsigned char **buffer, uint16_t *len) {
     int rv = 0;
 
     while(!rv) {
         clear_csr(mstatus, MSTATUS_MIE);
-        rv = eos_msgq_get(&_eos_event_q, type, selector, sel_len, buffer, len);
+        rv = eos_msgq_find(&_eos_event_q, type, selector, sel_len, buffer, len);
         if (!rv) {
             unsigned char _type;
             unsigned char *_buffer;
@@ -127,6 +143,7 @@ void eos_evtq_bad_handler(unsigned char type, unsigned char *buffer, uint16_t le
 void eos_evtq_set_handler(unsigned char type, eos_evt_handler_t handler) {
     unsigned char idx = (type & EOS_EVT_MASK) >> 4;
 
+    if (handler == NULL) handler = eos_evtq_bad_handler;
     if (idx <= EOS_EVT_MAX_EVT) evt_handler[idx] = handler;
 }
 

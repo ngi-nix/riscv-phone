@@ -57,9 +57,11 @@ static void _post_trans_cb(spi_slave_transaction_t *trans) {
 }
 
 static void net_xchg_task(void *pvParameters) {
-    int repeat = 0;
     int wake = 0;
+    int reply = 0;
+    int skip_next_msg = 0;
     unsigned char mtype = 0;
+    unsigned char mtype_flags = 0;
     unsigned char *buffer;
     uint16_t len;
     unsigned char *buf_send = heap_caps_malloc(SPI_SIZE_BUF, MALLOC_CAP_DMA);
@@ -95,12 +97,12 @@ static void net_xchg_task(void *pvParameters) {
 
     if (eos_power_wakeup_cause()) {
         wake = 1;
-        repeat = 1;
+        skip_next_msg = 1;
     }
 
     eos_power_wait4init();
     while (1) {
-        if (!repeat) {
+        if (!skip_next_msg) {
             xSemaphoreTake(mutex, portMAX_DELAY);
 
             eos_msgq_pop(&net_send_q, &mtype, &buffer, &len);
@@ -122,13 +124,25 @@ static void net_xchg_task(void *pvParameters) {
 
             xSemaphoreGive(mutex);
         }
-        repeat = 0;
+        skip_next_msg = 0;
 
-        buf_recv[0] = 0;
-        buf_recv[1] = 0;
-        buf_recv[2] = 0;
+        if (reply) {
+            spi_tr.tx_buffer = buf_recv;
+            spi_tr.rx_buffer = NULL;
+        } else {
+            buf_recv[0] = 0;
+            buf_recv[1] = 0;
+            buf_recv[2] = 0;
+        }
         spi_slave_transmit(VSPI_HOST, &spi_tr, portMAX_DELAY);
         // ESP_LOGI(TAG, "RECV:%d", buf_recv[0]);
+        if (reply) {
+            reply = 0;
+            spi_tr.tx_buffer = buf_send;
+            spi_tr.rx_buffer = buf_recv;
+            if (buf_send[0]) skip_next_msg = 1;
+            continue;
+        }
 
         if (wake) {
             eos_power_net_ready();
@@ -157,22 +171,26 @@ static void net_xchg_task(void *pvParameters) {
 
                 spi_slave_initialize(VSPI_HOST, &spi_bus_cfg, &spi_slave_cfg, 1);
                 wake = 1;
-                repeat = 1;
+                skip_next_msg = 1;
             }
             continue;
         }
-        mtype = buf_recv[0];
+        mtype = buf_recv[0] & ~EOS_NET_MTYPE_FLAG_MASK;
+        mtype_flags = buf_recv[0] & EOS_NET_MTYPE_FLAG_MASK;
         len   = (uint16_t)buf_recv[1] << 8;
         len  |= (uint16_t)buf_recv[2] & 0xFF;
         buffer = buf_recv + 3;
-        if (mtype & EOS_NET_MTYPE_FLAG_ONEW) {
-            mtype &= ~EOS_NET_MTYPE_FLAG_ONEW;
-            if (buf_send[0]) repeat = 1;
-        }
         if ((mtype <= EOS_NET_MAX_MTYPE) && (len <= EOS_NET_SIZE_BUF)) {
             mtype_handler[mtype-1](mtype, buffer, len);
         } else {
             bad_handler(mtype, buffer, len);
+        }
+        if ((mtype_flags & EOS_NET_MTYPE_FLAG_ONEW) && buf_send[0]) {
+            skip_next_msg = 1;
+        }
+        if (mtype_flags & EOS_NET_MTYPE_FLAG_REPW) {
+            skip_next_msg = 1;
+            reply = 1;
         }
     }
     vTaskDelete(NULL);

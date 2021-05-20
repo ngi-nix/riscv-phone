@@ -59,7 +59,7 @@ int eos_spi_deselect(void) {
     eos_spi_stop();
 
     spi_dev = EOS_SPI_DEV_NET;
-    eos_net_start();
+    eos_net_start(0);
 
     return EOS_OK;
 }

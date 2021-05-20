@@ -1,8 +1,10 @@
 include ../common.mk
 
-CFLAGS += -I. -I../bsp/include -I../bsp/drivers
+CRYPTO_DIR = ../../../crypto
 
-obj = trap_entry.o eos.o msgq.o event.o interrupt.o timer.o power.o i2s.o i2c.o uart.o spi.o spi_dev.o sdcard.o net.o wifi.o cell.o sock.o unicode.o
+CFLAGS += -I. -I../bsp/include -I../bsp/drivers -I$(CRYPTO_DIR)
+
+obj = trap_entry.o eos.o msgq.o event.o interrupt.o timer.o power.o i2s.o i2c.o uart.o spi.o spi_dev.o sdcard.o sdc_crypto.o cam.o net.o wifi.o cell.o sock.o unicode.o
 
 
 %.o: %.c %.h

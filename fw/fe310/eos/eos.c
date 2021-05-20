@@ -42,7 +42,7 @@ void eos_init(void) {
     eos_sock_init();
     eos_bq25895_init();
 
-    eos_net_wake(wakeup_cause);
+    eos_net_start(wakeup_cause);
 
     eve_init(wakeup_cause == EOS_PWR_WAKE_RST, touch_calibrate, touch_matrix, EVE_GPIO_DIR);
     if (touch_calibrate) {

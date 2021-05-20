@@ -13,7 +13,9 @@
 
 #define EOS_NET_MAX_MTYPE           8
 
-#define EOS_NET_MTYPE_FLAG_ONEW     0x80
+#define EOS_NET_MTYPE_FLAG_ONEW     0x40
+#define EOS_NET_MTYPE_FLAG_REPW     0x80
+#define EOS_NET_MTYPE_FLAG_MASK     0xc0
 
 /* esp32 specific */
 #define EOS_NET_SIZE_BUFQ           4
