@@ -1,7 +1,7 @@
 #define SPI_DIV_NET             16
 #define SPI_DIV_EVE             16
 #define SPI_DIV_SDC             1024
-#define SPI_DIV_CAM             16
+#define SPI_DIV_CAM             24
 
 #define SPI_CSID_NET            3
 #define SPI_CSID_EVE            2
