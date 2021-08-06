@@ -1,3 +1,16 @@
+diff --git a/arch/arm/dts/Makefile b/arch/arm/dts/Makefile
+index c841df051d..5375779bdd 100644
+--- a/arch/arm/dts/Makefile
++++ b/arch/arm/dts/Makefile
+@@ -479,6 +479,8 @@ dtb-$(CONFIG_ARCH_IMX8) += fsl-imx8dx-17x17-val.dtb \
+ 		fsl-imx8qxp-lpddr4-arm2.dtb \
+ 		fsl-imx8qxp-mek.dtb
+
++dtb-$(CONFIG_TARGET_RVPHONE_CL_IMX8) += cl-imx8.dtb
++
+ dtb-$(CONFIG_RCAR_GEN3) += \
+ 	r8a7795-h3ulcb.dtb \
+ 	r8a7795-salvator-x.dtb \
 diff --git a/arch/arm/mach-imx/imx8m/Kconfig b/arch/arm/mach-imx/imx8m/Kconfig
 index 09779cda64..cb2fa337fc 100644
 --- a/arch/arm/mach-imx/imx8m/Kconfig
@@ -5,19 +18,19 @@ index 09779cda64..cb2fa337fc 100644
 @@ -66,6 +66,11 @@ config TARGET_IMX8MM_DDR4_EVK
  	select SUPPORT_SPL
  	select IMX8M_DDR4
- 
+
 +config TARGET_RVPHONE_CL_IMX8
 +	bool "rvPhone cl-imx8 board"
 +	select IMX8MQ
 +	select SUPPORT_SPL
 +
  endchoice
- 
+
  config SYS_SOC
 @@ -77,5 +82,6 @@ source "board/freescale/imx8mq_phanbell/Kconfig"
  source "board/freescale/imx8mq_aiy/Kconfig"
  source "board/freescale/imx8mm_evk/Kconfig"
  source "board/freescale/imx8mm_val/Kconfig"
 +source "board/rvphone/cl-imx8/Kconfig"
- 
+
  endif
