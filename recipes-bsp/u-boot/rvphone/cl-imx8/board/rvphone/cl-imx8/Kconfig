@@ -1,23 +1,10 @@
-if TARGET_COMPULAB_IMX8
-
-choice
-    prompt "rvPhone board select"
-
-config TARGET_CL_IMX8
-    bool "cl-imx8"
-
-endchoice
-
-config DEFAULT_DTB
-    string "U-Boot Default Device Tree File"
-    depends on TARGET_RVPHONE_CL_IMX8
-    default "cl-som.dtb"
+if TARGET_RVPHONE_CL_IMX8
 
 config SYS_BOARD
 	default "cl-imx8"
 
 config SYS_VENDOR
-	default "compulab"
+	default "rvphone"
 
 config SYS_CONFIG_NAME
 	default "cl-imx8"

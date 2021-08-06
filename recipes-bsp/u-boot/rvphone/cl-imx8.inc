@@ -1,5 +1,6 @@
 SRC_URI_append_cl-imx8 = " \
-	file://0000-add-board-support.patch \
+	file://0000-board-support.patch \
+	file://0001-board-dts.patch \
 	file://dts/ \
 	file://board/ \
 	file://configs/ \
