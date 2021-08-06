@@ -1,0 +1,12 @@
+diff --git a/arch/arm64/boot/dts/Makefile b/arch/arm64/boot/dts/Makefile
+index c6684ab8e201..6740999e681c 100644
+--- a/arch/arm64/boot/dts/Makefile
++++ b/arch/arm64/boot/dts/Makefile
+@@ -19,6 +19,7 @@ dts-dirs += qcom
+ dts-dirs += realtek
+ dts-dirs += renesas
+ dts-dirs += rockchip
++dts-dirs += rvphone
+ dts-dirs += socionext
+ dts-dirs += sprd
+ dts-dirs += xilinx
