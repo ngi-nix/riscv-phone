@@ -12,6 +12,7 @@
  * GNU General Public License for more details.
  */
 
+/dts-v1/;
 #include "../freescale/fsl-imx8mq.dtsi"
 
 / {
