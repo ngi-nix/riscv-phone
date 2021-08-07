@@ -246,20 +246,6 @@
 /* I2C Configs */
 #define CONFIG_SYS_I2C_SPEED		100000
 
-/* USB configs */
-#ifndef CONFIG_SPL_BUILD
-
-#define CONFIG_CMD_USB
-#define CONFIG_USB_STORAGE
-
-#define CONFIG_CMD_USB_MASS_STORAGE
-#define CONFIG_USB_GADGET_MASS_STORAGE
-#define CONFIG_USB_FUNCTION_MASS_STORAGE
-
-#define CONFIG_CMD_READ
-
-#endif
-
 #define CONFIG_OF_SYSTEM_SETUP
 
 /* Framebuffer */
