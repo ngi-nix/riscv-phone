@@ -5,6 +5,8 @@ SRC_URI_append_cl-imx8 = " \
 	file://0003-sn65dsi83-bridge-driver.patch \
 	file://cl-imx8_defconfig \
 	file://defconfig \
+	file://dts/ \
+	file://sn65dsi83/ \
 "
 
 do_patch_copy () {
