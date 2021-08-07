@@ -5,6 +5,7 @@
 #
 ccflags-y += -I../../freescale
 
+obj-y += common.o
 obj-y += ../../freescale/common/mmc.o
 obj-$(CONFIG_$(SPL_)DM_PMIC_PFUZE100) += ../../freescale/common/pfuze.o
 obj-$(CONFIG_POWER_PFUZE100) += ../../freescale/common/pfuze.o

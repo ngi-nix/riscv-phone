@@ -22,6 +22,7 @@
 #include <fsl_esdhc.h>
 #include <mmc.h>
 
+#include "common.h"
 #include "ddr/ddr.h"
 
 DECLARE_GLOBAL_DATA_PTR;
