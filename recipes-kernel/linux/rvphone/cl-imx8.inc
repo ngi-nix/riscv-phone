@@ -10,6 +10,7 @@ SRC_URI_append_cl-imx8 = " \
 "
 
 do_patch_copy () {
+    cp -a ${WORKDIR}/cl-imx8_defconfig ${S}/arch/arm64/configs/
     cp -a ${WORKDIR}/dts ${S}/arch/arm64/boot/dts/rvphone
     cp -a ${WORKDIR}/sn65dsi83 ${S}/drivers/gpu/drm/bridge/
 }
