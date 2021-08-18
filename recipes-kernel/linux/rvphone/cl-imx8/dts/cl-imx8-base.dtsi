@@ -1,6 +1,3 @@
-/dts-v1/;
-#include "../freescale/fsl-imx8mq.dtsi"
-
 / {
 	chosen {
 		bootargs = "console=ttymxc2,115200 earlycon=ec_imx6q,0x30880000,115200";

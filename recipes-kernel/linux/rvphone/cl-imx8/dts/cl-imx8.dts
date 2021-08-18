@@ -1,0 +1,5 @@
+/dts-v1/;
+#include "../freescale/fsl-imx8mq.dtsi"
+#include "cl-imx8-base.dtsi"
+#include "cl-imx8-wifi.dtsi"
+#include "cl-imx8-lvds.dtsi"
