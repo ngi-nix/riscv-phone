@@ -1,0 +1,24 @@
+&iomuxc {
+	rvphone-cl-imx8-wifi {
+		pinctrl_pcie1: pcie1grp {
+			fsl,pins = <
+				MX8MQ_IOMUXC_SAI3_RXC_GPIO4_IO29 		0x16 /* WIFI reset-gpio   */
+				MX8MQ_IOMUXC_GPIO1_IO01_GPIO1_IO1		0x16 /* WIFI disable-gpio */
+
+				MX8MQ_IOMUXC_GPIO1_IO03_GPIO1_IO3		0x16 /* WIFI pewake */
+				MX8MQ_IOMUXC_GPIO1_IO00_ANAMIX_REF_CLK_32K	0x16
+			>;
+		};
+
+	};
+};
+
+&pcie1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pcie1>;
+	reset-gpio = <&gpio4 29 GPIO_ACTIVE_LOW>;
+	disable-gpio = <&gpio1 1 GPIO_ACTIVE_LOW>;
+	ext_osc = <0>;
+	hard-wired = <1>;
+	status = "okay";
+};
