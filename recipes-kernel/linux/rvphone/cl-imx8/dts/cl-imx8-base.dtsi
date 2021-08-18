@@ -1,3 +1,5 @@
+#include "../freescale/fsl-imx8mq.dtsi"
+
 / {
 	chosen {
 		bootargs = "console=ttymxc2,115200 earlycon=ec_imx6q,0x30880000,115200";
@@ -41,18 +43,6 @@
 			off-on-delay = <20000>;
 			enable-active-high;
 		};
-
-		reg_usb_mux: regulator-usb-mux {
-			compatible = "regulator-fixed";
-			pinctrl-names = "default";
-			pinctrl-0 = <&pinctrl_usbimux1>;
-			regulator-name = "usb_mux";
-			regulator-min-microvolt = <3300000>;
-			regulator-max-microvolt = <3300000>;
-			gpio = <&gpio1 4 GPIO_ACTIVE_HIGH>;
-			regulator-always-on;
-			enable-active-low;
-		};
 	};
 
 	pwmleds {
@@ -77,12 +67,6 @@
 			>;
 		};
 
-		pinctrl_usbimux1: usbmux1grp {
-			fsl,pins = <
-				MX8MQ_IOMUXC_GPIO1_IO04_GPIO1_IO4		0x16
-			>;
-		};
-
 		pinctrl_usdhc1_reg: usdhc1reggrp {
 			fsl,pins = <
 				MX8MQ_IOMUXC_SD1_RESET_B_GPIO2_IO10		0x1c
@@ -92,36 +76,6 @@
 		pinctrl_usdhc2_reg: usdhc2reggrp {
 			fsl,pins = <
 				MX8MQ_IOMUXC_SD2_RESET_B_GPIO2_IO19		0x41
-			>;
-		};
-
-		pinctrl_i2c2: i2c2grp {
-			fsl,pins = <
-				MX8MQ_IOMUXC_I2C2_SCL_I2C2_SCL			0x4000007f
-				MX8MQ_IOMUXC_I2C2_SDA_I2C2_SDA			0x4000007f
-			>;
-		};
-
-		pinctrl_i2c3: i2c3grp {
-			fsl,pins = <
-				MX8MQ_IOMUXC_I2C3_SCL_I2C3_SCL			0x4000007f
-				MX8MQ_IOMUXC_I2C3_SDA_I2C3_SDA			0x4000007f
-			>;
-		};
-
-		pinctrl_pwm2: pwm2grp {
-			fsl,pins = <
-				MX8MQ_IOMUXC_I2C4_SCL_PWM2_OUT 			0x16
-			>;
-		};
-
-		pinctrl_uart3: uart3grp {
-			fsl,pins = <
-				MX8MQ_IOMUXC_UART3_TXD_UART3_DCE_TX		0x79
-				MX8MQ_IOMUXC_UART3_RXD_UART3_DCE_RX		0x79
-				MX8MQ_IOMUXC_ECSPI1_MISO_UART3_DCE_CTS_B	0x79
-				MX8MQ_IOMUXC_ECSPI1_SS0_UART3_DCE_RTS_B		0x79
-				MX8MQ_IOMUXC_NAND_CLE_GPIO3_IO5			0x19
 			>;
 		};
 
@@ -210,6 +164,45 @@
 				MX8MQ_IOMUXC_SD2_DATA1_USDHC2_DATA1		0xdf
 				MX8MQ_IOMUXC_SD2_DATA2_USDHC2_DATA2		0xdf
 				MX8MQ_IOMUXC_SD2_DATA3_USDHC2_DATA3		0xdf
+			>;
+		};
+
+		pinctrl_i2c2: i2c2grp {
+			fsl,pins = <
+				MX8MQ_IOMUXC_I2C2_SCL_I2C2_SCL			0x4000007f
+				MX8MQ_IOMUXC_I2C2_SDA_I2C2_SDA			0x4000007f
+			>;
+		};
+
+		pinctrl_i2c3: i2c3grp {
+			fsl,pins = <
+				MX8MQ_IOMUXC_I2C3_SCL_I2C3_SCL			0x4000007f
+				MX8MQ_IOMUXC_I2C3_SDA_I2C3_SDA			0x4000007f
+			>;
+		};
+
+		pinctrl_uart3: uart3grp {
+			fsl,pins = <
+				MX8MQ_IOMUXC_UART3_TXD_UART3_DCE_TX		0x79
+				MX8MQ_IOMUXC_UART3_RXD_UART3_DCE_RX		0x79
+				MX8MQ_IOMUXC_ECSPI1_MISO_UART3_DCE_CTS_B	0x79
+				MX8MQ_IOMUXC_ECSPI1_SS0_UART3_DCE_RTS_B		0x79
+				MX8MQ_IOMUXC_NAND_CLE_GPIO3_IO5			0x19
+			>;
+		};
+
+		pinctrl_ecspi1: ecspi1grp {
+			fsl,pins = <
+				MX8MQ_IOMUXC_ECSPI1_SCLK_ECSPI1_SCLK		0x82 /* P1.13 */
+				MX8MQ_IOMUXC_ECSPI1_MOSI_ECSPI1_MOSI		0x82 /* P1.11 */
+				MX8MQ_IOMUXC_ECSPI1_MISO_ECSPI1_MISO		0x82 /* P1.15 */
+				MX8MQ_IOMUXC_ECSPI1_SS0_GPIO5_IO9		0x82 /* P1.17 */
+			>;
+		};
+
+		pinctrl_pwm2: pwm2grp {
+			fsl,pins = <
+				MX8MQ_IOMUXC_I2C4_SCL_PWM2_OUT 			0x16
 			>;
 		};
 
@@ -322,18 +315,29 @@
 	status = "disabled";
 };
 
-&pwm2 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_pwm2>;
-	status = "okay";
-};
-
 &uart3 { /* console */
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart3>;
 	assigned-clocks = <&clk IMX8MQ_CLK_UART3>;
 	assigned-clock-parents = <&clk IMX8MQ_CLK_25M>;
 	status = "okay";
+};
+
+&ecspi1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_ecspi1>;
+	fsl,spi-num-chipselects = <1>;
+	cs-gpios = <&gpio5 9 GPIO_ACTIVE_LOW>;
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	spidev: spidev@0 {
+		compatible = "spidev";
+		spi-max-frequency = <10000000>;
+		reg = <0>;
+		status = "okay";
+	};
 };
 
 &usdhc1 {
@@ -360,6 +364,12 @@
 	status = "okay";
 };
 
+&pwm2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pwm2>;
+	status = "okay";
+};
+
 &usb3_phy0 {
 	status = "okay";
 };
@@ -371,19 +381,6 @@
 &usb_dwc3_0 {
 	status = "okay";
 	dr_mode = "otg";
-};
-
-&usb3_phy1 {
-	status = "okay";
-};
-
-&usb3_1 {
-	status = "okay";
-};
-
-&usb_dwc3_1 {
-	status = "okay";
-	dr_mode = "host";
 };
 
 &gpu_pd {

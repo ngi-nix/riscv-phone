@@ -1,5 +1,28 @@
+/ {
+	regulators {
+		reg_usb_mux: regulator-usb-mux {
+			compatible = "regulator-fixed";
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_usbimux1>;
+			regulator-name = "usb_mux";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			gpio = <&gpio1 4 GPIO_ACTIVE_HIGH>;
+			regulator-always-on;
+			enable-active-low;
+		};
+	};
+};
+
+
 &iomuxc {
 	rvphone-cl-imx8-wifi {
+		pinctrl_usbimux1: usbmux1grp {
+			fsl,pins = <
+				MX8MQ_IOMUXC_GPIO1_IO04_GPIO1_IO4		0x16
+			>;
+		};
+
 		pinctrl_pcie1: pcie1grp {
 			fsl,pins = <
 				MX8MQ_IOMUXC_SAI3_RXC_GPIO4_IO29 		0x16 /* WIFI reset-gpio   */
@@ -9,7 +32,6 @@
 				MX8MQ_IOMUXC_GPIO1_IO00_ANAMIX_REF_CLK_32K	0x16
 			>;
 		};
-
 	};
 };
 
@@ -21,4 +43,17 @@
 	ext_osc = <0>;
 	hard-wired = <1>;
 	status = "okay";
+};
+
+&usb3_phy1 {
+	status = "okay";
+};
+
+&usb3_1 {
+	status = "okay";
+};
+
+&usb_dwc3_1 {
+	status = "okay";
+	dr_mode = "host";
 };
