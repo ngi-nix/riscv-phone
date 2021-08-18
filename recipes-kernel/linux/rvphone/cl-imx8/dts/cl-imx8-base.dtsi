@@ -1,17 +1,3 @@
-/*
- * Copyright (C) 2017 CopuLab Ltd.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- */
-
 /dts-v1/;
 #include "../freescale/fsl-imx8mq.dtsi"
 
@@ -119,6 +105,13 @@
 			>;
 		};
 
+		pinctrl_i2c3: i2c3grp {
+			fsl,pins = <
+				MX8MQ_IOMUXC_I2C3_SCL_I2C3_SCL			0x4000007f
+				MX8MQ_IOMUXC_I2C3_SDA_I2C3_SDA			0x4000007f
+			>;
+		};
+
 		pinctrl_pwm2: pwm2grp {
 			fsl,pins = <
 				MX8MQ_IOMUXC_I2C4_SCL_PWM2_OUT 			0x16
@@ -132,25 +125,6 @@
 				MX8MQ_IOMUXC_ECSPI1_MISO_UART3_DCE_CTS_B	0x79
 				MX8MQ_IOMUXC_ECSPI1_SS0_UART3_DCE_RTS_B		0x79
 				MX8MQ_IOMUXC_NAND_CLE_GPIO3_IO5			0x19
-			>;
-		};
-
-		pinctrl_uart4: uart4grp {
-			fsl,pins = <
-				MX8MQ_IOMUXC_ECSPI2_MOSI_UART4_DCE_TX		0x79
-				MX8MQ_IOMUXC_ECSPI2_SCLK_UART4_DCE_RX		0x79
-				MX8MQ_IOMUXC_ECSPI2_MISO_UART4_DCE_CTS_B	0x79
-				MX8MQ_IOMUXC_ECSPI2_SS0_UART4_DCE_RTS_B		0x79
-			>;
-		};
-
-		pinctrl_pcie1: pcie1grp {
-			fsl,pins = <
-				MX8MQ_IOMUXC_SAI3_RXC_GPIO4_IO29 		0x16 /* WIFI reset-gpio   */
-				MX8MQ_IOMUXC_GPIO1_IO01_GPIO1_IO1		0x16 /* WIFI disable-gpio */
-
-				MX8MQ_IOMUXC_GPIO1_IO03_GPIO1_IO3		0x16 /* WIFI pewake */
-				MX8MQ_IOMUXC_GPIO1_IO00_ANAMIX_REF_CLK_32K	0x16
 			>;
 		};
 
@@ -344,14 +318,11 @@
 	};
 };
 
-&pcie1 {
+&i2c3 {
+	clock-frequency = <400000>;
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_pcie1>;
-	reset-gpio = <&gpio4 29 GPIO_ACTIVE_LOW>;
-	disable-gpio = <&gpio1 1 GPIO_ACTIVE_LOW>;
-	ext_osc = <0>;
-	hard-wired = <1>;
-	status = "okay";
+	pinctrl-0 = <&pinctrl_i2c3>;
+	status = "disabled";
 };
 
 &pwm2 {
@@ -365,15 +336,6 @@
 	pinctrl-0 = <&pinctrl_uart3>;
 	assigned-clocks = <&clk IMX8MQ_CLK_UART3>;
 	assigned-clock-parents = <&clk IMX8MQ_CLK_25M>;
-	status = "okay";
-};
-
-&uart4 { /* BT */
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_uart4>;
-	assigned-clocks = <&clk IMX8MQ_CLK_UART4>;
-	assigned-clock-parents = <&clk IMX8MQ_CLK_25M>;
-	fsl,uart-has-rtscts;
 	status = "okay";
 };
 
@@ -465,11 +427,11 @@
 };
 
 &resmem {
-    linux,cma {
-        compatible = "shared-dma-pool";
-        reusable;
-        size = <0 0x2c000000>;
-        alloc-ranges = <0 0x40000000 0 0x40000000>;
-        linux,cma-default;
-    };
+	linux,cma {
+		compatible = "shared-dma-pool";
+		reusable;
+		size = <0 0x2c000000>;
+		alloc-ranges = <0 0x40000000 0 0x40000000>;
+		linux,cma-default;
+	};
 };
