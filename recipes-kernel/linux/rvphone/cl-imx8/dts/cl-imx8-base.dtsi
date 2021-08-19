@@ -6,15 +6,6 @@
 		stdout-path = &uart3;
 	};
 
-	leds {
-		compatible = "gpio-leds";
-		heartbeat-led {
-			label = "Heartbeat";
-			gpios = <&gpio1 12 0>;
-			linux,default-trigger = "heartbeat";
-		};
-	};
-
 	regulators {
 		compatible = "simple-bus";
 		#address-cells = <1>;
@@ -42,6 +33,15 @@
 			gpio = <&gpio2 19 GPIO_ACTIVE_HIGH>;
 			off-on-delay = <20000>;
 			enable-active-high;
+		};
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		heartbeat-led {
+			label = "Heartbeat";
+			gpios = <&gpio1 12 0>;
+			linux,default-trigger = "heartbeat";
 		};
 	};
 
@@ -185,9 +185,6 @@
 			fsl,pins = <
 				MX8MQ_IOMUXC_UART3_TXD_UART3_DCE_TX		0x79
 				MX8MQ_IOMUXC_UART3_RXD_UART3_DCE_RX		0x79
-				MX8MQ_IOMUXC_ECSPI1_MISO_UART3_DCE_CTS_B	0x79
-				MX8MQ_IOMUXC_ECSPI1_SS0_UART3_DCE_RTS_B		0x79
-				MX8MQ_IOMUXC_NAND_CLE_GPIO3_IO5			0x19
 			>;
 		};
 
@@ -333,7 +330,7 @@
 	#size-cells = <0>;
 
 	spidev: spidev@0 {
-		compatible = "spidev";
+		compatible = "spidev", "rohm,dh2228fv";
 		spi-max-frequency = <10000000>;
 		reg = <0>;
 		status = "okay";
