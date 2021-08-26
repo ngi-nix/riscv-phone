@@ -45,7 +45,7 @@
 				remote-endpoint = <&mipi_dsi_bridge_out>;
 			};
 		};
-    };
+	};
 };
 
 &mipi_dsi_bridge {
@@ -60,7 +60,7 @@
 
 &lcdif {
 	status = "okay";
-	max-res = <1920>, <1200>;
+	max-res = <800>, <480>;
 
 	port@0 {
 		lcdif_mipi_dsi: mipi-dsi-endpoint {
