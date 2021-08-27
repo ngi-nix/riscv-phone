@@ -16,7 +16,7 @@ do_compile () {
 
 do_install () {
 	install -d ${D}${bindir}
-	install -m 0755 ${WORKDIR}//src/esp32spid ${D}${bindir}/
+	install -m 0755 ${WORKDIR}/src/esp32spid ${D}${bindir}/
 }
 
 DEPENDS = "libgpiod-dev"
