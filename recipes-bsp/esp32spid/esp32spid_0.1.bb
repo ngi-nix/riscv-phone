@@ -1,7 +1,7 @@
 DESCRIPTION = "esp32 spi daemon"
 SECTION = "base"
 LICENSE = "GPLv2"
-LIC_FILES_CHKSUM = "file://${WORKDIR}/src/LICENSE;md5=b234ee4d69f5fce4486a80fdaf4a4263"
+LIC_FILES_CHKSUM = "file://${WORKDIR}/LICENSE;md5=b234ee4d69f5fce4486a80fdaf4a4263"
 PR = "r0"
 
 SRC_URI = " \
