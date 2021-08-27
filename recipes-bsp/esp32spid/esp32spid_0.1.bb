@@ -11,14 +11,17 @@ SRC_URI = " \
 	file://LICENSE \
 "
 
+S = "${WORKDIR}/src"
+TARGET_CC_ARCH += "${LDFLAGS}"
+
 do_compile () {
-	cd ${WORKDIR}/src
+	cd ${S}
 	${MAKE}
 }
 
 do_install () {
 	install -d ${D}${bindir}
-	install -m 0755 ${WORKDIR}/src/esp32spid ${D}${bindir}/
+	install -m 0755 ${S}/esp32spid ${D}${bindir}/
 }
 
 DEPENDS = "libgpiod"
