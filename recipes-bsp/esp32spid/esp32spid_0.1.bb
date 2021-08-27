@@ -6,6 +6,7 @@ PR = "r0"
 
 SRC_URI = " \
 	file://src/ \
+	file://LICENSE \
 "
 
 do_compile () {
