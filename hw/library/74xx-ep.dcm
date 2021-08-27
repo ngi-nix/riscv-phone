@@ -1,0 +1,57 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP 7400
+D quad 2-input NAND gate
+K TTL nand 2-input
+F http://www.ti.com/lit/gpn/sn7400
+$ENDCMP
+#
+$CMP 74AHC595
+D 8-bit serial in/out Shift Register 3-State Outputs
+K AHCMOS SR 3State
+F https://assets.nexperia.com/documents/data-sheet/74AHC_AHCT595.pdf
+$ENDCMP
+#
+$CMP 74AHCT595
+D 8-bit serial in/out Shift Register 3-State Outputs
+K AHCTMOS SR 3State
+F https://assets.nexperia.com/documents/data-sheet/74AHC_AHCT595.pdf
+$ENDCMP
+#
+$CMP 74HC00
+D quad 2-input NAND gate
+K HCMOS nand 2-input
+F http://www.ti.com/lit/gpn/sn74hc00
+$ENDCMP
+#
+$CMP 74HC595
+D 8-bit serial in/out Shift Register 3-State Outputs
+K HCMOS SR 3State
+F http://www.ti.com/lit/ds/symlink/sn74hc595.pdf
+$ENDCMP
+#
+$CMP 74HCT00
+D quad 2-input NAND gate
+K HCTMOS nand 2-input
+F http://www.ti.com/lit/gpn/sn74hct00
+$ENDCMP
+#
+$CMP 74HCT595
+D 8-bit serial in/out Shift Register 3-State Outputs
+K HCTMOS SR 3State
+F https://assets.nexperia.com/documents/data-sheet/74HC_HCT595.pdf
+$ENDCMP
+#
+$CMP 74LS37
+D quad 2-input NAND buffer
+K TTL nand 2-input buffer
+F http://www.ti.com/lit/gpn/sn74ls37
+$ENDCMP
+#
+$CMP 74LS595
+D 8-bit serial in/out Shift Register 3-State Outputs
+K TTL SR 3State
+F http://www.ti.com/lit/gpn/sn74ls595
+$ENDCMP
+#
+#End Doc Library
