@@ -293,7 +293,6 @@ uint8_t eos_power_wakeup_cause(void) {
             return EOS_PWR_WAKE_UART;
 
         default:
-        case ESP_SLEEP_WAKEUP_UNDEFINED:
             return EOS_PWR_WAKE_RST;
     }
 }

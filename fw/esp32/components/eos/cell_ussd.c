@@ -84,7 +84,7 @@ static void ussd_reply_handler(char *urc, regmatch_t m[]) {
             _buf += _len + 1;
             len += _len + 1;
         }
-        rv = eos_modem_readln(_buf, EOS_NET_SIZE_BUF - len, 1000);
+        rv = eos_modem_readln(_buf, EOS_NET_MTU - len, 1000);
         if (rv) break;
     } while (1);
 

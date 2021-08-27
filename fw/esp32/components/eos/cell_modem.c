@@ -109,7 +109,7 @@ static void uart_data_read(uint8_t mode) {
 
                 buf = eos_net_alloc();
                 buf[0] = EOS_CELL_MTYPE_DEV | EOS_CELL_MTYPE_UART_DATA;
-                _rd = eos_modem_read(buf + 1, MIN(bsize - rd, EOS_NET_SIZE_BUF - 1), 100);
+                _rd = eos_modem_read(buf + 1, MIN(bsize - rd, EOS_NET_MTU - 1), 100);
                 eos_net_send(EOS_NET_MTYPE_CELL, buf, _rd + 1);
                 rd += _rd;
             } while (rd != bsize);

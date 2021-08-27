@@ -70,7 +70,7 @@ static void i2s_event_task(void *pvParameters) {
                             hold_buf = eos_net_alloc();
                             hold_buf[0] = EOS_CELL_MTYPE_VOICE | EOS_CELL_MTYPE_VOICE_PCM;
                         }
-                        if (1 + hold_bytes_r + PCM_MIC_WM <= EOS_NET_SIZE_BUF) hold_bytes_r += eos_cell_pcm_read(hold_buf + 1 + hold_bytes_r, PCM_MIC_WM);
+                        if (1 + hold_bytes_r + PCM_MIC_WM <= EOS_NET_MTU) hold_bytes_r += eos_cell_pcm_read(hold_buf + 1 + hold_bytes_r, PCM_MIC_WM);
                         if (hold_cnt == 0) {
                             eos_net_send(EOS_NET_MTYPE_CELL, hold_buf, hold_bytes_r + 1);
                             hold_bytes_r = 0;

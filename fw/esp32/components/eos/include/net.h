@@ -1,7 +1,8 @@
 #include <stdint.h>
 
 /* common */
-#define EOS_NET_SIZE_BUF            1500
+#define EOS_NET_MTU                 1500
+#define EOS_NET_SIZE_BUF            EOS_NET_MTU
 
 #define EOS_NET_MTYPE_SOCK          1
 #define EOS_NET_MTYPE_POWER         4

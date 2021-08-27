@@ -84,7 +84,7 @@ static void udp_rcvr_task(void *pvParameters) {
         ssize_t rv;
 
         buf = eos_net_alloc();
-        rv = t_recvfrom(sock, buf+EOS_SOCK_SIZE_UDP_HDR, EOS_NET_SIZE_BUF-EOS_SOCK_SIZE_UDP_HDR, &addr);
+        rv = t_recvfrom(sock, buf + EOS_SOCK_SIZE_UDP_HDR, EOS_NET_MTU - EOS_SOCK_SIZE_UDP_HDR, &addr);
         if (rv < 0) {
             sock = 0;
             eos_net_free(buf);
@@ -95,7 +95,7 @@ static void udp_rcvr_task(void *pvParameters) {
         buf[1] = esock;
         memcpy(buf+2, addr.host, sizeof(addr.host));
         memcpy(buf+2+sizeof(addr.host), &addr.port, sizeof(addr.port));
-        eos_net_send(EOS_NET_MTYPE_SOCK, buf, rv+EOS_SOCK_SIZE_UDP_HDR);
+        eos_net_send(EOS_NET_MTYPE_SOCK, buf, rv + EOS_SOCK_SIZE_UDP_HDR);
     } while(sock);
     xSemaphoreTake(mutex, portMAX_DELAY);
     _socks[esock-1] = 0;
@@ -114,10 +114,10 @@ static void sock_handler(unsigned char type, unsigned char *buffer, uint16_t siz
     switch(buffer[0]) {
         case EOS_SOCK_MTYPE_PKT:
             if (size < EOS_SOCK_SIZE_UDP_HDR) return;
-            sock = _socks[buffer[1]-1];
-            memcpy(addr.host, buffer+2, sizeof(addr.host));
-            memcpy(&addr.port, buffer+2+sizeof(addr.host), sizeof(addr.port));
-            t_sendto(sock, buffer+EOS_SOCK_SIZE_UDP_HDR, size-EOS_SOCK_SIZE_UDP_HDR, &addr);
+            sock = _socks[buffer[1] - 1];
+            memcpy(addr.host, buffer + 2, sizeof(addr.host));
+            memcpy(&addr.port, buffer + 2 + sizeof(addr.host), sizeof(addr.port));
+            t_sendto(sock, buffer + EOS_SOCK_SIZE_UDP_HDR, size - EOS_SOCK_SIZE_UDP_HDR, &addr);
             break;
 
         case EOS_SOCK_MTYPE_OPEN_DGRAM:
@@ -133,7 +133,6 @@ static void sock_handler(unsigned char type, unsigned char *buffer, uint16_t siz
                 }
                 xSemaphoreGive(mutex);
             }
-            // xTaskCreatePinnedToCore(&sock_receiver, "sock_receiver", EOS_TASK_SSIZE_UDP_RCVR, (void *)esock, EOS_TASK_PRIORITY_UDP_RCVR, NULL, 1);
             xTaskCreate(&udp_rcvr_task, "udp_rcvr", EOS_TASK_SSIZE_UDP_RCVR, (void *)esock, EOS_TASK_PRIORITY_UDP_RCVR, NULL);
             rbuf = eos_net_alloc();
             rbuf[0] = EOS_SOCK_MTYPE_OPEN_DGRAM;

@@ -25,7 +25,8 @@
 #define SPI_GPIO_SCLK       18
 #define SPI_GPIO_CS         5
 
-#define SPI_SIZE_BUF        (EOS_NET_SIZE_BUF + 8)
+#define SPI_SIZE_BUF        (EOS_NET_SIZE_BUF + 4)
+#define SPI_SIZE_HDR        3
 
 static volatile char net_sleep = 0;
 
@@ -40,7 +41,7 @@ static SemaphoreHandle_t semaph;
 static TaskHandle_t net_xchg_task_handle;
 static const char *TAG = "EOS NET";
 
-static eos_net_fptr_t mtype_handler[EOS_NET_MAX_MTYPE];
+static eos_net_fptr_t net_handler[EOS_NET_MAX_MTYPE];
 
 static void bad_handler(unsigned char mtype, unsigned char *buffer, uint16_t len) {
     ESP_LOGE(TAG, "bad handler: %d len: %d", mtype, len);
@@ -67,17 +68,18 @@ static void net_xchg_task(void *pvParameters) {
     unsigned char *buf_send = heap_caps_malloc(SPI_SIZE_BUF, MALLOC_CAP_DMA);
     unsigned char *buf_recv = heap_caps_malloc(SPI_SIZE_BUF, MALLOC_CAP_DMA);
     esp_err_t ret;
-    spi_slave_transaction_t spi_tr;
+
+    static spi_slave_transaction_t spi_tr;
 
     //Configuration for the SPI bus
-    spi_bus_config_t spi_bus_cfg = {
+    static spi_bus_config_t spi_bus_cfg = {
         .mosi_io_num = SPI_GPIO_MOSI,
         .miso_io_num = SPI_GPIO_MISO,
         .sclk_io_num = SPI_GPIO_SCLK
     };
 
     //Configuration for the SPI slave interface
-    spi_slave_interface_config_t spi_slave_cfg = {
+    static spi_slave_interface_config_t spi_slave_cfg = {
         .mode = 0,
         .spics_io_num = SPI_GPIO_CS,
         .queue_size = 2,
@@ -87,13 +89,13 @@ static void net_xchg_task(void *pvParameters) {
     };
 
     //Initialize SPI slave interface
-    ret = spi_slave_initialize(VSPI_HOST, &spi_bus_cfg, &spi_slave_cfg, 1);
+    ret = spi_slave_initialize(VSPI_HOST, &spi_bus_cfg, &spi_slave_cfg, 2);
     assert(ret == ESP_OK);
 
     memset(&spi_tr, 0, sizeof(spi_tr));
-    spi_tr.length = SPI_SIZE_BUF * 8;
     spi_tr.tx_buffer = buf_send;
     spi_tr.rx_buffer = buf_recv;
+    spi_tr.length = SPI_SIZE_BUF * 8;
 
     if (eos_power_wakeup_cause()) {
         wake = 1;
@@ -111,7 +113,7 @@ static void net_xchg_task(void *pvParameters) {
                 buf_send[1] = len >> 8;
                 buf_send[2] = len & 0xFF;
                 if (buffer) {
-                    memcpy(buf_send + 3, buffer, len);
+                    memcpy(buf_send + SPI_SIZE_HDR, buffer, len);
                     eos_bufq_push(&net_buf_q, buffer);
                     xSemaphoreGive(semaph);
                 }
@@ -148,7 +150,10 @@ static void net_xchg_task(void *pvParameters) {
             eos_power_net_ready();
             wake = 0;
         }
+
+        if ((spi_tr.trans_len / 8) < SPI_SIZE_HDR) continue;
         if (buf_recv[0] == 0x00) continue;
+
         if (buf_recv[0] == 0xFF) {  // Sleep req
             if (buf_send[0] == 0) {
                 int abort = 0;
@@ -175,13 +180,14 @@ static void net_xchg_task(void *pvParameters) {
             }
             continue;
         }
+
         mtype = buf_recv[0] & ~EOS_NET_MTYPE_FLAG_MASK;
         mtype_flags = buf_recv[0] & EOS_NET_MTYPE_FLAG_MASK;
         len   = (uint16_t)buf_recv[1] << 8;
         len  |= (uint16_t)buf_recv[2] & 0xFF;
-        buffer = buf_recv + 3;
-        if ((mtype <= EOS_NET_MAX_MTYPE) && (len <= EOS_NET_SIZE_BUF)) {
-            mtype_handler[mtype-1](mtype, buffer, len);
+        buffer = buf_recv + SPI_SIZE_HDR;
+        if ((mtype <= EOS_NET_MAX_MTYPE) && (len <= EOS_NET_MTU)) {
+            net_handler[mtype - 1](mtype, buffer, len);
         } else {
             bad_handler(mtype, buffer, len);
         }
@@ -225,7 +231,7 @@ void eos_net_init(void) {
     }
 
     for (i=0; i<EOS_NET_MAX_MTYPE; i++) {
-        mtype_handler[i] = bad_handler;
+        net_handler[i] = bad_handler;
     }
 
     semaph = xSemaphoreCreateCounting(EOS_NET_SIZE_BUFQ, EOS_NET_SIZE_BUFQ);
@@ -271,7 +277,8 @@ int eos_net_send(unsigned char mtype, unsigned char *buffer, uint16_t len) {
 }
 
 void eos_net_set_handler(unsigned char mtype, eos_net_fptr_t handler) {
-    mtype_handler[mtype-1] = handler;
+    if (handler == NULL) handler = bad_handler;
+    if (mtype && (mtype <= EOS_NET_MAX_MTYPE)) net_handler[mtype - 1] = handler;
 }
 
 void eos_net_sleep_done(uint8_t mode) {

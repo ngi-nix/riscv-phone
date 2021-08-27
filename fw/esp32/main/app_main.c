@@ -12,6 +12,8 @@
 #include "_net.h"
 #include "wifi.h"
 #include "sock.h"
+#include "app.h"
+#include "tun.h"
 #include "power.h"
 
 #define ESP_INTR_FLAG_DEFAULT   0
@@ -36,7 +38,9 @@ void app_main() {
     eos_wifi_init();
     eos_sock_init();
 
+#ifdef EOS_WITH_APP
+    eos_app_init();
+    eos_tun_init();
+#endif
     eos_power_init();
 }
-
-
