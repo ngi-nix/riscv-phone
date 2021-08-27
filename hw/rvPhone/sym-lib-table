@@ -20,4 +20,5 @@
   (lib (name tps)(type Legacy)(uri ${KIPRJMOD}/../library/tps.lib)(options "")(descr ""))
   (lib (name tx)(type Legacy)(uri ${KIPRJMOD}/../library/tx.lib)(options "")(descr ""))
   (lib (name st)(type Legacy)(uri ${KIPRJMOD}/../library/st.lib)(options "")(descr ""))
+  (lib (name 74xx-ep)(type Legacy)(uri ${KIPRJMOD}/../library/74xx-ep.lib)(options "")(descr ""))
 )

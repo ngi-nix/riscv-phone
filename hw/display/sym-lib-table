@@ -1,4 +1,5 @@
 (sym_lib_table
   (lib (name sn65)(type Legacy)(uri ${KIPRJMOD}/../library/sn65.lib)(options "")(descr ""))
   (lib (name myConn)(type Legacy)(uri ${KIPRJMOD}/../library/myConn.lib)(options "")(descr ""))
+  (lib (name 74xx-ep)(type Legacy)(uri ${KIPRJMOD}/../library/74xx-ep.lib)(options "")(descr ""))
 )
