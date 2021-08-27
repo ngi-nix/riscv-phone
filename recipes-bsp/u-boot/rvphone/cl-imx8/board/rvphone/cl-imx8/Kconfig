@@ -1,0 +1,30 @@
+if TARGET_RVPHONE_CL_IMX8
+
+config SYS_BOARD
+	default "cl-imx8"
+
+config SYS_VENDOR
+	default "rvphone"
+
+config SYS_CONFIG_NAME
+	default "cl-imx8"
+
+choice
+	prompt "RAM Volume select"
+	default RAM_2G
+	help
+	 This option configures 2G RAM only
+
+config RAM_1G
+	bool "RAM_1G"
+	help
+	 This option configures 1G RAM only
+
+config RAM_2G
+	bool "RAM_2G"
+	help
+	 This option configures 2G RAM only
+
+endchoice
+
+endif
