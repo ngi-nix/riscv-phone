@@ -4,6 +4,8 @@
 #include <string.h>
 
 #include <eos.h>
+#include <i2c.h>
+#include <i2c/bq25895.h>
 #include <eve/eve.h>
 #include <eve/eve_kbd.h>
 #include <eve/eve_font.h>
@@ -23,11 +25,19 @@
 #include <stdio.h>
 
 int app_test_uievt(EVEForm *form, uint16_t evt, void *param) {
-    int ret = 0;
+    uint8_t data = 0;
+    int ret = 0, i;
 
     switch (evt) {
         case EVE_UIEVT_PAGE_TOUCH:
             printf("PAGE TOUCH\n");
+            printf("BQ25895:\n");
+            eos_i2c_start(400000);
+            for (i=0; i<0x15; i++) {
+                ret = eos_i2c_read8(BQ25895_ADDR, i, &data);
+                if (!ret) printf("REG%02x: %02x\n", i, data);
+            }
+            eos_i2c_stop();
             break;
 
         default:

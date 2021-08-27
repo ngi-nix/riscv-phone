@@ -48,7 +48,6 @@ static void handle_mic(unsigned char type) {
 static void cell_voice_handler(unsigned char type, unsigned char *buffer, uint16_t len) {
     char msg[128];
 
-    printf("VOICE: %d\n", type);
     msg[0] = 0;
     switch (type) {
         case EOS_CELL_MTYPE_VOICE_RING:
@@ -61,6 +60,7 @@ static void cell_voice_handler(unsigned char type, unsigned char *buffer, uint16
             break;
 
         case EOS_CELL_MTYPE_VOICE_BEGIN:
+            printf("VOICE BEGIN\n");
             voice_state = VOICE_STATE_CIP;
             eos_i2s_start(8000, EOS_I2S_FMT_PCM16);
             break;

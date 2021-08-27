@@ -69,7 +69,7 @@ static void handle_uart(unsigned char type) {
     while ((c = eos_uart_getc(0)) != EOS_ERR_EMPTY) {
         buf[i] = c;
         i++;
-        if (i == EOS_NET_SIZE_BUF) break;
+        if (i == EOS_NET_MTU) break;
     }
     eos_net_send(EOS_NET_MTYPE_CELL, buf, i, 0);
     eos_uart_rxwm_set(0);
