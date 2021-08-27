@@ -19,6 +19,7 @@
 
 #include "net.h"
 
+#define NET_SIZE_HDR            3
 #define NET_STATE_FLAG_RUN      0x01
 #define NET_STATE_FLAG_INIT     0x02
 #define NET_STATE_FLAG_XCHG     0x04
@@ -166,18 +167,18 @@ static void net_handle_xchg(void) {
         net_state_len_rx |= (r3 & 0xFF);
         len = MAX(net_state_len_tx, net_state_len_rx);
 
-        // esp32 bug workaraund
-        if (len < 5) {
-            len = 5;
-        } else if ((len + 3) % 4 != 0) {
-            len = ((len + 3)/4 + 1) * 4 - 3;
-        }
-
-        if (len > EOS_NET_SIZE_BUF) {
+        if (len > EOS_NET_MTU) {
             net_state_flags &= ~NET_STATE_FLAG_XCHG;
             SPI1_REG(SPI_REG_CSMODE) = SPI_CSMODE_AUTO;
             SPI1_REG(SPI_REG_IE) = 0x0;
             return;
+        }
+
+        // esp32 dma workaraund
+        if (len < 8 - NET_SIZE_HDR) {
+            len = 8 - NET_SIZE_HDR;
+        } else if ((len + NET_SIZE_HDR) % 4 != 0) {
+            len = ((len + NET_SIZE_HDR)/4 + 1) * 4 - NET_SIZE_HDR;
         }
 
         _eos_spi_xchg_init(net_state_buf, len, 0);
