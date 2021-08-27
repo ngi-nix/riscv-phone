@@ -21,4 +21,5 @@ do_install () {
 	install -m 0755 ${WORKDIR}/src/esp32spid ${D}${bindir}/
 }
 
+DEPENDS = "libgpiod"
 RDEPENDS_${PN} = "libgpiod"
