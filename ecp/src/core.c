@@ -1787,9 +1787,16 @@ int ecp_receiver(ECPSocket *sock) {
     return ECP_OK;
 }
 
+#ifdef ECP_WITH_PTHREAD
+static void *_ecp_receiver(void *arg) {
+    ecp_receiver((ECPSocket *)arg);
+    pthread_exit(NULL);
+}
+#endif
+
 int ecp_start_receiver(ECPSocket *sock) {
 #ifdef ECP_WITH_PTHREAD
-    int rv = pthread_create(&sock->rcvr_thd, NULL, (void *(*)(void *))ecp_receiver, sock);
+    int rv = pthread_create(&sock->rcvr_thd, NULL, _ecp_receiver, sock);
     if (rv) return ECP_ERR;
     return ECP_OK;
 #else
