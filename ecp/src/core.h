@@ -294,8 +294,7 @@ int ecp_init(ECPContext *ctx);
 int ecp_dhkey_generate(ECPContext *ctx, ECPDHKey *key);
 int ecp_node_init(ECPNode *node, ecp_dh_public_t *public, void *addr);
 
-int ecp_ctx_create(ECPContext *ctx);
-int ecp_ctx_destroy(ECPContext *ctx);
+int ecp_ctx_init(ECPContext *ctx);
 
 int ecp_sock_create(ECPSocket *sock, ECPContext *ctx, ECPDHKey *key);
 void ecp_sock_destroy(ECPSocket *sock);

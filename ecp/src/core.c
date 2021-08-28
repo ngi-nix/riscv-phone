@@ -33,7 +33,7 @@ int ecp_node_init(ECPNode *node, ecp_dh_public_t *public, void *addr) {
     return ECP_OK;
 }
 
-int ecp_ctx_create(ECPContext *ctx) {
+int ecp_ctx_init(ECPContext *ctx) {
     int rv;
 
     if (ctx == NULL) return ECP_ERR;
@@ -45,10 +45,6 @@ int ecp_ctx_create(ECPContext *ctx) {
     rv = ecp_tm_init(ctx);
     if (rv) return rv;
 
-    return ECP_OK;
-}
-
-int ecp_ctx_destroy(ECPContext *ctx) {
     return ECP_OK;
 }
 
@@ -85,116 +81,92 @@ static void ctable_destroy(ECPSockCTable *conn, ECPContext *ctx) {
 }
 
 static int ctable_insert(ECPConnection *conn) {
-    int with_htable = 0;
     ECPSocket *sock = conn->sock;
 
 #ifdef ECP_WITH_HTABLE
-    with_htable = 1;
-#endif
+    int i, rv = ECP_OK;
 
-    if (with_htable) {
-#ifdef ECP_WITH_HTABLE
-        int i, rv = ECP_OK;
-        if (conn->out) {
-            for (i=0; i<ECP_MAX_CONN_KEY; i++) {
-                if (conn->key[i].valid) rv = ecp_ht_insert(sock->conn.htable, ecp_cr_dh_pub_get_buf(&conn->key[i].public), conn);
-                if (rv) {
-                    int j;
-                    for (j=0; j<i; j++) if (conn->key[j].valid) ecp_ht_remove(sock->conn.htable, ecp_cr_dh_pub_get_buf(&conn->key[j].public));
-                    return rv;
-                }
-            }
-        } else {
-            ECPDHRKeyBucket *remote = &conn->remote;
-
-            for (i=0; i<ECP_MAX_NODE_KEY; i++) {
-                if (remote->key[i].idx != ECP_ECDH_IDX_INV) rv = ecp_ht_insert(sock->conn.htable, ecp_cr_dh_pub_get_buf(&remote->key[i].public), conn);
-                if (rv) {
-                    int j;
-                    for (j=0; j<i; j++) if (remote->key[j].idx != ECP_ECDH_IDX_INV) ecp_ht_remove(sock->conn.htable, ecp_cr_dh_pub_get_buf(&remote->key[j].public));
-                    return rv;
-                }
+    if (conn->out) {
+        for (i=0; i<ECP_MAX_CONN_KEY; i++) {
+            if (conn->key[i].valid) rv = ecp_ht_insert(sock->conn.htable, ecp_cr_dh_pub_get_buf(&conn->key[i].public), conn);
+            if (rv) {
+                int j;
+                for (j=0; j<i; j++) if (conn->key[j].valid) ecp_ht_remove(sock->conn.htable, ecp_cr_dh_pub_get_buf(&conn->key[j].public));
+                return rv;
             }
         }
-#endif
     } else {
-#ifndef ECP_WITH_HTABLE
-        if (sock->conn.size == ECP_MAX_SOCK_CONN) return ECP_ERR_MAX_SOCK_CONN;
-        sock->conn.array[sock->conn.size] = conn;
-        sock->conn.size++;
-#endif
+        ECPDHRKeyBucket *remote = &conn->remote;
+
+        for (i=0; i<ECP_MAX_NODE_KEY; i++) {
+            if (remote->key[i].idx != ECP_ECDH_IDX_INV) rv = ecp_ht_insert(sock->conn.htable, ecp_cr_dh_pub_get_buf(&remote->key[i].public), conn);
+            if (rv) {
+                int j;
+                for (j=0; j<i; j++) if (remote->key[j].idx != ECP_ECDH_IDX_INV) ecp_ht_remove(sock->conn.htable, ecp_cr_dh_pub_get_buf(&remote->key[j].public));
+                return rv;
+            }
+        }
     }
+#else
+    if (sock->conn.size == ECP_MAX_SOCK_CONN) return ECP_ERR_MAX_SOCK_CONN;
+    sock->conn.array[sock->conn.size] = conn;
+    sock->conn.size++;
+#endif
 
     return ECP_OK;
 }
 
 static void ctable_remove(ECPConnection *conn) {
-    int i, with_htable = 0;
+    int i;
     ECPSocket *sock = conn->sock;
 
 #ifdef ECP_WITH_HTABLE
-    with_htable = 1;
-#endif
-
-    if (with_htable) {
-#ifdef ECP_WITH_HTABLE
-        if (conn->out) {
-            for (i=0; i<ECP_MAX_CONN_KEY; i++) if (conn->key[i].valid) ecp_ht_remove(sock->conn.htable, ecp_cr_dh_pub_get_buf(&conn->key[i].public));
-        } else {
-            ECPDHRKeyBucket *remote = &conn->remote;
-            for (i=0; i<ECP_MAX_NODE_KEY; i++) if (remote->key[i].idx != ECP_ECDH_IDX_INV) ecp_ht_remove(sock->conn.htable, ecp_cr_dh_pub_get_buf(&remote->key[i].public));
-        }
-#endif
+    if (conn->out) {
+        for (i=0; i<ECP_MAX_CONN_KEY; i++) if (conn->key[i].valid) ecp_ht_remove(sock->conn.htable, ecp_cr_dh_pub_get_buf(&conn->key[i].public));
     } else {
-#ifndef ECP_WITH_HTABLE
-        for (i=0; i<sock->conn.size; i++) {
-            if (conn == sock->conn.array[i]) {
-                sock->conn.array[i] = sock->conn.array[sock->conn.size-1];
-                sock->conn.array[sock->conn.size-1] = NULL;
-                sock->conn.size--;
-                return;
-            }
-        }
-#endif
+        ECPDHRKeyBucket *remote = &conn->remote;
+        for (i=0; i<ECP_MAX_NODE_KEY; i++) if (remote->key[i].idx != ECP_ECDH_IDX_INV) ecp_ht_remove(sock->conn.htable, ecp_cr_dh_pub_get_buf(&remote->key[i].public));
     }
+#else
+    for (i=0; i<sock->conn.size; i++) {
+        if (conn == sock->conn.array[i]) {
+            sock->conn.array[i] = sock->conn.array[sock->conn.size-1];
+            sock->conn.array[sock->conn.size-1] = NULL;
+            sock->conn.size--;
+            return;
+        }
+    }
+#endif
 }
 
 static ECPConnection *ctable_search(ECPSocket *sock, unsigned char c_idx, unsigned char *c_public, ECPNetAddr *addr) {
-    int i, with_htable = 0;
+#ifdef ECP_WITH_HTABLE
+    return ecp_ht_search(sock->conn.htable, c_public);
+#else
     ECPConnection *conn = NULL;
+    int i;
 
-#ifdef ECP_WITH_HTABLE
-    with_htable = 1;
-#endif
-
-    if (with_htable) {
-#ifdef ECP_WITH_HTABLE
-        return ecp_ht_search(sock->conn.htable, c_public);
-#endif
-    } else {
-#ifndef ECP_WITH_HTABLE
-        if (c_public) {
-            for (i=0; i<sock->conn.size; i++) {
-                conn = sock->conn.array[i];
-                if (conn->out) {
-                    if ((c_idx < ECP_MAX_CONN_KEY) && conn->key[c_idx].valid && ecp_cr_dh_pub_eq(c_public, &conn->key[c_idx].public))
-                        return conn;
-                } else {
-                    if ((c_idx < ECP_MAX_SOCK_KEY) && (conn->remote.key_idx_map[c_idx] != ECP_ECDH_IDX_INV) && ecp_cr_dh_pub_eq(c_public, &conn->remote.key[conn->remote.key_idx_map[c_idx]].public))
-                        return conn;
-                }
-            }
-        } else if (addr) {
-            /* in case server is not returning client's public key in packet */
-            for (i=0; i<sock->conn.size; i++) {
-                conn = sock->conn.array[i];
-                if (conn->out && ecp_tr_addr_eq(&conn->node.addr, addr)) return conn;
+    if (c_public) {
+        for (i=0; i<sock->conn.size; i++) {
+            conn = sock->conn.array[i];
+            if (conn->out) {
+                if ((c_idx < ECP_MAX_CONN_KEY) && conn->key[c_idx].valid && ecp_cr_dh_pub_eq(c_public, &conn->key[c_idx].public))
+                    return conn;
+            } else {
+                if ((c_idx < ECP_MAX_SOCK_KEY) && (conn->remote.key_idx_map[c_idx] != ECP_ECDH_IDX_INV) && ecp_cr_dh_pub_eq(c_public, &conn->remote.key[conn->remote.key_idx_map[c_idx]].public))
+                    return conn;
             }
         }
-#endif
+    } else if (addr) {
+        /* in case server is not returning client's public key in packet */
+        for (i=0; i<sock->conn.size; i++) {
+            conn = sock->conn.array[i];
+            if (conn->out && ecp_tr_addr_eq(&conn->node.addr, addr)) return conn;
+        }
     }
 
     return NULL;
+#endif
 }
 
 int ecp_sock_create(ECPSocket *sock, ECPContext *ctx, ECPDHKey *key) {
@@ -1665,20 +1637,103 @@ ssize_t ecp_send(ECPConnection *conn, unsigned char mtype, unsigned char *conten
     return rv;
 }
 
+#if defined(ECP_WITH_RBUF) && defined(ECP_WITH_MSGQ)
 ssize_t ecp_receive(ECPConnection *conn, unsigned char mtype, unsigned char *msg, size_t msg_size, ecp_cts_t timeout) {
-#ifdef ECP_WITH_RBUF
-#ifdef ECP_WITH_MSGQ
+    ssize_t rv;
+
     pthread_mutex_lock(&conn->rbuf.recv->msgq.mutex);
-    ssize_t rv = ecp_conn_msgq_pop(conn, mtype, msg, msg_size, timeout);
+    rv = ecp_conn_msgq_pop(conn, mtype, msg, msg_size, timeout);
     pthread_mutex_unlock(&conn->rbuf.recv->msgq.mutex);
+
     return rv;
-#else
-    return ECP_ERR_NOT_IMPLEMENTED;
-#endif
-#else
-    return ECP_ERR_NOT_IMPLEMENTED;
-#endif
 }
+#else
+ssize_t ecp_receive(ECPConnection *conn, unsigned char mtype, unsigned char *msg, size_t msg_size, ecp_cts_t timeout) {
+    return ECP_ERR_NOT_IMPLEMENTED;
+}
+#endif
+
+static int recv_p(ECPSocket *sock, ECPNetAddr *addr, ECPBuffer *packet, size_t size) {
+    ECP2Buffer bufs;
+    ECPBuffer payload;
+    unsigned char pld_buf[ECP_MAX_PLD];
+
+    bufs.packet = packet;
+    bufs.payload = &payload;
+
+    payload.buffer = pld_buf;
+    payload.size = ECP_MAX_PLD;
+
+    ssize_t rv = ecp_pkt_handle(sock, addr, NULL, &bufs, size);
+    if (rv < 0) return rv;
+
+    return ECP_OK;
+}
+
+#ifdef ECP_DEBUG
+static char *_utoa(unsigned value, char *str, int base);
+static char *_itoa(int value, char *str, int base);
+#endif
+
+int ecp_receiver(ECPSocket *sock) {
+    ECPNetAddr addr;
+    ECPBuffer packet;
+    unsigned char pkt_buf[ECP_MAX_PKT];
+    ecp_cts_t next = 0;
+    ssize_t rv = 0;
+
+    sock->running = 1;
+    while(sock->running) {
+        packet.buffer = pkt_buf;
+        packet.size = ECP_MAX_PKT;
+
+        rv = ecp_tr_recv(sock, &packet, &addr, next ? next : sock->poll_timeout);
+        if (rv > 0) {
+            int _rv = recv_p(sock, &addr, &packet, rv);
+#ifdef ECP_DEBUG
+            if (_rv) {
+                char b[16];
+                puts("ERR:");
+                puts(_itoa(_rv, b, 10));
+                puts("\n");
+            }
+#endif
+        }
+        next = ecp_timer_exe(sock);
+    }
+    return ECP_OK;
+}
+
+#ifdef ECP_WITH_PTHREAD
+static void *_ecp_receiver(void *arg) {
+    ecp_receiver((ECPSocket *)arg);
+    return NULL;
+    pthread_exit(NULL);
+}
+
+int ecp_start_receiver(ECPSocket *sock) {
+    int rv = pthread_create(&sock->rcvr_thd, NULL, _ecp_receiver, sock);
+    if (rv) return ECP_ERR;
+    return ECP_OK;
+}
+
+int ecp_stop_receiver(ECPSocket *sock) {
+    int rv;
+
+    sock->running = 0;
+    rv = pthread_join(sock->rcvr_thd, NULL);
+    if (rv) return ECP_ERR;
+    return ECP_OK;
+}
+#else
+int ecp_start_receiver(ECPSocket *sock) {
+    return ECP_ERR_NOT_IMPLEMENTED;
+}
+
+int ecp_stop_receiver(ECPSocket *sock) {
+    return ECP_ERR_NOT_IMPLEMENTED;
+}
+#endif
 
 #ifdef ECP_DEBUG
 static char *_utoa(unsigned value, char *str, int base) {
@@ -1740,77 +1795,3 @@ static char *_itoa(int value, char *str, int base) {
   return str;
 }
 #endif
-
-static int recv_p(ECPSocket *sock, ECPNetAddr *addr, ECPBuffer *packet, size_t size) {
-    ECP2Buffer bufs;
-    ECPBuffer payload;
-    unsigned char pld_buf[ECP_MAX_PLD];
-
-    bufs.packet = packet;
-    bufs.payload = &payload;
-
-    payload.buffer = pld_buf;
-    payload.size = ECP_MAX_PLD;
-
-    ssize_t rv = ecp_pkt_handle(sock, addr, NULL, &bufs, size);
-    if (rv < 0) return rv;
-
-    return ECP_OK;
-}
-
-int ecp_receiver(ECPSocket *sock) {
-    ECPNetAddr addr;
-    ECPBuffer packet;
-    unsigned char pkt_buf[ECP_MAX_PKT];
-    ecp_cts_t next = 0;
-    ssize_t rv = 0;
-
-    sock->running = 1;
-    while(sock->running) {
-        packet.buffer = pkt_buf;
-        packet.size = ECP_MAX_PKT;
-
-        rv = ecp_tr_recv(sock, &packet, &addr, next ? next : sock->poll_timeout);
-        if (rv > 0) {
-            int _rv = recv_p(sock, &addr, &packet, rv);
-#ifdef ECP_DEBUG
-            if (_rv) {
-                char b[16];
-                puts("ERR:");
-                puts(_itoa(_rv, b, 10));
-                puts("\n");
-            }
-#endif
-        }
-        next = ecp_timer_exe(sock);
-    }
-    return ECP_OK;
-}
-
-#ifdef ECP_WITH_PTHREAD
-static void *_ecp_receiver(void *arg) {
-    ecp_receiver((ECPSocket *)arg);
-    pthread_exit(NULL);
-}
-#endif
-
-int ecp_start_receiver(ECPSocket *sock) {
-#ifdef ECP_WITH_PTHREAD
-    int rv = pthread_create(&sock->rcvr_thd, NULL, _ecp_receiver, sock);
-    if (rv) return ECP_ERR;
-    return ECP_OK;
-#else
-    return ECP_ERR_NOT_IMPLEMENTED;
-#endif
-}
-
-int ecp_stop_receiver(ECPSocket *sock) {
-    sock->running = 0;
-#ifdef ECP_WITH_PTHREAD
-    int rv = pthread_join(sock->rcvr_thd, NULL);
-    if (rv) return ECP_ERR;
-    return ECP_OK;
-#else
-    return ECP_ERR_NOT_IMPLEMENTED;
-#endif
-}

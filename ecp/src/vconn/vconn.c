@@ -8,15 +8,15 @@
 #include "vconn.h"
 
 #ifdef ECP_WITH_HTABLE
-#ifdef ECP_WITH_PTHREAD
 static void *key_perma_table;
 static void *key_next_table;
+#ifdef ECP_WITH_PTHREAD
 static pthread_mutex_t key_perma_mutex;
 static pthread_mutex_t key_next_mutex;
 #endif
 #endif
 
-    
+
 static unsigned char key_null[ECP_ECDH_SIZE_KEY] = { 0 };
 
 static ECPConnHandler handler_vc;
@@ -27,7 +27,7 @@ static ECPConnHandler handler_vl;
 static int vconn_create(ECPConnection *conn, unsigned char *payload, size_t size) {
     ECPVConnIn *conn_v = (ECPVConnIn *)conn;
     int rv = ECP_OK;
-    
+
     if (conn->out) return ECP_ERR;
     if (conn->type != ECP_CTYPE_VCONN) return ECP_ERR;
     if (size < 2*ECP_ECDH_SIZE_KEY) return ECP_ERR;
@@ -45,7 +45,7 @@ static int vconn_create(ECPConnection *conn, unsigned char *payload, size_t size
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_unlock(&key_next_mutex);
 #endif
-    
+
     return rv;
 }
 
@@ -76,7 +76,7 @@ static ssize_t _vconn_send_open(ECPConnection *conn, ECPTimerItem *ti) {
     ECPBuffer payload;
     unsigned char pkt_buf[ECP_SIZE_PKT_BUF(0, ECP_MTYPE_KGET_REQ, conn)];
     unsigned char pld_buf[ECP_SIZE_PLD_BUF(0, ECP_MTYPE_KGET_REQ, conn)];
-    
+
     packet.buffer = pkt_buf;
     packet.size = ECP_SIZE_PKT_BUF(0, ECP_MTYPE_KGET_REQ, conn);
     payload.buffer = pld_buf;
@@ -152,7 +152,7 @@ static ssize_t vconn_handle_open(ECPConnection *conn, ecp_seq_t seq, unsigned ch
         rv = ECP_ERR;
 
 #endif  /* ECP_WITH_HTABLE */
-    
+
         if (rv) return rv;
 
         return 1+2*ECP_ECDH_SIZE_KEY;
@@ -170,7 +170,7 @@ static ssize_t vconn_handle_relay(ECPConnection *conn, ecp_seq_t seq, unsigned c
     if (conn->out) return ECP_ERR;
     if (conn->type != ECP_CTYPE_VCONN) return ECP_ERR;
     if (b == NULL) return ECP_ERR;
-    
+
     if (size < 0) return size;
     if (size < ECP_MIN_PKT) return ECP_ERR_MIN_PKT;
 
@@ -192,7 +192,7 @@ static ssize_t vconn_handle_relay(ECPConnection *conn, ecp_seq_t seq, unsigned c
 #endif
 
     if (conn_out == NULL) return ECP_ERR;
-    
+
     ECPBuffer payload;
     payload.buffer = msg - ECP_SIZE_PLD_HDR - 1;
     payload.size = b->payload->size - (payload.buffer - b->payload->buffer);
@@ -214,7 +214,7 @@ static ssize_t vconn_handle_relay(ECPConnection *conn, ecp_seq_t seq, unsigned c
 
 static int vlink_insert(ECPConnection *conn) {
     int rv = ECP_OK;
-    
+
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&key_perma_mutex);
 #endif
@@ -263,7 +263,7 @@ static ssize_t _vlink_send_open(ECPConnection *conn, ECPTimerItem *ti) {
     unsigned char pld_buf[ECP_SIZE_PLD_BUF(ECP_ECDH_SIZE_KEY+1, ECP_MTYPE_OPEN_REQ, conn)];
     unsigned char *buf = ecp_pld_get_buf(pld_buf, ECP_MTYPE_OPEN_REQ);
     int rv = ECP_OK;
-    
+
     packet.buffer = pkt_buf;
     packet.size = ECP_SIZE_PKT_BUF(ECP_ECDH_SIZE_KEY+1, ECP_MTYPE_OPEN_REQ, conn);
     payload.buffer = pld_buf;
@@ -290,11 +290,11 @@ static void vlink_close(ECPConnection *conn) {
 static ssize_t vlink_handle_open(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size, ECP2Buffer *b) {
     ssize_t rv;
     int is_open;
-    
+
     if (conn->type != ECP_CTYPE_VLINK) return ECP_ERR;
 
     if (size < 0) return size;
-    
+
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&conn->mutex);
 #endif
@@ -324,10 +324,10 @@ static ssize_t vlink_handle_open(ECPConnection *conn, ecp_seq_t seq, unsigned ch
 
         // XXX should verify perma_key
         return rv+ECP_ECDH_SIZE_KEY;
-        
+
 #else   /* ECP_WITH_HTABLE */
 
-        return ECP_ERR; 
+        return ECP_ERR;
 
 #endif  /* ECP_WITH_HTABLE */
     }
@@ -466,10 +466,10 @@ static ssize_t ecp_pack(ECPConnection *conn, ECPBuffer *packet, unsigned char s_
     if (conn->parent) {
         ECPBuffer payload_;
         unsigned char pld_buf[ECP_MAX_PLD];
-        
+
         payload_.buffer = pld_buf;
         payload_.size = ECP_MAX_PLD;
-        
+
         unsigned char mtype = ecp_pld_get_type(payload->buffer);
         ssize_t rv, hdr_size = vconn_set_msg(conn->parent, &payload_, mtype);
         if (hdr_size < 0) return hdr_size;
@@ -489,7 +489,7 @@ static ssize_t ecp_pack_raw(ECPSocket *sock, ECPConnection *parent, ECPBuffer *p
     if (parent) {
         ECPBuffer payload_;
         unsigned char pld_buf[ECP_MAX_PLD];
-        
+
         payload_.buffer = pld_buf;
         payload_.size = ECP_MAX_PLD;
 
@@ -507,15 +507,12 @@ static ssize_t ecp_pack_raw(ECPSocket *sock, ECPConnection *parent, ECPBuffer *p
 }
 */
 
-int ecp_ctx_create_vconn(ECPContext *ctx) {
+int ecp_vconn_ctx_init(ECPContext *ctx) {
     int rv;
-    
-    rv = ecp_ctx_create(ctx);
-    if (rv) return rv;
 
     rv = ecp_conn_handler_init(&handler_vc);
     if (rv) return rv;
-    
+
 #ifdef ECP_WITH_HTABLE
     handler_vc.conn_create = vconn_create;
     handler_vc.conn_destroy = vconn_destroy;
@@ -545,23 +542,39 @@ int ecp_ctx_create_vconn(ECPContext *ctx) {
     ctx->handler[ECP_CTYPE_VLINK] = &handler_vl;
 
 #ifdef ECP_WITH_HTABLE
+    key_perma_table = ecp_ht_create(ctx);
+    if (key_perma_table == NULL) {
+        return ECP_ERR;
+    }
+    key_next_table = ecp_ht_create(ctx);
+    if (key_next_table == NULL) {
+        ecp_ht_destroy(key_perma_table);
+        return ECP_ERR;
+    }
 #ifdef ECP_WITH_PTHREAD
     rv = pthread_mutex_init(&key_perma_mutex, NULL);
-    if (!rv) pthread_mutex_init(&key_next_mutex, NULL);
-    if (rv) return ECP_ERR;
-#endif
-    key_perma_table = ecp_ht_create(ctx);
-    key_next_table = ecp_ht_create(ctx);
-    if ((key_perma_table == NULL) || (key_next_table == NULL)) return ECP_ERR;
+    if (rv) {
+        ecp_ht_destroy(key_next_table);
+        ecp_ht_destroy(key_perma_table);
+        return ECP_ERR;
+    }
+    rv = pthread_mutex_init(&key_next_mutex, NULL);
+    if (rv) {
+        pthread_mutex_destroy(&key_perma_mutex);
+        ecp_ht_destroy(key_next_table);
+        ecp_ht_destroy(key_perma_table);
+        return ECP_ERR;
+    }
+#endif  /* ECP_WITH_PTHREAD */
 #endif  /* ECP_WITH_HTABLE */
-    
+
     return ECP_OK;
 }
 
 int ecp_vconn_init(ECPConnection *conn, ECPNode *conn_node, ECPVConnection vconn[], ECPNode vconn_node[], int size) {
     ECPSocket *sock = conn->sock;
     int i, rv;
-    
+
     rv = ecp_conn_init(conn, conn_node);
     if (rv) return rv;
 
@@ -587,7 +600,7 @@ int ecp_vconn_init(ECPConnection *conn, ECPNode *conn_node, ECPVConnection vconn
             vconn[i].next = (ECPConnection *)&vconn[i+1];
         }
     }
-    
+
     return ECP_OK;
 }
 
@@ -596,7 +609,7 @@ static ssize_t _vconn_send_kget(ECPConnection *conn, ECPTimerItem *ti) {
     ECPBuffer payload;
     unsigned char pkt_buf[ECP_SIZE_PKT_BUF(0, ECP_MTYPE_KGET_REQ, conn)];
     unsigned char pld_buf[ECP_SIZE_PLD_BUF(0, ECP_MTYPE_KGET_REQ, conn)];
-    
+
     packet.buffer = pkt_buf;
     packet.size = ECP_SIZE_PKT_BUF(0, ECP_MTYPE_KGET_REQ, conn);
     payload.buffer = pld_buf;
@@ -612,6 +625,6 @@ int ecp_vconn_open(ECPConnection *conn, ECPNode *conn_node, ECPVConnection vconn
 
     ssize_t _rv = ecp_timer_send((ECPConnection *)&vconn[0], _vconn_send_kget, ECP_MTYPE_KGET_REP, 3, 500);
     if (_rv < 0) return _rv;
-    
+
     return ECP_OK;
 }

@@ -14,7 +14,7 @@ static char fn_node[FN_LEN];
 
 static int v_rng(void *buf, size_t bufsize) {
     int fd;
-    
+
     if((fd = open("/dev/urandom", O_RDONLY)) < 0) return -1;
     size_t nb = read(fd, buf, bufsize);
     close(fd);
@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
     ECPContext ctx;
     ECPDHKey key;
     ECPNode node;
-    
+
     if ((argc < 2) || (argc > 3)) usage(argv[0]);
 
     if (strlen(argv[1]) > FN_LEN - 6) usage(argv[0]);
@@ -40,11 +40,11 @@ int main(int argc, char *argv[]) {
     strcpy(fn_key, argv[1]);
     strcat(fn_key, ".priv");
     strcat(fn_node, ".pub");
-    
-    rv = ecp_ctx_create(&ctx);
+
+    rv = ecp_ctx_init(&ctx);
     if (rv) goto err;
     ctx.rng = v_rng;
-    
+
     rv = ecp_dhkey_generate(&ctx, &key);
     if (rv) goto err;
 
@@ -58,7 +58,8 @@ int main(int argc, char *argv[]) {
     if (rv) goto err;
 
     return 0;
-    err:
+
+err:
     printf("ERR:%d\n", rv);
     return 1;
 }

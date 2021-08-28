@@ -16,7 +16,6 @@ typedef struct ECPVConnIn {
     unsigned char key_out[ECP_ECDH_SIZE_KEY];
 } ECPVConnIn;
 
-int ecp_ctx_create_vconn(ECPContext *ctx);
-
+int ecp_vconn_ctx_init(ECPContext *ctx);
 int ecp_vconn_init(ECPConnection *conn, ECPNode *conn_node, ECPVConnection vconn[], ECPNode vconn_node[], int size);
 int ecp_vconn_open(ECPConnection *conn, ECPNode *conn_node, ECPVConnection vconn[], ECPNode vconn_node[], int size);
