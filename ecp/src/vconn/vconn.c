@@ -16,7 +16,6 @@ static pthread_mutex_t key_next_mutex;
 #endif
 #endif
 
-
 static unsigned char key_null[ECP_ECDH_SIZE_KEY] = { 0 };
 
 static ECPConnHandler handler_vc;
@@ -26,7 +25,7 @@ static ECPConnHandler handler_vl;
 
 static int vconn_create(ECPConnection *conn, unsigned char *payload, size_t size) {
     ECPVConnIn *conn_v = (ECPVConnIn *)conn;
-    int rv = ECP_OK;
+    int rv;
 
     if (conn->out) return ECP_ERR;
     if (conn->type != ECP_CTYPE_VCONN) return ECP_ERR;
@@ -87,17 +86,17 @@ static ssize_t _vconn_send_open(ECPConnection *conn, ECPTimerItem *ti) {
 }
 
 static ssize_t vconn_open(ECPConnection *conn) {
-    int rv = ECP_OK;
     ECPTimerItem ti;
     ECPVConnection *conn_v = (ECPVConnection *)conn;
     ECPConnection *conn_next = conn_v->next;
+    ssize_t rv
 
     if (conn_next == NULL) return ECP_ERR;
 
-    ssize_t _rv = ecp_timer_send(conn_next, _vconn_send_open, ECP_MTYPE_KGET_REP, 3, 1000);
-    if (_rv < 0) return _rv;
+    rv = ecp_timer_send(conn_next, _vconn_send_open, ECP_MTYPE_KGET_REP, 3, 1000);
+    if (rv < 0) return rv;
 
-    return _rv;
+    return rv;
 }
 
 static ssize_t vconn_handle_open(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size, ECP2Buffer *b) {
@@ -147,15 +146,14 @@ static ssize_t vconn_handle_open(ECPConnection *conn, ecp_seq_t seq, unsigned ch
         pthread_mutex_unlock(&conn->mutex);
         pthread_mutex_unlock(&key_next_mutex);
 #endif
-#else   /* ECP_WITH_HTABLE */
-
-        rv = ECP_ERR;
-
-#endif  /* ECP_WITH_HTABLE */
-
         if (rv) return rv;
 
         return 1+2*ECP_ECDH_SIZE_KEY;
+#else   /* ECP_WITH_HTABLE */
+
+        return ECP_ERR_NOT_IMPLEMENTED;
+
+#endif  /* ECP_WITH_HTABLE */
     }
 
     return ECP_ERR;
@@ -213,7 +211,7 @@ static ssize_t vconn_handle_relay(ECPConnection *conn, ecp_seq_t seq, unsigned c
 }
 
 static int vlink_insert(ECPConnection *conn) {
-    int rv = ECP_OK;
+    int rv;
 
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&key_perma_mutex);
@@ -262,7 +260,6 @@ static ssize_t _vlink_send_open(ECPConnection *conn, ECPTimerItem *ti) {
     unsigned char pkt_buf[ECP_SIZE_PKT_BUF(ECP_ECDH_SIZE_KEY+1, ECP_MTYPE_OPEN_REQ, conn)];
     unsigned char pld_buf[ECP_SIZE_PLD_BUF(ECP_ECDH_SIZE_KEY+1, ECP_MTYPE_OPEN_REQ, conn)];
     unsigned char *buf = ecp_pld_get_buf(pld_buf, ECP_MTYPE_OPEN_REQ);
-    int rv = ECP_OK;
 
     packet.buffer = pkt_buf;
     packet.size = ECP_SIZE_PKT_BUF(ECP_ECDH_SIZE_KEY+1, ECP_MTYPE_OPEN_REQ, conn);
@@ -310,8 +307,10 @@ static ssize_t vlink_handle_open(ECPConnection *conn, ecp_seq_t seq, unsigned ch
         if (!conn->out) return ECP_ERR;
 #ifdef ECP_WITH_HTABLE
         if (!is_open) {
-            int rv = vlink_insert(conn);
-            if (rv) return rv;
+            int _rv;
+
+            _rv = vlink_insert(conn);
+            if (_rv) return _rv;
         }
 #endif  /* ECP_WITH_HTABLE */
         return rv;
@@ -620,10 +619,13 @@ static ssize_t _vconn_send_kget(ECPConnection *conn, ECPTimerItem *ti) {
 }
 
 int ecp_vconn_open(ECPConnection *conn, ECPNode *conn_node, ECPVConnection vconn[], ECPNode vconn_node[], int size) {
-    int rv = ecp_vconn_init(conn, conn_node, vconn, vconn_node, size);
+    int rv;
+    ssize_t _rv;
+
+    rv = ecp_vconn_init(conn, conn_node, vconn, vconn_node, size);
     if (rv) return rv;
 
-    ssize_t _rv = ecp_timer_send((ECPConnection *)&vconn[0], _vconn_send_kget, ECP_MTYPE_KGET_REP, 3, 500);
+    _rv = ecp_timer_send((ECPConnection *)&vconn[0], _vconn_send_kget, ECP_MTYPE_KGET_REP, 3, 500);
     if (_rv < 0) return _rv;
 
     return ECP_OK;

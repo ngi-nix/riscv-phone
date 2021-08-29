@@ -2,7 +2,8 @@
 #include "tm.h"
 
 int ecp_timer_create(ECPTimer *timer) {
-    int rv = ECP_OK;
+    int rv;
+
     timer->head = -1;
 
 #ifdef ECP_WITH_PTHREAD
@@ -180,16 +181,17 @@ ecp_cts_t ecp_timer_exe(ECPSocket *sock) {
 #endif
 
     for (i=to_exec_size-1; i>=0; i--) {
-        int rv = ECP_OK;
         ECPConnection *conn = to_exec[i].conn;
         unsigned char mtype = to_exec[i].mtype;
         ecp_timer_retry_t retry = to_exec[i].retry;
         ecp_conn_handler_msg_t handler = conn->sock->ctx->handler[conn->type] ? conn->sock->ctx->handler[conn->type]->msg[mtype & ECP_MTYPE_MASK] : NULL;
+        int rv = ECP_OK;
 
         if (to_exec[i].cnt > 0) {
-            ssize_t _rv = 0;
             to_exec[i].cnt--;
             if (retry) {
+                ssize_t _rv;
+
                 _rv = retry(conn, to_exec+i);
                 if (_rv < 0) rv = _rv;
             }
@@ -212,8 +214,8 @@ ecp_cts_t ecp_timer_exe(ECPSocket *sock) {
 }
 
 ssize_t ecp_timer_send(ECPConnection *conn, ecp_timer_retry_t send_f, unsigned char mtype, short cnt, ecp_cts_t timeout) {
-    int rv = ECP_OK;
     ECPTimerItem ti;
+    int rv;
 
     rv = ecp_timer_item_init(&ti, conn, mtype, cnt, timeout);
     if (rv) return rv;

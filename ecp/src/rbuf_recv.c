@@ -9,23 +9,25 @@ static ssize_t msg_store(ECPConnection *conn, ecp_seq_t seq, unsigned char *msg,
     ECPRBRecv *buf = conn->rbuf.recv;
     unsigned char flags = ECP_RBUF_FLAG_IN_RBUF;
     unsigned char mtype = ecp_msg_get_type(msg) & ECP_MTYPE_MASK;
+    ssize_t rv;
 
     if (mtype < ECP_MAX_MTYPE_SYS) flags |= ECP_RBUF_FLAG_SYS;
 
 #ifdef ECP_WITH_MSGQ
     if (buf->flags & ECP_RBUF_FLAG_MSGQ) {
-        int rv = ECP_OK;
+        ecp_seq_t seq_offset;
+        int _rv = ECP_OK;
 
         pthread_mutex_lock(&buf->msgq.mutex);
-        ecp_seq_t seq_offset = seq - buf->msgq.seq_start;
-        if (seq_offset >= buf->rbuf.msg_size) rv = ECP_ERR_RBUF_FULL;
+        seq_offset = seq - buf->msgq.seq_start;
+        if (seq_offset >= buf->rbuf.msg_size) _rv = ECP_ERR_RBUF_FULL;
         pthread_mutex_unlock(&buf->msgq.mutex);
 
-        if (rv) return rv;
+        if (_rv) return _rv;
     }
 #endif
 
-    ssize_t rv = ecp_rbuf_msg_store(&buf->rbuf, seq, -1, msg, msg_size, ECP_RBUF_FLAG_IN_RBUF | ECP_RBUF_FLAG_IN_MSGQ, flags);
+    rv = ecp_rbuf_msg_store(&buf->rbuf, seq, -1, msg, msg_size, ECP_RBUF_FLAG_IN_RBUF | ECP_RBUF_FLAG_IN_MSGQ, flags);
     if (rv < 0) return rv;
 
     if (ECP_SEQ_LT(buf->rbuf.seq_max, seq)) buf->rbuf.seq_max = seq;
@@ -56,14 +58,14 @@ static void msg_flush(ECPConnection *conn, ECP2Buffer *b) {
             if (buf->rbuf.msg[idx].flags & ECP_RBUF_FLAG_SYS) {
                 buf->rbuf.msg[idx].flags &= ~ECP_RBUF_FLAG_SYS;
             } else {
-                int rv = ECP_OK;
                 ecp_pts_t msg_pts;
                 ecp_seq_t seq = buf->rbuf.seq_start + i;
                 unsigned char frag_tot;
                 unsigned char frag_cnt;
+                int rv;
 
                 rv = ecp_msg_get_frag(buf->rbuf.msg[idx].msg, buf->rbuf.msg[idx].size, &frag_cnt, &frag_tot);
-                if ((rv == ECP_OK) && (frag_cnt != 0) && (seq != seq_next)) {
+                if (!rv && (frag_cnt != 0) && (seq != seq_next)) {
                     ecp_seq_t seq_fend = seq + (ecp_seq_t)(frag_tot - frag_cnt - 1);
 
                     if (ECP_SEQ_LT(buf->rbuf.seq_max, seq_fend) || (buf->hole_max && ((ecp_seq_t)(buf->rbuf.seq_max - seq_fend) <= buf->hole_max))) {
@@ -77,7 +79,7 @@ static void msg_flush(ECPConnection *conn, ECP2Buffer *b) {
                 }
 
                 rv = ecp_msg_get_pts(buf->rbuf.msg[idx].msg, buf->rbuf.msg[idx].size, &msg_pts);
-                if (rv == ECP_OK) {
+                if (!rv) {
                     ecp_pts_t now = ecp_tm_abstime_ms(0);
                     if (ECP_PTS_LT(now, msg_pts)) {
                         ECPTimerItem ti;
@@ -335,9 +337,12 @@ ssize_t ecp_rbuf_recv_store(ECPConnection *conn, ecp_seq_t seq, unsigned char *m
     }
     msg_flush(conn, b);
     if (!(mtype < ECP_MAX_MTYPE_SYS) && buf->ack_do) {
-        int _rv = ack_send(conn);
+        int _rv;
+
+        _rv = ack_send(conn);
         if (_rv) return _rv;
     }
+
     return rv;
 }
 

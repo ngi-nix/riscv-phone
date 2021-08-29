@@ -17,7 +17,9 @@ static ssize_t flush_send(ECPConnection *conn, ECPTimerItem *ti) {
     ecp_pld_set_type(pld_buf, ECP_MTYPE_RBFLUSH);
     if (ti == NULL) {
         ECPTimerItem _ti;
-        int rv = ecp_timer_item_init(&_ti, conn, ECP_MTYPE_RBACK, 3, 500);
+        int rv;
+
+        rv = ecp_timer_item_init(&_ti, conn, ECP_MTYPE_RBACK, 3, 500);
         if (rv) return rv;
 
         _ti.retry = flush_send;
@@ -198,7 +200,9 @@ ssize_t ecp_rbuf_handle_ack(ECPConnection *conn, ecp_seq_t seq, unsigned char mt
 #endif
 
     if (!rv && do_flush) {
-        ssize_t _rv = flush_send(conn, NULL);
+        ssize_t _rv;
+
+        _rv = flush_send(conn, NULL);
         if (_rv < 0) rv = _rv;
     }
 
@@ -267,6 +271,7 @@ int ecp_rbuf_send_set_wsize(ECPConnection *conn, ecp_win_t size) {
 int ecp_rbuf_send_flush(ECPConnection *conn) {
     ECPRBSend *buf = conn->rbuf.send;
     ecp_seq_t seq;
+    ssize_t rv;
 
     if (buf == NULL) return ECP_ERR;
 
@@ -293,7 +298,7 @@ int ecp_rbuf_send_flush(ECPConnection *conn) {
     pthread_mutex_unlock(&buf->mutex);
 #endif
 
-    ssize_t rv = flush_send(conn, NULL);
+    rv = flush_send(conn, NULL);
     if (rv < 0) return rv;
 
     return ECP_OK;
@@ -378,7 +383,9 @@ ssize_t ecp_rbuf_pkt_send(ECPRBSend *buf, ECPSocket *sock, ECPNetAddr *addr, ECP
 
     if (do_send) {
         if (ti) {
-            int _rv = ecp_timer_push(ti);
+            int _rv;
+
+            _rv = ecp_timer_push(ti);
             if (_rv) return _rv;
         }
         rv = ecp_pkt_send(sock, addr, packet, pkt_size, flags);

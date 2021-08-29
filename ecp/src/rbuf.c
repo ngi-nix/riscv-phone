@@ -78,8 +78,9 @@ ssize_t ecp_rbuf_pld_send(ECPConnection *conn, ECPBuffer *packet, ECPBuffer *pay
     ECPNetAddr addr;
     ECPSeqItem seq_item;
     ssize_t rv;
+    int _rv;    
     
-    int _rv = ecp_seq_item_init(&seq_item);
+    _rv = ecp_seq_item_init(&seq_item);
     if (_rv) return _rv;
     
     seq_item.seq = seq;
