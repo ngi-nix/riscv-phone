@@ -10,6 +10,7 @@
 #define ECP_MTYPE_RBACK             0x04
 #define ECP_MTYPE_RBFLUSH           0x05
 #define ECP_MTYPE_RBFLUSH_PTS       0x06
+#define ECP_MTYPE_NOP               0x07
 
 #define ECP_ERR_RBUF_DUP            -100
 #define ECP_ERR_RBUF_FULL           -101
@@ -22,6 +23,16 @@ typedef uint32_t ecp_win_t;
 #ifdef ECP_WITH_MSGQ
 #include "msgq.h"
 #endif
+
+typedef struct ECPRBTimerItem {
+    unsigned char occupied;
+    ECPTimerItem item;
+} ECPRBTimerItem;
+
+typedef struct ECPRBTimer {
+    ECPRBTimerItem item[ECP_MAX_TIMER];
+    unsigned short idx_w;
+} ECPRBTimer;
 
 typedef struct ECPRBMessage {
     unsigned char msg[ECP_MAX_PKT];
@@ -37,17 +48,6 @@ typedef struct ECPRBuffer {
     unsigned int msg_start;
     ECPRBMessage *msg;
 } ECPRBuffer;
-
-
-typedef struct ECPRBTimerItem {
-    unsigned char occupied;
-    ECPTimerItem item;
-} ECPRBTimerItem;
-
-typedef struct ECPRBTimer {
-    ECPRBTimerItem item[ECP_MAX_TIMER];
-    unsigned short idx_w;
-} ECPRBTimer;
 
 typedef struct ECPRBRecv {
     unsigned char flags;
@@ -89,16 +89,14 @@ typedef struct ECPConnRBuffer {
     ECPRBSend *send;
 } ECPConnRBuffer;
 
-
 int ecp_rbuf_init(ECPRBuffer *rbuf, ECPRBMessage *msg, unsigned int msg_size);
+int ecp_rbuf_create(struct ECPConnection *conn, ECPRBSend *buf_s, ECPRBMessage *msg_s, unsigned int msg_s_size, ECPRBRecv *buf_r, ECPRBMessage *msg_r, unsigned int msg_r_size);
+void ecp_rbuf_destroy(struct ECPConnection *conn);
 int ecp_rbuf_start(ECPRBuffer *rbuf, ecp_seq_t seq);
 int ecp_rbuf_msg_idx(ECPRBuffer *rbuf, ecp_seq_t seq);
 
 ssize_t ecp_rbuf_msg_store(ECPRBuffer *rbuf, ecp_seq_t seq, int idx, unsigned char *msg, size_t msg_size, unsigned char test_flags, unsigned char set_flags);
 ssize_t ecp_rbuf_pld_send(struct ECPConnection *conn, struct ECPBuffer *packet, struct ECPBuffer *payload, size_t pld_size, unsigned char flags, ecp_seq_t seq);
-
-int ecp_rbuf_create(struct ECPConnection *conn, ECPRBSend *buf_s, ECPRBMessage *msg_s, unsigned int msg_s_size, ECPRBRecv *buf_r, ECPRBMessage *msg_r, unsigned int msg_r_size);
-void ecp_rbuf_destroy(struct ECPConnection *conn);
 
 int ecp_rbuf_recv_create(struct ECPConnection *conn, ECPRBRecv *buf, ECPRBMessage *msg, unsigned int msg_size);
 void ecp_rbuf_recv_destroy(struct ECPConnection *conn);

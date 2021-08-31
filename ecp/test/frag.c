@@ -71,8 +71,8 @@ int main(int argc, char *argv[]) {
     handler_s.msg[MTYPE_MSG] = handle_msg_s;
     ctx_s.handler[CTYPE_TEST] = &handler_s;
 
-    rv = ecp_dhkey_generate(&ctx_s, &key_perma_s);
-    printf("ecp_dhkey_generate RV:%d\n", rv);
+    rv = ecp_dhkey_gen(&ctx_s, &key_perma_s);
+    printf("ecp_dhkey_gen RV:%d\n", rv);
 
     rv = ecp_sock_create(&sock_s, &ctx_s, &key_perma_s);
     printf("ecp_sock_create RV:%d\n", rv);
@@ -91,8 +91,8 @@ int main(int argc, char *argv[]) {
     handler_c.msg[MTYPE_MSG] = handle_msg_c;
     ctx_c.handler[CTYPE_TEST] = &handler_c;
 
-    rv = ecp_dhkey_generate(&ctx_c, &key_perma_c);
-    printf("ecp_dhkey_generate RV:%d\n", rv);
+    rv = ecp_dhkey_gen(&ctx_c, &key_perma_c);
+    printf("ecp_dhkey_gen RV:%d\n", rv);
 
     rv = ecp_sock_create(&sock_c, &ctx_c, &key_perma_c);
     printf("ecp_sock_create RV:%d\n", rv);

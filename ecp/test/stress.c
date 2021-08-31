@@ -93,7 +93,7 @@ void *sender(ECPConnection *c) {
         c->sock->ctx->rng(&rnd, sizeof(uint32_t));
         usleep(rnd % (2000000/msg_rate));
 
-        ecp_pld_set_type(pld_buf, MTYPE_MSG);
+        ecp_pld_set_type(payload.buffer, payload.size, MTYPE_MSG);
         ssize_t _rv = 0;
         // XXX refactor
         // _rv = ecp_pld_send(c, &packet, &payload, ECP_SIZE_PLD(1000, 0));
@@ -138,7 +138,7 @@ ssize_t handle_msg_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigne
         pthread_mutex_unlock(&t_mtx[idx]);
     }
 
-    // ecp_pld_set_type(payload, MTYPE_MSG);
+    // ecp_pld_set_type(payload.buffer, payload.size, MTYPE_MSG);
     // ssize_t _rv = ecp_pld_send(c, &packet, &payload, ECP_SIZE_PLD(1000, 0));
     return s;
 }
@@ -154,7 +154,7 @@ ssize_t handle_msg_s(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigne
     payload.buffer = pld_buf;
     payload.size = ECP_MAX_PLD;
 
-    ecp_pld_set_type(pld_buf, MTYPE_MSG);
+    ecp_pld_set_type(payload.buffer, payload.size, MTYPE_MSG);
     // XXX refactor
     // ssize_t _rv = ecp_pld_send(conn, &packet, &payload, ECP_SIZE_PLD(1000, 0));
     return s;
@@ -199,7 +199,7 @@ int main(int argc, char *argv[]) {
     handler_s.msg[MTYPE_MSG] = handle_msg_s;
     ctx_s.handler[CTYPE_TEST] = &handler_s;
 
-    if (!rv) rv = ecp_dhkey_generate(&ctx_s, &key_perma_s);
+    if (!rv) rv = ecp_dhkey_gen(&ctx_s, &key_perma_s);
 
     for (i=0; i<num_s; i++) {
         if (!rv) rv = ecp_sock_create(&sock_s[i], &ctx_s, &key_perma_s);
@@ -229,7 +229,7 @@ int main(int argc, char *argv[]) {
         if (!rv) rv = ecp_init(&ctx_c[i]);
         ctx_c[i].handler[CTYPE_TEST] = &handler_c;
 
-        if (!rv) rv = ecp_dhkey_generate(&ctx_c[i], &key_perma_c[i]);
+        if (!rv) rv = ecp_dhkey_gen(&ctx_c[i], &key_perma_c[i]);
         if (!rv) rv = ecp_sock_create(&sock_c[i], &ctx_c[i], &key_perma_c[i]);
         if (!rv) rv = ecp_sock_open(&sock_c[i], NULL);
 

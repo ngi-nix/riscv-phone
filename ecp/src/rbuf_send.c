@@ -14,7 +14,7 @@ static ssize_t flush_send(ECPConnection *conn, ECPTimerItem *ti) {
     payload.buffer = pld_buf;
     payload.size = ECP_SIZE_PLD_BUF(0, ECP_MTYPE_RBFLUSH, conn);
 
-    ecp_pld_set_type(pld_buf, ECP_MTYPE_RBFLUSH);
+    ecp_pld_set_type(payload.buffer, payload.size, ECP_MTYPE_RBFLUSH);
     if (ti == NULL) {
         ECPTimerItem _ti;
         int rv;
@@ -153,7 +153,7 @@ ssize_t ecp_rbuf_handle_ack(ECPConnection *conn, ecp_seq_t seq, unsigned char mt
                             payload.buffer = pld_buf;
                             payload.size = ECP_SIZE_PLD_BUF(0, ECP_MTYPE_NOP, conn);
 
-                            ecp_pld_set_type(pld_buf, ECP_MTYPE_NOP);
+                            ecp_pld_set_type(payload.buffer, payload.size, ECP_MTYPE_NOP);
                             ecp_rbuf_pld_send(conn, &packet, &payload, ECP_SIZE_PLD(0, ECP_MTYPE_NOP), 0, seq_ack + i);
                         } else {
                             ECPBuffer packet;
@@ -305,12 +305,14 @@ int ecp_rbuf_send_flush(ECPConnection *conn) {
 }
 
 int ecp_rbuf_pkt_prep(ECPRBSend *buf, ECPSeqItem *si, unsigned char mtype) {
+    int idx;
+
     if (si->rb_pass) return ECP_OK;
 
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_lock(&buf->mutex);
 #endif
-    int idx = ecp_rbuf_msg_idx(&buf->rbuf, si->seq);
+    idx = ecp_rbuf_msg_idx(&buf->rbuf, si->seq);
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_unlock(&buf->mutex);
 #endif

@@ -1,35 +1,5 @@
 #include "core.h"
 
-int ecp_rbuf_create(ECPConnection *conn, ECPRBSend *buf_s, ECPRBMessage *msg_s, unsigned int msg_s_size, ECPRBRecv *buf_r, ECPRBMessage *msg_r, unsigned int msg_r_size) {
-    int rv;
-    
-    if (buf_s) {
-        rv = ecp_rbuf_send_create(conn, buf_s, msg_s, msg_s_size);
-        if (rv) return rv;
-        
-        rv = ecp_rbuf_send_start(conn);
-        if (rv) {
-            ecp_rbuf_send_destroy(conn);
-            return rv;
-        }
-    }
-    
-    if (buf_r) {
-        rv = ecp_rbuf_recv_create(conn, buf_r, msg_r, msg_r_size);
-        if (rv) {
-            if (buf_s) ecp_rbuf_send_destroy(conn);
-            return rv;
-        }
-    }
-    
-    return ECP_OK;
-}
-
-void ecp_rbuf_destroy(ECPConnection *conn) {
-    ecp_rbuf_send_destroy(conn);
-    ecp_rbuf_recv_destroy(conn);
-}
-
 int ecp_rbuf_init(ECPRBuffer *rbuf, ECPRBMessage *msg, unsigned int msg_size) {
     rbuf->msg = msg;
     if (msg_size) {
@@ -41,6 +11,36 @@ int ecp_rbuf_init(ECPRBuffer *rbuf, ECPRBMessage *msg, unsigned int msg_size) {
     }
 
     return ECP_OK;
+}
+
+int ecp_rbuf_create(ECPConnection *conn, ECPRBSend *buf_s, ECPRBMessage *msg_s, unsigned int msg_s_size, ECPRBRecv *buf_r, ECPRBMessage *msg_r, unsigned int msg_r_size) {
+    int rv;
+
+    if (buf_s) {
+        rv = ecp_rbuf_send_create(conn, buf_s, msg_s, msg_s_size);
+        if (rv) return rv;
+
+        rv = ecp_rbuf_send_start(conn);
+        if (rv) {
+            ecp_rbuf_send_destroy(conn);
+            return rv;
+        }
+    }
+
+    if (buf_r) {
+        rv = ecp_rbuf_recv_create(conn, buf_r, msg_r, msg_r_size);
+        if (rv) {
+            if (buf_s) ecp_rbuf_send_destroy(conn);
+            return rv;
+        }
+    }
+
+    return ECP_OK;
+}
+
+void ecp_rbuf_destroy(ECPConnection *conn) {
+    ecp_rbuf_send_destroy(conn);
+    ecp_rbuf_recv_destroy(conn);
 }
 
 int ecp_rbuf_start(ECPRBuffer *rbuf, ecp_seq_t seq) {
@@ -64,7 +64,7 @@ ssize_t ecp_rbuf_msg_store(ECPRBuffer *rbuf, ecp_seq_t seq, int idx, unsigned ch
 
     if (rbuf->msg == NULL) return 0;
     if (test_flags && (test_flags & rbuf->msg[idx].flags)) return ECP_ERR_RBUF_DUP;
-    
+
     if (msg_size) memcpy(rbuf->msg[idx].msg, msg, msg_size);
     rbuf->msg[idx].size = msg_size;
     rbuf->msg[idx].flags = set_flags;
@@ -78,16 +78,16 @@ ssize_t ecp_rbuf_pld_send(ECPConnection *conn, ECPBuffer *packet, ECPBuffer *pay
     ECPNetAddr addr;
     ECPSeqItem seq_item;
     ssize_t rv;
-    int _rv;    
-    
+    int _rv;
+
     _rv = ecp_seq_item_init(&seq_item);
     if (_rv) return _rv;
-    
+
     seq_item.seq = seq;
     seq_item.seq_w = 1;
     seq_item.rb_pass = 1;
 
-    rv = ecp_pack(conn, packet, ECP_ECDH_IDX_INV, ECP_ECDH_IDX_INV, payload, pld_size, &seq_item, &addr);
+    rv = ecp_pack_conn(conn, packet, ECP_ECDH_IDX_INV, ECP_ECDH_IDX_INV, &seq_item, payload, pld_size, &addr);
     if (rv < 0) return rv;
 
     rv = ecp_pkt_send(sock, &addr, packet, rv, flags);

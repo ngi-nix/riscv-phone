@@ -81,15 +81,15 @@ static ssize_t _vconn_send_open(ECPConnection *conn, ECPTimerItem *ti) {
     payload.buffer = pld_buf;
     payload.size = ECP_SIZE_PLD_BUF(0, ECP_MTYPE_KGET_REQ, conn);
 
-    ecp_pld_set_type(pld_buf, ECP_MTYPE_KGET_REQ);
-    return ecp_pld_send_ll(conn, &packet, ECP_ECDH_IDX_PERMA, ECP_ECDH_IDX_INV, &payload, ECP_SIZE_PLD(0, ECP_MTYPE_KGET_REQ), 0, ti);
+    ecp_pld_set_type(payload.buffer, payload.size, ECP_MTYPE_KGET_REQ);
+    return _ecp_pld_send(conn, &packet, ECP_ECDH_IDX_PERMA, ECP_ECDH_IDX_INV, NULL, &payload, ECP_SIZE_PLD(0, ECP_MTYPE_KGET_REQ), 0, ti);
 }
 
 static ssize_t vconn_open(ECPConnection *conn) {
     ECPTimerItem ti;
     ECPVConnection *conn_v = (ECPVConnection *)conn;
     ECPConnection *conn_next = conn_v->next;
-    ssize_t rv
+    ssize_t rv;
 
     if (conn_next == NULL) return ECP_ERR;
 
@@ -195,7 +195,7 @@ static ssize_t vconn_handle_relay(ECPConnection *conn, ecp_seq_t seq, unsigned c
     payload.buffer = msg - ECP_SIZE_PLD_HDR - 1;
     payload.size = b->payload->size - (payload.buffer - b->payload->buffer);
 
-    ecp_pld_set_type(payload.buffer, ECP_MTYPE_EXEC);
+    ecp_pld_set_type(payload.buffer, payload.size, ECP_MTYPE_EXEC);
     rv = ecp_pld_send(conn_out, b->packet, &payload, ECP_SIZE_PLD_HDR+1+size, ECP_SEND_FLAG_REPLY);
 
 #ifdef ECP_WITH_PTHREAD
@@ -259,7 +259,7 @@ static ssize_t _vlink_send_open(ECPConnection *conn, ECPTimerItem *ti) {
     ECPBuffer payload;
     unsigned char pkt_buf[ECP_SIZE_PKT_BUF(ECP_ECDH_SIZE_KEY+1, ECP_MTYPE_OPEN_REQ, conn)];
     unsigned char pld_buf[ECP_SIZE_PLD_BUF(ECP_ECDH_SIZE_KEY+1, ECP_MTYPE_OPEN_REQ, conn)];
-    unsigned char *buf = ecp_pld_get_buf(pld_buf, ECP_MTYPE_OPEN_REQ);
+    unsigned char *buf;
 
     packet.buffer = pkt_buf;
     packet.size = ECP_SIZE_PKT_BUF(ECP_ECDH_SIZE_KEY+1, ECP_MTYPE_OPEN_REQ, conn);
@@ -267,7 +267,8 @@ static ssize_t _vlink_send_open(ECPConnection *conn, ECPTimerItem *ti) {
     payload.size = ECP_SIZE_PLD_BUF(ECP_ECDH_SIZE_KEY+1, ECP_MTYPE_OPEN_REQ, conn);
 
     // XXX server should verify perma_key
-    ecp_pld_set_type(pld_buf, ECP_MTYPE_OPEN_REQ);
+    ecp_pld_set_type(payload.buffer, payload.size, ECP_MTYPE_OPEN_REQ);
+    buf = ecp_pld_get_buf(payload.buffer, payload.size);
     buf[0] = conn->type;
     memcpy(buf+1, ecp_cr_dh_pub_get_buf(&sock->key_perma.public), ECP_ECDH_SIZE_KEY);
 
@@ -367,7 +368,7 @@ static ssize_t vlink_handle_relay(ECPConnection *conn, ecp_seq_t seq, unsigned c
     payload.buffer = msg - ECP_SIZE_PLD_HDR - 1;
     payload.size = b->payload->size - (payload.buffer - b->payload->buffer);
 
-    ecp_pld_set_type(payload.buffer, ECP_MTYPE_EXEC);
+    ecp_pld_set_type(payload.buffer, payload.size, ECP_MTYPE_EXEC);
     rv = ecp_pld_send(conn, b->packet, &payload, ECP_SIZE_PLD_HDR+1+size, ECP_SEND_FLAG_REPLY);
 
 #ifdef ECP_WITH_PTHREAD
@@ -393,8 +394,8 @@ static ssize_t vconn_set_msg(ECPConnection *conn, ECPBuffer *payload, unsigned c
         if (payload->size < ECP_SIZE_PLD_HDR + 3 + 2 * ECP_ECDH_SIZE_KEY) return ECP_ERR;
         if (conn_next == NULL) return ECP_ERR;
 
-        ecp_pld_set_type(payload->buffer, ECP_MTYPE_OPEN_REQ);
-        buf = ecp_pld_get_buf(payload->buffer, 0);
+        ecp_pld_set_type(payload->buffer, payload->size, ECP_MTYPE_OPEN_REQ);
+        buf = ecp_pld_get_buf(payload->buffer, payload->size);
 
         buf[0] = ECP_CTYPE_VCONN;
         rv = ecp_conn_dhkey_get_curr(conn_next, NULL, buf+1);
@@ -407,104 +408,138 @@ static ssize_t vconn_set_msg(ECPConnection *conn, ECPBuffer *payload, unsigned c
     } else {
         if (payload->size < ECP_SIZE_PLD_HDR + 1) return ECP_ERR;
 
-        ecp_pld_set_type(payload->buffer, ECP_MTYPE_RELAY);
+        ecp_pld_set_type(payload->buffer, payload->size, ECP_MTYPE_RELAY);
 
         return ECP_SIZE_PLD_HDR + 1;
     }
 
 }
 
-/* Memory limited version: */
-ssize_t ecp_pack(ECPConnection *conn, ECPBuffer *packet, unsigned char s_idx, unsigned char c_idx, ECPBuffer *payload, size_t pld_size, ECPSeqItem *si, ECPNetAddr *addr) {
+#ifdef ECP_MEM_TINY
+/* Memory limited version */
+
+ssize_t ecp_pack(ECPContext *ctx, ECPConnection *parent, ECPBuffer *packet, ECPPktMeta *pkt_meta, ECPBuffer *payload, size_t pld_size, ECPNetAddr *addr) {
     if ((packet == NULL) || (packet->buffer == NULL)) return ECP_ERR;
     if ((payload == NULL) || (payload->buffer == NULL)) return ECP_ERR;
 
-    if (conn->parent) {
-        unsigned char mtype = ecp_pld_get_type(payload->buffer);
-        ssize_t rv, hdr_size = vconn_set_msg(conn->parent, packet, mtype);
+    if (parent) {
+        unsigned char mtype;
+        ssize_t rv, hdr_size;
+        int _rv;
+
+        _rv = ecp_pld_get_type(payload->buffer, payload->size, &mtype);
+        if (_rv) return _rv;
+
+        hdr_size = vconn_set_msg(parent, packet, mtype);
         if (hdr_size < 0) return hdr_size;
 
-        rv = ecp_conn_pack(conn, packet->buffer+hdr_size, packet->size-hdr_size, s_idx, c_idx, payload->buffer, pld_size, si, NULL);
+        rv = _ecp_pack(ctx, packet->buffer+hdr_size, packet->size-hdr_size, pkt_meta, payload->buffer, pld_size);
         if (rv < 0) return rv;
 
         if (payload->size < rv+hdr_size) return ECP_ERR;
         memcpy(payload->buffer, packet->buffer, rv+hdr_size);
 
-        return ecp_pack(conn->parent, packet, ECP_ECDH_IDX_INV, ECP_ECDH_IDX_INV, payload, rv+hdr_size, NULL, addr);
+        return ecp_pack_conn(parent, packet, ECP_ECDH_IDX_INV, ECP_ECDH_IDX_INV, NULL, payload, rv+hdr_size, addr);
     } else {
-        return ecp_conn_pack(conn, packet->buffer, packet->size, s_idx, c_idx, payload->buffer, pld_size, si, addr);
+        return _ecp_pack(ctx, packet->buffer, packet->size, pkt_meta, payload->buffer, pld_size);
     }
 }
 
-ssize_t ecp_pack_raw(ECPSocket *sock, ECPConnection *parent, ECPBuffer *packet, unsigned char s_idx, unsigned char c_idx, ecp_dh_public_t *public, ecp_aead_key_t *shsec, unsigned char *nonce, ecp_seq_t seq, ECPBuffer *payload, size_t pld_size, ECPNetAddr *addr) {
-    ECPContext *ctx = sock->ctx;
+#else
 
+ssize_t ecp_pack(ECPContext *ctx, ECPConnection *parent, ECPBuffer *packet, ECPPktMeta *pkt_meta, ECPBuffer *payload, size_t pld_size, ECPNetAddr *addr) {
     if ((packet == NULL) || (packet->buffer == NULL)) return ECP_ERR;
     if ((payload == NULL) || (payload->buffer == NULL)) return ECP_ERR;
 
     if (parent) {
-        unsigned char mtype = ecp_pld_get_type(payload->buffer);
-        ssize_t rv, hdr_size = vconn_set_msg(parent, packet, mtype);
+        ECPBuffer _payload;
+        unsigned char pld_buf[ECP_MAX_PLD];
+        unsigned char mtype;
+        ssize_t rv, hdr_size;
+        int _rv;
+
+        _payload.buffer = pld_buf;
+        _payload.size = ECP_MAX_PLD;
+
+        _rv = ecp_pld_get_type(payload->buffer, payload->size, &mtype);
+        if (_rv) return _rv;
+
+        hdr_size = vconn_set_msg(parent, &_payload, mtype);
         if (hdr_size < 0) return hdr_size;
 
-        rv = ecp_pkt_pack(ctx, packet->buffer+hdr_size, packet->size-hdr_size, s_idx, c_idx, public, shsec, nonce, seq, payload->buffer, pld_size);
+        rv = _ecp_pack(ctx, _payload.buffer+hdr_size, _payload.size-hdr_size, pkt_meta, payload->buffer, pld_size);
+        if (rv < 0) return rv;
+
+        return ecp_pack_conn(parent, packet, ECP_ECDH_IDX_INV, ECP_ECDH_IDX_INV, NULL, &_payload, rv+hdr_size, addr);
+    } else {
+        return _ecp_pack(ctx, packet->buffer, packet->size, pkt_meta, payload->buffer, pld_size);
+    }
+}
+
+#endif
+
+#ifdef ECP_MEM_TINY
+/* Memory limited version */
+
+ssize_t ecp_pack_conn(ECPConnection *conn, ECPBuffer *packet, unsigned char s_idx, unsigned char c_idx, ECPSeqItem *si, ECPBuffer *payload, size_t pld_size, ECPNetAddr *addr) {
+    if ((packet == NULL) || (packet->buffer == NULL)) return ECP_ERR;
+    if ((payload == NULL) || (payload->buffer == NULL)) return ECP_ERR;
+
+    if (conn->parent) {
+        unsigned char mtype;
+        ssize_t rv, hdr_size;
+        int _rv;
+
+        _rv = ecp_pld_get_type(payload->buffer, payload->size, &mtype);
+        if (_rv) return _rv;
+
+        hdr_size = vconn_set_msg(conn->parent, packet, mtype);
+        if (hdr_size < 0) return hdr_size;
+
+        rv = _ecp_pack_conn(conn, packet->buffer+hdr_size, packet->size-hdr_size, s_idx, c_idx, si, payload->buffer, pld_size, NULL);
         if (rv < 0) return rv;
 
         if (payload->size < rv+hdr_size) return ECP_ERR;
         memcpy(payload->buffer, packet->buffer, rv+hdr_size);
 
-        return ecp_pack(parent, packet, ECP_ECDH_IDX_INV, ECP_ECDH_IDX_INV, payload, rv+hdr_size, NULL, addr);
+        return ecp_pack_conn(conn->parent, packet, ECP_ECDH_IDX_INV, ECP_ECDH_IDX_INV, NULL, payload, rv+hdr_size, addr);
     } else {
-        return ecp_pkt_pack(ctx, packet->buffer, packet->size, s_idx, c_idx, public, shsec, nonce, seq, payload->buffer, pld_size);
+        return _ecp_pack_conn(conn, packet->buffer, packet->size, s_idx, c_idx, si, payload->buffer, pld_size, addr);
     }
 }
 
-/* Non memory limited version: */
-/*
-static ssize_t ecp_pack(ECPConnection *conn, ECPBuffer *packet, unsigned char s_idx, unsigned char c_idx, ECPBuffer *payload, size_t pld_size, ECPSeqItem *si, ECPNetAddr *addr) {
+#else
+
+ssize_t ecp_pack_conn(ECPConnection *conn, ECPBuffer *packet, unsigned char s_idx, unsigned char c_idx, ECPSeqItem *si, ECPBuffer *payload, size_t pld_size, ECPNetAddr *addr) {
+    if ((packet == NULL) || (packet->buffer == NULL)) return ECP_ERR;
+    if ((payload == NULL) || (payload->buffer == NULL)) return ECP_ERR;
+
     if (conn->parent) {
-        ECPBuffer payload_;
+        ECPBuffer _payload;
         unsigned char pld_buf[ECP_MAX_PLD];
+        unsigned char mtype;
+        ssize_t rv, hdr_size;
+        int _rv;
 
-        payload_.buffer = pld_buf;
-        payload_.size = ECP_MAX_PLD;
+        _payload.buffer = pld_buf;
+        _payload.size = ECP_MAX_PLD;
 
-        unsigned char mtype = ecp_pld_get_type(payload->buffer);
-        ssize_t rv, hdr_size = vconn_set_msg(conn->parent, &payload_, mtype);
+        _rv = ecp_pld_get_type(payload->buffer, payload->size, &mtype);
+        if (_rv) return _rv;
+
+        hdr_size = vconn_set_msg(conn->parent, &_payload, mtype);
         if (hdr_size < 0) return hdr_size;
 
-        rv = ecp_conn_pack(conn, payload_.buffer+hdr_size, payload_.size-hdr_size, s_idx, c_idx, payload->buffer, pld_size, si, NULL);
+        rv = _ecp_pack_conn(conn, _payload.buffer+hdr_size, _payload.size-hdr_size, s_idx, c_idx, si, payload->buffer, pld_size, NULL);
         if (rv < 0) return rv;
 
-        return ecp_pack(conn->parent, packet, ECP_ECDH_IDX_INV, ECP_ECDH_IDX_INV, &payload_, rv+hdr_size, NULL, addr);
+        return ecp_pack_conn(conn->parent, packet, ECP_ECDH_IDX_INV, ECP_ECDH_IDX_INV, NULL, &_payload, rv+hdr_size, addr);
     } else {
-        return ecp_conn_pack(conn, packet->buffer, packet->size, s_idx, c_idx, payload->buffer, pld_size, si, addr);
+        return _ecp_pack_conn(conn, packet->buffer, packet->size, s_idx, c_idx, si, payload->buffer, pld_size, addr);
     }
 }
 
-static ssize_t ecp_pack_raw(ECPSocket *sock, ECPConnection *parent, ECPBuffer *packet, unsigned char s_idx, unsigned char c_idx, ecp_dh_public_t *public, ecp_aead_key_t *shsec, unsigned char *nonce, ecp_seq_t seq, ECPBuffer *payload, size_t pld_size, ECPNetAddr *addr) {
-    ECPContext *ctx = sock->ctx;
-
-    if (parent) {
-        ECPBuffer payload_;
-        unsigned char pld_buf[ECP_MAX_PLD];
-
-        payload_.buffer = pld_buf;
-        payload_.size = ECP_MAX_PLD;
-
-        unsigned char mtype = ecp_pld_get_type(payload->buffer);
-        ssize_t rv, hdr_size = vconn_set_msg(parent, &payload_, mtype);
-        if (hdr_size < 0) return hdr_size;
-
-        rv = ecp_pkt_pack(ctx, payload_.buffer+hdr_size, payload_.size-hdr_size, s_idx, c_idx, public, shsec, nonce, seq, payload->buffer, pld_size);
-        if (rv < 0) return rv;
-
-        return ecp_pack(parent, packet, ECP_ECDH_IDX_INV, ECP_ECDH_IDX_INV, &payload_, rv+hdr_size, NULL, addr);
-    } else {
-        return ecp_pkt_pack(ctx, packet->buffer, packet->size, s_idx, c_idx, public, shsec, nonce, seq, payload->buffer, pld_size);
-    }
-}
-*/
+#endif
 
 int ecp_vconn_ctx_init(ECPContext *ctx) {
     int rv;
@@ -614,8 +649,8 @@ static ssize_t _vconn_send_kget(ECPConnection *conn, ECPTimerItem *ti) {
     payload.buffer = pld_buf;
     payload.size = ECP_SIZE_PLD_BUF(0, ECP_MTYPE_KGET_REQ, conn);
 
-    ecp_pld_set_type(pld_buf, ECP_MTYPE_KGET_REQ);
-    return ecp_pld_send_ll(conn, &packet, ECP_ECDH_IDX_PERMA, ECP_ECDH_IDX_INV, &payload, ECP_SIZE_PLD(0, ECP_MTYPE_KGET_REQ), 0, ti);
+    ecp_pld_set_type(payload.buffer, payload.size, ECP_MTYPE_KGET_REQ);
+    return _ecp_pld_send(conn, &packet, ECP_ECDH_IDX_PERMA, ECP_ECDH_IDX_INV, NULL, &payload, ECP_SIZE_PLD(0, ECP_MTYPE_KGET_REQ), 0, ti);
 }
 
 int ecp_vconn_open(ECPConnection *conn, ECPNode *conn_node, ECPVConnection vconn[], ECPNode vconn_node[], int size) {
