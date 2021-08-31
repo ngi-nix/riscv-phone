@@ -204,6 +204,9 @@ int ecp_sock_create(ECPSocket *sock, ECPContext *ctx, ECPDHKey *key) {
     if (key) sock->key_perma = *key;
     sock->handler[ECP_MTYPE_OPEN] = ecp_sock_handle_open;
     sock->handler[ECP_MTYPE_KGET] = ecp_sock_handle_kget;
+#ifdef ECP_WITH_DIRSRV
+    sock->handler[ECP_MTYPE_DIR] = ecp_dir_handle_req;
+#endif
 
     rv = ecp_dhkey_gen(sock->ctx, &sock->key[sock->key_curr]);
     if (!rv) rv = ctable_create(&sock->conn, sock->ctx);
@@ -454,26 +457,6 @@ static int conn_shsec_set(ECPConnection *conn, unsigned char s_idx, unsigned cha
     return ECP_OK;
 }
 
-int ecp_conn_init(ECPConnection *conn, ECPNode *node) {
-    ECPDHKey key;
-    ECPContext *ctx = conn->sock->ctx;
-    int rv;
-
-    if (node == NULL) return ECP_ERR;
-
-    conn->out = 1;
-    conn->node = *node;
-    rv = ecp_dhkey_gen(ctx, &key);
-    if (!rv) rv = ctx->rng(conn->nonce, ECP_AEAD_SIZE_NONCE);
-    if (!rv) rv = ctx->rng(&conn->seq_out, sizeof(conn->seq_out));
-
-    if (!rv) rv = conn_dhkey_new_pair(conn, &key);
-    if (!rv) rv = conn_dhkey_new_pub_local(conn, conn->key_curr);
-    if (!rv) rv = ecp_conn_register(conn);
-
-    return rv;
-}
-
 int ecp_conn_create(ECPConnection *conn, ECPSocket *sock, unsigned char ctype) {
     int i, rv;
 
@@ -545,11 +528,48 @@ void ecp_conn_unregister(ECPConnection *conn) {
 #endif
 }
 
+/* initializes outbound connection */
+int ecp_conn_set_remote(ECPConnection *conn, ECPNode *node) {
+    ECPDHKey key;
+    ECPContext *ctx = conn->sock->ctx;
+    int rv;
+
+    if (node == NULL) return ECP_ERR;
+
+    conn->out = 1;
+    conn->node = *node;
+    rv = ecp_dhkey_gen(ctx, &key);
+    if (!rv) rv = ctx->rng(conn->nonce, ECP_AEAD_SIZE_NONCE);
+    if (!rv) rv = ctx->rng(&conn->seq_out, sizeof(conn->seq_out));
+
+    if (!rv) rv = conn_dhkey_new_pair(conn, &key);
+    if (!rv) rv = conn_dhkey_new_pub_local(conn, conn->key_curr);
+    if (!rv) rv = ecp_conn_register(conn);
+
+    return rv;
+}
+
+int ecp_conn_get_dirlist(ECPConnection *conn, ECPNode *node) {
+    int rv;
+    ssize_t _rv;
+
+    rv = ecp_conn_set_remote(conn, node);
+    if (rv) return rv;
+
+    _rv = ecp_conn_send_dir(conn);
+    if (_rv < 0) {
+        ecp_conn_unregister(conn);
+        return _rv;
+    }
+
+    return ECP_OK;
+}
+
 int ecp_conn_open(ECPConnection *conn, ECPNode *node) {
     int rv;
     ssize_t _rv;
 
-    rv = ecp_conn_init(conn, node);
+    rv = ecp_conn_set_remote(conn, node);
     if (rv) return rv;
 
     _rv = ecp_conn_send_kget(conn);
@@ -647,6 +667,9 @@ int ecp_conn_handler_init(ECPConnHandler *handler) {
     handler->msg[ECP_MTYPE_OPEN] = ecp_conn_handle_open;
     handler->msg[ECP_MTYPE_KGET] = ecp_conn_handle_kget;
     handler->msg[ECP_MTYPE_KPUT] = ecp_conn_handle_kput;
+#ifdef ECP_WITH_DIRSRV
+    handler->msg[ECP_MTYPE_DIR] = ecp_dir_handle_update;
+#endif
 #ifdef ECP_WITH_RBUF
     handler->msg[ECP_MTYPE_RBACK] = ecp_rbuf_handle_ack;
     handler->msg[ECP_MTYPE_RBFLUSH] = ecp_rbuf_handle_flush;
@@ -780,6 +803,21 @@ static ssize_t _conn_send_kput(ECPConnection *conn, ECPTimerItem *ti) {
     return ecp_pld_send_wtimer(conn, &packet, &payload, ECP_SIZE_PLD(ECP_ECDH_SIZE_KEY+1, ECP_MTYPE_KPUT_REQ), 0, ti);
 }
 
+static ssize_t _conn_send_dir(ECPConnection *conn, ECPTimerItem *ti) {
+    ECPBuffer packet;
+    ECPBuffer payload;
+    unsigned char pkt_buf[ECP_SIZE_PKT_BUF(0, ECP_MTYPE_DIR_REQ, conn)];
+    unsigned char pld_buf[ECP_SIZE_PLD_BUF(0, ECP_MTYPE_DIR_REQ, conn)];
+
+    packet.buffer = pkt_buf;
+    packet.size = ECP_SIZE_PKT_BUF(0, ECP_MTYPE_DIR_REQ, conn);
+    payload.buffer = pld_buf;
+    payload.size = ECP_SIZE_PLD_BUF(0, ECP_MTYPE_DIR_REQ, conn);
+
+    ecp_pld_set_type(payload.buffer, payload.size, ECP_MTYPE_DIR_REQ);
+    return _ecp_pld_send(conn, &packet, ECP_ECDH_IDX_PERMA, ECP_ECDH_IDX_INV, NULL, &payload, ECP_SIZE_PLD(0, ECP_MTYPE_DIR_REQ), 0, ti);
+}
+
 ssize_t ecp_conn_send_open(ECPConnection *conn) {
     return ecp_timer_send(conn, _conn_send_open, ECP_MTYPE_OPEN_REP, 3, 500);
 }
@@ -790,6 +828,10 @@ ssize_t ecp_conn_send_kget(ECPConnection *conn) {
 
 ssize_t ecp_conn_send_kput(ECPConnection *conn) {
     return ecp_timer_send(conn, _conn_send_kput, ECP_MTYPE_KPUT_REP, 3, 500);
+}
+
+ssize_t ecp_conn_send_dir(ECPConnection *conn) {
+    return ecp_timer_send(conn, _conn_send_dir, ECP_MTYPE_DIR_REP, 3, 500);
 }
 
 ssize_t ecp_conn_handle_open(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size, ECP2Buffer *b) {
@@ -1097,26 +1139,26 @@ int ecp_sock_handle_open(ECPSocket *sock, ECPNetAddr *addr, ECPConnection *paren
 }
 
 int ecp_sock_handle_kget(ECPSocket *sock, ECPNetAddr *addr, ECPConnection *parent, unsigned char *msg, size_t msg_size, ECPPktMeta *pkt_meta, ECP2Buffer *bufs, ECPConnection **_conn) {
-    ECPBuffer _packet;
-    ECPBuffer _payload;
+    ECPBuffer packet;
+    ECPBuffer payload;
     unsigned char pkt_buf[ECP_SIZE_PKT_BUF_TR(ECP_ECDH_SIZE_KEY+1, ECP_MTYPE_KGET_REP, parent)];
     unsigned char pld_buf[ECP_SIZE_PLD_BUF_TR(ECP_ECDH_SIZE_KEY+1, ECP_MTYPE_KGET_REP, parent)];
     unsigned char *buf;
     int rv;
     ssize_t _rv;
 
-    _packet.buffer = pkt_buf;
-    _packet.size = ECP_SIZE_PKT_BUF_TR(ECP_ECDH_SIZE_KEY+1, ECP_MTYPE_KGET_REP, parent);
-    _payload.buffer = pld_buf;
-    _payload.size = ECP_SIZE_PLD_BUF_TR(ECP_ECDH_SIZE_KEY+1, ECP_MTYPE_KGET_REP, parent);
+    packet.buffer = pkt_buf;
+    packet.size = ECP_SIZE_PKT_BUF_TR(ECP_ECDH_SIZE_KEY+1, ECP_MTYPE_KGET_REP, parent);
+    payload.buffer = pld_buf;
+    payload.size = ECP_SIZE_PLD_BUF_TR(ECP_ECDH_SIZE_KEY+1, ECP_MTYPE_KGET_REP, parent);
 
-    ecp_pld_set_type(_payload.buffer, _payload.size, ECP_MTYPE_KGET_REP);
-    buf = ecp_pld_get_buf(_payload.buffer, _payload.size);
+    ecp_pld_set_type(payload.buffer, payload.size, ECP_MTYPE_KGET_REP);
+    buf = ecp_pld_get_buf(payload.buffer, payload.size);
 
     rv = ecp_sock_dhkey_get_curr(sock, buf, buf+1);
     if (rv) return rv;
 
-    _rv = ecp_pld_send_tr(sock, addr, parent, &_packet, pkt_meta, &_payload, ECP_SIZE_PLD(ECP_ECDH_SIZE_KEY+1, ECP_MTYPE_KGET_REP), 0);
+    _rv = ecp_pld_send_tr(sock, addr, parent, &packet, pkt_meta, &payload, ECP_SIZE_PLD(ECP_ECDH_SIZE_KEY+1, ECP_MTYPE_KGET_REP), 0);
     if (_rv < 0) return _rv;
 
     return ECP_OK;

@@ -609,7 +609,7 @@ int ecp_vconn_init(ECPConnection *conn, ECPNode *conn_node, ECPVConnection vconn
     ECPSocket *sock = conn->sock;
     int i, rv;
 
-    rv = ecp_conn_init(conn, conn_node);
+    rv = ecp_conn_set_remote(conn, conn_node);
     if (rv) return rv;
 
     conn->parent = (ECPConnection *)&vconn[size-1];
@@ -618,7 +618,7 @@ int ecp_vconn_init(ECPConnection *conn, ECPNode *conn_node, ECPVConnection vconn
         rv = ecp_conn_create((ECPConnection *)&vconn[i], sock, ECP_CTYPE_VCONN);
         if (rv) return rv;
 
-        rv = ecp_conn_init((ECPConnection *)&vconn[i], &vconn_node[i]);
+        rv = ecp_conn_set_remote((ECPConnection *)&vconn[i], &vconn_node[i]);
         if (rv) return rv;
 
         if (i == 0) {

@@ -1,8 +1,24 @@
 #!/bin/sh
 
-subdirs="src util test"
+if [ -z $1 ]; then
+    ARG="all"
+else
+    ARG=$1
+fi
 
-for i in $subdirs; do
-	(cd $i && make $1 && cd ..) || exit;
-done
-
+cd src
+make clean
+if [ $ARG == "all" ]; then
+    make || exit
+    make install
+fi
+cd ../util
+make clean
+if [ $ARG == "all" ]; then
+    make || exit
+fi
+cd ../test
+make clean
+if [ $ARG == "all" ]; then
+    make
+fi

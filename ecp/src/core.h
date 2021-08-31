@@ -86,6 +86,8 @@
 #define ECP_MTYPE_KGET_REP          (ECP_MTYPE_KGET | ECP_MTYPE_FLAG_REP)
 #define ECP_MTYPE_KPUT_REQ          (ECP_MTYPE_KPUT)
 #define ECP_MTYPE_KPUT_REP          (ECP_MTYPE_KPUT | ECP_MTYPE_FLAG_REP)
+#define ECP_MTYPE_DIR_REQ           (ECP_MTYPE_DIR)
+#define ECP_MTYPE_DIR_REP           (ECP_MTYPE_DIR  | ECP_MTYPE_FLAG_REP)
 
 #define ECP_CONN_FLAG_REG           0x01
 #define ECP_CONN_FLAG_OPEN          0x02
@@ -143,10 +145,12 @@ struct ECPSocket;
 struct ECPConnection;
 struct ECPSeqItem;
 struct ECPPktMeta;
+struct ECPDirList;
 
 #include "platform/transport.h"
 #include "crypto/crypto.h"
 #include "timer.h"
+#include "dir_srv.h"
 
 #ifdef ECP_WITH_RBUF
 #include "rbuf.h"
@@ -253,6 +257,10 @@ typedef struct ECPContext {
     ecp_conn_alloc_t conn_alloc;
     ecp_conn_free_t conn_free;
     ECPConnHandler *handler[ECP_MAX_CTYPE];
+#ifdef ECP_WITH_DIRSRV
+    struct ECPDirList *dir_online;
+    struct ECPDirList *dir_shadow;
+#endif
 } ECPContext;
 
 typedef struct ECPSocket {
@@ -316,12 +324,13 @@ void ecp_sock_close(ECPSocket *sock);
 int ecp_sock_dhkey_get_curr(ECPSocket *sock, unsigned char *idx, unsigned char *public);
 int ecp_sock_dhkey_new(ECPSocket *sock);
 
-int ecp_conn_init(ECPConnection *conn, ECPNode *node);
 int ecp_conn_create(ECPConnection *conn, ECPSocket *sock, unsigned char ctype);
 void ecp_conn_destroy(ECPConnection *conn);
 int ecp_conn_register(ECPConnection *conn);
 void ecp_conn_unregister(ECPConnection *conn);
 
+int ecp_conn_set_remote(ECPConnection *conn, ECPNode *node);
+int ecp_conn_get_dirlist(ECPConnection *conn, ECPNode *node);
 int ecp_conn_open(ECPConnection *conn, ECPNode *node);
 int ecp_conn_close(ECPConnection *conn, ecp_cts_t timeout);
 int ecp_conn_reset(ECPConnection *conn);
@@ -334,6 +343,7 @@ int ecp_conn_dhkey_get_curr(ECPConnection *conn, unsigned char *idx, unsigned ch
 ssize_t ecp_conn_send_open(ECPConnection *conn);
 ssize_t ecp_conn_send_kget(ECPConnection *conn);
 ssize_t ecp_conn_send_kput(ECPConnection *conn);
+ssize_t ecp_conn_send_dir(ECPConnection *conn);
 
 ssize_t ecp_conn_handle_open(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size, ECP2Buffer *b);
 ssize_t ecp_conn_handle_kget(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size, ECP2Buffer *b);

@@ -6,10 +6,13 @@ dep=../src/build-posix/*.a ../util/libecputil.a
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<
 
-all: basic client server echo frag stress vcs vc_server vc_client vc_client_t
+all: basic dir server echo frag stress vcs vc_server vc_client vc_client_t
 
 basic: basic.o init.o $(dep)
 	$(CC) -o $@ $< init.o $(dep) $(LDFLAGS)
+
+dir: dir.o init.o $(dep)
+	$(CC) -DWITH_DIR_SERVER -o $@ $< init.o $(dep) $(LDFLAGS)
 
 client: client.o init.o $(dep)
 	$(CC) -o $@ $< init.o $(dep) $(LDFLAGS)
