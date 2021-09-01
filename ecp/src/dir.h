@@ -11,5 +11,8 @@ typedef struct ECPDirList {
     uint16_t count;
 } ECPDirList;
 
-void ecp_dir_parse_item(unsigned char *buf, ECPDirItem *item);
-void ecp_dir_serialize_item(unsigned char *buf, ECPDirItem *item);
+ssize_t ecp_dir_parse(ECPDirList *list, unsigned char *buf, size_t buf_size);
+int ecp_dir_serialize(ECPDirList *list, unsigned char *buf, size_t buf_size);
+
+void ecp_dir_item_parse(ECPDirItem *item, unsigned char *buf);
+void ecp_dir_item_serialize(ECPDirItem *item, unsigned char *buf);

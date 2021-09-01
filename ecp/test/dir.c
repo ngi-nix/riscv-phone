@@ -24,24 +24,16 @@ static ECPDirList dir_shadow;
 #define CTYPE_TEST  0
 
 ssize_t handle_dir(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size, ECP2Buffer *b) {
-    ECPDirItem item;
-    size_t _size;
+    ECPDirList dir;
+    ssize_t rv;
 
-    _size = size;
-    if (mtype == ECP_MTYPE_DIR_REP) {
-        int rv;
+    dir.count = 0;
+    rv = ecp_dir_parse(&dir, msg, size);
+    if (rv < 0) return rv;
 
-        while (_size >= ECP_SIZE_DIR_ITEM) {
-            ecp_dir_parse_item(msg, &item);
+    printf("DIR: %s %ld\n", (char *)ecp_cr_dh_pub_get_buf(&dir.item[0].node.public), size);
 
-            printf("DIR: %s\n", (char *)ecp_cr_dh_pub_get_buf(&item.node.public));
-
-            msg += ECP_SIZE_DIR_ITEM;
-            _size -= ECP_SIZE_DIR_ITEM;
-        };
-    }
-
-    return size - _size;
+    return rv;
 }
 
 int main(int argc, char *argv[]) {

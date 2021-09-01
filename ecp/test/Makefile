@@ -51,4 +51,4 @@ voip: voip.o init.o $(dep)
 
 clean:
 	rm -f *.o
-	rm -f basic client server echo frag stress vcs vc_server vc_client vc_client_t voip
+	rm -f basic dir client server echo frag stress vcs vc_server vc_client vc_client_t voip
