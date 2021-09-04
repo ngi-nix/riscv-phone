@@ -17,5 +17,5 @@ typedef struct ECPVConnIn {
 } ECPVConnIn;
 
 int ecp_vconn_ctx_init(ECPContext *ctx);
-int ecp_vconn_init(ECPConnection *conn, ECPNode *conn_node, ECPVConnection vconn[], ECPNode vconn_node[], int size);
+int ecp_vconn_set_remote(ECPConnection *conn, ECPNode *conn_node, ECPVConnection vconn[], ECPNode vconn_node[], int size);
 int ecp_vconn_open(ECPConnection *conn, ECPNode *conn_node, ECPVConnection vconn[], ECPNode vconn_node[], int size);

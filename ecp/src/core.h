@@ -220,7 +220,7 @@ typedef struct ECPFragIter {
     unsigned char frag_cnt;
     unsigned char *buffer;
     size_t buf_size;
-    size_t content_size;
+    size_t msg_size;
 } ECPFragIter;
 
 typedef struct ECPPktMeta {

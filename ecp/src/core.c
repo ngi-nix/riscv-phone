@@ -53,9 +53,9 @@ int ecp_frag_iter_init(ECPFragIter *iter, unsigned char *buffer, size_t buf_size
 }
 
 void ecp_frag_iter_reset(ECPFragIter *iter) {
-    iter->content_size = 0;
     iter->seq = 0;
     iter->frag_cnt = 0;
+    iter->msg_size = 0;
 }
 
 int ecp_dhkey_gen(ECPContext *ctx, ECPDHKey *key) {
@@ -399,6 +399,7 @@ static int conn_shsec_get(ECPConnection *conn, unsigned char s_idx, unsigned cha
             public_p = &conn->node.public;
             priv = conn_dhkey_get(conn, c_idx);
         } else {
+#if 0
             ECPDHRKey *pub = NULL;
 
             if (c_idx >= ECP_MAX_SOCK_KEY) return ECP_ERR_ECDH_IDX;
@@ -407,6 +408,7 @@ static int conn_shsec_get(ECPConnection *conn, unsigned char s_idx, unsigned cha
             pub = &conn->remote.key[conn->remote.key_idx_map[c_idx]];
             public_p = pub->idx != ECP_ECDH_IDX_INV ? &pub->public : NULL;
             priv = &conn->sock->key_perma;
+#endif
         }
         if (public_p == NULL) return ECP_ERR_ECDH_IDX;
         if ((priv == NULL) || !priv->valid) return ECP_ERR_ECDH_IDX;
@@ -1651,7 +1653,7 @@ int ecp_msg_defrag(ECPFragIter *iter, ecp_seq_t seq, unsigned char mtype, unsign
     unsigned char *content;
     unsigned char frag_cnt, frag_tot;
     uint16_t frag_size;
-    size_t content_size;
+    size_t msg_size;
     size_t buf_offset;
     int rv;
 
@@ -1661,34 +1663,36 @@ int ecp_msg_defrag(ECPFragIter *iter, ecp_seq_t seq, unsigned char mtype, unsign
     content = ecp_msg_get_content(msg_in, msg_in_size);
     if (content == NULL) return ECP_ERR_MIN_MSG;
 
-    content_size = msg_in_size - (content - msg_in);
-    if (content_size == 0) return ECP_ERR_MIN_MSG;
+    msg_size = msg_in_size - (content - msg_in);
+    if (msg_size == 0) return ECP_ERR_MIN_MSG;
 
-    if (iter->content_size && (iter->seq + frag_cnt != seq)) ecp_frag_iter_reset(iter);
+    if (iter->msg_size && (iter->seq + frag_cnt != seq)) ecp_frag_iter_reset(iter);
 
-    if (iter->content_size == 0) {
+    if (iter->msg_size == 0) {
         iter->seq = seq - frag_cnt;
         iter->frag_cnt = 0;
     }
 
     mtype &= (~ECP_MTYPE_FLAG_FRAG);
+    buf_offset = 1 + ECP_SIZE_MT_FLAG(mtype) + frag_size * frag_cnt;
+    if (buf_offset + msg_size > iter->buf_size) return ECP_ERR_SIZE;
+    memcpy(iter->buffer + buf_offset, content, msg_size);
+
     if (frag_cnt == 0) {
         if (1 + ECP_SIZE_MT_FLAG(mtype) > iter->buf_size) return ECP_ERR_SIZE;
+
         iter->buffer[0] = mtype;
         if (ECP_SIZE_MT_FLAG(mtype)) {
-            memcpy(iter->buffer + 1, msg_in, ECP_SIZE_MT_FLAG(mtype));
+            memcpy(iter->buffer + 1, msg_in + 1, ECP_SIZE_MT_FLAG(mtype));
         }
+        msg_size += 1 + ECP_SIZE_MT_FLAG(mtype);
     }
 
-    buf_offset = 1 + ECP_SIZE_MT_FLAG(mtype) + frag_size * frag_cnt;
-    if (buf_offset + content_size > iter->buf_size) return ECP_ERR_SIZE;
-
-    memcpy(iter->buffer + buf_offset, content, content_size);
     iter->frag_cnt++;
-    iter->content_size += content_size;
+    iter->msg_size += msg_size;
     if (iter->frag_cnt == frag_tot) {
         *msg_out = iter->buffer;
-        *msg_out_size = iter->content_size;
+        *msg_out_size = iter->msg_size;
         return ECP_OK;
     } else {
         return ECP_ITER_NEXT;
@@ -1810,8 +1814,8 @@ ssize_t ecp_send(ECPConnection *conn, unsigned char mtype, unsigned char *conten
     unsigned char *content_buf;
     ssize_t rv = 0;
     int pkt_cnt = 0;
-    int vc_cnt = conn->pcount + 1;
-    size_t pld_max = ECP_MAX_PKT - (ECP_SIZE_PKT_HDR + ECP_AEAD_SIZE_TAG + ECP_SIZE_PLD_HDR + 1) * vc_cnt;
+    int vc_cnt = conn->pcount;
+    size_t pld_max = ECP_MAX_PKT - (ECP_SIZE_PKT_HDR + ECP_AEAD_SIZE_TAG + ECP_SIZE_PLD_HDR + 1) * vc_cnt - (ECP_SIZE_PKT_HDR + ECP_AEAD_SIZE_TAG);
 
     packet.buffer = pkt_buf;
     packet.size = ECP_MAX_PKT;
@@ -1829,7 +1833,7 @@ ssize_t ecp_send(ECPConnection *conn, unsigned char mtype, unsigned char *conten
         if (_rv) return _rv;
 
         mtype |= ECP_MTYPE_FLAG_FRAG;
-        frag_size = pld_max - (ECP_SIZE_PLD_HDR +1 +ECP_SIZE_MT_FLAG(mtype));
+        frag_size = pld_max - ECP_SIZE_PLD(0, mtype);
         pkt_cnt = content_size / frag_size;
         frag_size_final = content_size - frag_size * pkt_cnt;
         if (frag_size_final) pkt_cnt++;
@@ -1907,11 +1911,6 @@ static int recv_p(ECPSocket *sock, ECPNetAddr *addr, ECPBuffer *packet, size_t s
     return ECP_OK;
 }
 
-#ifdef ECP_DEBUG
-static char *_utoa(unsigned value, char *str, int base);
-static char *_itoa(int value, char *str, int base);
-#endif
-
 int ecp_receiver(ECPSocket *sock) {
     ECPNetAddr addr;
     ECPBuffer packet;
@@ -1930,10 +1929,7 @@ int ecp_receiver(ECPSocket *sock) {
             _rv = recv_p(sock, &addr, &packet, rv);
 #ifdef ECP_DEBUG
             if (_rv) {
-                char b[16];
-                puts("ERR:");
-                puts(_itoa(_rv, b, 10));
-                puts("\n");
+                printf("RECEIVER ERR:%d\n", _rv);
             }
 #endif
         }
@@ -1972,66 +1968,5 @@ int ecp_start_receiver(ECPSocket *sock) {
 
 int ecp_stop_receiver(ECPSocket *sock) {
     return ECP_ERR_NOT_IMPLEMENTED;
-}
-#endif
-
-#ifdef ECP_DEBUG
-static char *_utoa(unsigned value, char *str, int base) {
-  const char digits[] = "0123456789abcdefghijklmnopqrstuvwxyz";
-  int i, j;
-  unsigned remainder;
-  char c;
-
-  /* Check base is supported. */
-  if ((base < 2) || (base > 36))
-    {
-      str[0] = '\0';
-      return NULL;
-    }
-
-  /* Convert to string. Digits are in reverse order.  */
-  i = 0;
-  do
-    {
-      remainder = value % base;
-      str[i++] = digits[remainder];
-      value = value / base;
-    } while (value != 0);
-  str[i] = '\0';
-
-  /* Reverse string.  */
-  for (j = 0, i--; j < i; j++, i--)
-    {
-      c = str[j];
-      str[j] = str[i];
-      str[i] = c;
-    }
-
-  return str;
-}
-
-static char *_itoa(int value, char *str, int base) {
-  unsigned uvalue;
-  int i = 0;
-
-  /* Check base is supported. */
-  if ((base < 2) || (base > 36))
-    {
-      str[0] = '\0';
-      return NULL;
-    }
-
-  /* Negative numbers are only supported for decimal.
-   * Cast to unsigned to avoid overflow for maximum negative value.  */
-  if ((base == 10) && (value < 0))
-    {
-      str[i++] = '-';
-      uvalue = (unsigned)-value;
-    }
-  else
-    uvalue = (unsigned)value;
-
-  _utoa(uvalue, &str[i], base);
-  return str;
 }
 #endif

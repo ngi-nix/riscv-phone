@@ -605,7 +605,7 @@ int ecp_vconn_ctx_init(ECPContext *ctx) {
     return ECP_OK;
 }
 
-int ecp_vconn_init(ECPConnection *conn, ECPNode *conn_node, ECPVConnection vconn[], ECPNode vconn_node[], int size) {
+int ecp_vconn_set_remote(ECPConnection *conn, ECPNode *conn_node, ECPVConnection vconn[], ECPNode vconn_node[], int size) {
     ECPSocket *sock = conn->sock;
     int i, rv;
 
@@ -657,7 +657,7 @@ int ecp_vconn_open(ECPConnection *conn, ECPNode *conn_node, ECPVConnection vconn
     int rv;
     ssize_t _rv;
 
-    rv = ecp_vconn_init(conn, conn_node, vconn, vconn_node, size);
+    rv = ecp_vconn_set_remote(conn, conn_node, vconn, vconn_node, size);
     if (rv) return rv;
 
     _rv = ecp_timer_send((ECPConnection *)&vconn[0], _vconn_send_kget, ECP_MTYPE_KGET_REP, 3, 500);
