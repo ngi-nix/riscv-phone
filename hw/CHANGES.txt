@@ -1,5 +1,13 @@
+REV3:
+  - Touch controller is routed to FE310 instead of BT817
+  - Added sound multiplexer between amplifier and phone jack/speakers
+  - Added BT817 sound connector
+  - Changed amplifier volage to 5.0V from BQ25895 boost converter
+  - Added console connector and power/reset/alt boot switches for i.MX8
+  - Added schottky barrier rectifier for BQ25895
+
 REV2:
-  - Replaced FT813 with BT817 display/touch controller. 
+  - Replaced FT813 with BT817 display/touch controller
     BT817 24bit parallel output is serialized using DS90C185
     i.MX8M LVDS output and BT817 output are multiplexed using TS3DV520E
   - Added 2nd MAX98357A amplifier for stereo sound
