@@ -1456,13 +1456,13 @@ Text GLabel 8300 6000 0    55   BiDi ~ 0
 iMX8.I2C3.SDA
 Text GLabel 8300 5700 0    55   Input ~ 0
 iMX8.I2C3.SCL
-Text GLabel 2250 9350 0    55   BiDi ~ 0
+Text GLabel 5750 6900 0    55   BiDi ~ 0
 BT81X.CTP.INT
-Text GLabel 2250 9250 0    55   BiDi ~ 0
+Text GLabel 5750 6800 0    55   BiDi ~ 0
 BT81X.CTP.SDA
-Text GLabel 2250 9150 0    55   Input ~ 0
+Text GLabel 5750 6700 0    55   Input ~ 0
 BT81X.CTP.SCL
-Text GLabel 2250 9450 0    55   Input ~ 0
+Text GLabel 5750 7000 0    55   Input ~ 0
 BT81X.CTP.RST
 NoConn ~ 8350 4300
 Wire Wire Line
@@ -1928,19 +1928,6 @@ F 3 "" H 8950 3150 60  0001 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L Connector:TestPoint TP401
-U 1 1 6100EDA6
-P 900 8000
-F 0 "TP401" H 650 8050 50  0000 L CNN
-F 1 "AUDIO" H 750 8200 50  0000 L CNN
-F 2 "TestPoint:TestPoint_Pad_D1.5mm" H 1100 8000 50  0001 C CNN
-F 3 "~" H 1100 8000 50  0001 C CNN
-	1    900  8000
-	1    0    0    -1  
-$EndComp
-Wire Wire Line
-	1550 4800 2150 4800
-$Comp
 L power:+3.3V #PWR0128
 U 1 1 5FF124AE
 P 15300 1100
@@ -2191,14 +2178,6 @@ Wire Wire Line
 Wire Wire Line
 	14000 6250 14000 6850
 Connection ~ 14000 6850
-Text Label 1550 4800 0    60   ~ 0
-BT81X_AUDIO
-Text Label 1550 8050 2    60   ~ 0
-BT81X_AUDIO
-Wire Wire Line
-	1550 8050 900  8050
-Wire Wire Line
-	900  8050 900  8000
 Wire Wire Line
 	13750 7450 13750 7500
 Wire Wire Line
@@ -2302,10 +2281,10 @@ Wire Wire Line
 	9450 6700 9500 6700
 Wire Wire Line
 	9500 6700 9500 6800
-NoConn ~ 2250 9150
-NoConn ~ 2250 9250
-NoConn ~ 2250 9350
-NoConn ~ 2250 9450
+NoConn ~ 5750 6700
+NoConn ~ 5750 6800
+NoConn ~ 5750 6900
+NoConn ~ 5750 7000
 Text Label 10400 5900 2    55   ~ 0
 CTP_SCL
 Text Label 10400 6000 2    55   ~ 0
@@ -2384,6 +2363,8 @@ $Comp
 L tmux:TMUX1574RSV U407
 U 1 1 6135689D
 P 8950 6050
+AR Path="/6135689D" Ref="U407"  Part="1" 
+AR Path="/5FC4BBBD/6135689D" Ref="U407"  Part="1" 
 F 0 "U407" H 8950 6500 60  0000 C CNN
 F 1 "TMUX1574RSV" H 8950 5300 60  0000 C CNN
 F 2 "footprints:UQFN-16_1.8x2.6mm_P0.4mm" H 8950 6050 60  0001 C CNN
@@ -2391,4 +2372,8 @@ F 3 "" H 8950 6050 60  0001 C CNN
 	1    8950 6050
 	-1   0    0    -1  
 $EndComp
+Text GLabel 1850 4800 0    60   Output ~ 0
+BT81X.AUDIO
+Wire Wire Line
+	2150 4800 1850 4800
 $EndSCHEMATC

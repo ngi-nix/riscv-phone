@@ -599,7 +599,6 @@ NoConn ~ 1500 5800
 NoConn ~ 1500 5900
 NoConn ~ 1500 6100
 NoConn ~ 1500 6200
-NoConn ~ 1500 6300
 NoConn ~ 1500 6400
 NoConn ~ 3000 5600
 NoConn ~ 3000 5700
@@ -672,7 +671,6 @@ NoConn ~ 1500 7100
 NoConn ~ 1500 7000
 NoConn ~ 1500 6800
 NoConn ~ 1500 6700
-NoConn ~ 1500 6600
 NoConn ~ 1500 6500
 Text GLabel 1300 1300 0    55   BiDi ~ 0
 ESP32.HSPI.MOSI
@@ -1270,32 +1268,6 @@ Wire Wire Line
 	5550 7000 5450 7000
 Wire Wire Line
 	5450 6650 5550 6650
-$Comp
-L myConn:Spacer J303
-U 1 1 60E13E30
-P 7350 5050
-F 0 "J303" H 7300 5150 50  0000 L CNN
-F 1 "Spacer" H 7250 4950 50  0000 L CNN
-F 2 "footprints:Spacer" H 7350 5050 50  0001 C CNN
-F 3 "~" H 7350 5050 50  0001 C CNN
-	1    7350 5050
-	1    0    0    -1  
-$EndComp
-$Comp
-L power:GND #PWR0182
-U 1 1 60E1444F
-P 7050 5150
-F 0 "#PWR0182" H 7050 4900 50  0001 C CNN
-F 1 "GND" H 7055 4977 50  0000 C CNN
-F 2 "" H 7050 5150 50  0001 C CNN
-F 3 "" H 7050 5150 50  0001 C CNN
-	1    7050 5150
-	1    0    0    -1  
-$EndComp
-Wire Wire Line
-	7150 5050 7050 5050
-Wire Wire Line
-	7050 5050 7050 5150
 Wire Wire Line
 	1500 9000 600  9000
 Text Label 600  9000 0    60   ~ 0
@@ -1331,4 +1303,53 @@ Wire Wire Line
 Wire Wire Line
 	5500 5800 4950 5800
 NoConn ~ 3000 4500
+$Comp
+L Connector_Generic:Conn_01x06 J303
+U 1 1 61AE2880
+P 8100 6400
+F 0 "J303" H 8050 6700 50  0000 L CNN
+F 1 "Console" H 7950 6000 50  0000 L CNN
+F 2 "Connector_FFC-FPC:Hirose_FH12-6S-0.5SH_1x06-1MP_P0.50mm_Horizontal" H 8100 6400 50  0001 C CNN
+F 3 "~" H 8100 6400 50  0001 C CNN
+	1    8100 6400
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR0184
+U 1 1 61AF1021
+P 7800 6800
+F 0 "#PWR0184" H 7800 6550 50  0001 C CNN
+F 1 "GND" H 7805 6627 50  0000 C CNN
+F 2 "" H 7800 6800 50  0001 C CNN
+F 3 "" H 7800 6800 50  0001 C CNN
+	1    7800 6800
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	7900 6700 7800 6700
+Wire Wire Line
+	7800 6700 7800 6800
+Wire Wire Line
+	7900 6600 7800 6600
+Wire Wire Line
+	7800 6600 7800 6700
+Connection ~ 7800 6700
+Text Label 600  6600 0    60   ~ 0
+UART3_RX
+Wire Wire Line
+	600  6600 1500 6600
+Text Label 600  6300 0    60   ~ 0
+UART3_TX
+Wire Wire Line
+	600  6300 1500 6300
+Text Label 7000 6400 0    60   ~ 0
+UART3_RX
+Wire Wire Line
+	7000 6400 7900 6400
+Text Label 7000 6500 0    60   ~ 0
+UART3_TX
+Wire Wire Line
+	7000 6500 7900 6500
+NoConn ~ 7900 6200
+NoConn ~ 7900 6300
 $EndSCHEMATC
