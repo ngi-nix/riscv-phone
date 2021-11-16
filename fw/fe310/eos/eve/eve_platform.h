@@ -5,7 +5,6 @@
 #include "timer.h"
 
 #define EVE_ETYPE_INTR      1
-#define EVE_PIN_INTR        0
 
 #define EVE_RTC_FREQ        EOS_TIMER_RTC_FREQ
 

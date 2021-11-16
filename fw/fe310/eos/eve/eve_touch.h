@@ -101,7 +101,7 @@ typedef void (*eve_touch_handler_t) (EVETouch *, uint16_t, uint8_t, void *);
 void eve_handle_touch(void);
 void eve_handle_time(void);
 
-void eve_touch_init(void);
+void eve_touch_init(int pwr_on, int touch_calibrate, uint32_t *touch_matrix);
 void eve_touch_set_handler(eve_touch_handler_t handler, void *handler_param);
 EVETouch *eve_touch_get(int i);
 int8_t eve_touch_get_idx(EVETouch *touch);

@@ -39,12 +39,12 @@ void app_root_refresh(void) {
     eve_spi_stop();
 }
 
-void app_root_init(eve_view_constructor_t home_page) {
+void app_root_init(eve_view_constructor_t home_page, int b) {
     EVERect g;
 
     eve_spi_start();
 
-    eve_brightness(0x40);
+    if (b >= 0) eve_brightness(b);
 
     eve_font_init(&font, APP_FONT_HANDLE);
 

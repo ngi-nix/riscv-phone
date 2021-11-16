@@ -6,6 +6,8 @@
 #include "interrupt.h"
 #include "event.h"
 
+#include "board.h"
+
 #include "eve.h"
 #include "eve_platform.h"
 
@@ -54,8 +56,6 @@ void eve_platform_init(void) {
 
     GPIO_REG(GPIO_LOW_IE)       |=  (1 << EVE_PIN_INTR);
     eos_intr_set(INT_GPIO_BASE + EVE_PIN_INTR, IRQ_PRIORITY_UI, handle_intr);
-
-    eos_spi_set_div(EOS_SPI_DEV_EVE, 4);
 }
 
 void eve_spi_start(void) {
@@ -64,6 +64,14 @@ void eve_spi_start(void) {
 
 void eve_spi_stop(void) {
     eos_spi_deselect();
+}
+
+void eve_spi_set_fast(void) {
+    eos_spi_set_div(EOS_SPI_DEV_EVE, SPI_DIV_EVE);
+}
+
+void eve_spi_set_slow(void) {
+    eos_spi_set_div(EOS_SPI_DEV_EVE, SPI_DIV_EVE_SLOW);
 }
 
 #include <stdio.h>

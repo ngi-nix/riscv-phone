@@ -364,24 +364,38 @@ void eve_brightness(uint8_t b) {
 
 static int _init(int touch_calibrate, uint32_t *touch_matrix, uint8_t gpio_dir) {
     uint8_t chipid = 0;
-    uint16_t timeout = 0;
+    uint8_t reset = 0x07;
+    uint16_t timeout;
 
-    eve_command(EVE_RST_PULSE, 0);
+    eve_command(EVE_CORERST, 0);
     eve_command(EVE_CLKEXT, 0);
+    eve_command(EVE_CLKSEL, 0x46);      /* set clock to 72 MHz */
     eve_command(EVE_ACTIVE, 0);         /* start EVE */
+    eve_time_sleep(40);
 
-    while (chipid != 0x7C) {            /* if chipid is not 0x7c, continue to read it until it is, EVE needs a moment for it's power on self-test and configuration */
+    timeout = 0;
+    while (chipid != 0x7c) {            /* if chipid is not 0x7c, continue to read it until it is, EVE needs a moment for it's power on self-test and configuration */
         eve_time_sleep(1);
         chipid = eve_read8(REG_ID);
         timeout++;
         if (timeout > 400) return EVE_ERR;
     }
 
-    eve_write8(REG_PWM_DUTY, 0);
+    timeout = 0;
+    while (reset != 0x00) {             /* check if EVE is in working status */
+        eve_time_sleep(1);
+        reset = eve_read8(REG_CPURESET) & 0x07;
+		timeout++;
+		if(timeout > 50) return EVE_ERR;
+	}
+
+    eve_write32(REG_FREQUENCY, 72000000);   /* tell EVE that we changed the frequency from default to 72MHz for BT8xx */
+
+    eve_write8(REG_PWM_DUTY, 0x00);
     eve_write16(REG_GPIOX_DIR, 0x8000 | (gpio_dir & 0x0f));
     eve_write16(REG_GPIOX, 0);
 
-    /* Initialize Display */
+    /* initialize display */
     eve_write16(REG_HCYCLE,  EVE_HCYCLE);   /* total number of clocks per line, incl front/back porch */
     eve_write16(REG_HOFFSET, EVE_HOFFSET);  /* start of active line */
     eve_write16(REG_HSYNC0,  EVE_HSYNC0);   /* start of horizontal sync pulse */
@@ -398,7 +412,7 @@ static int _init(int touch_calibrate, uint32_t *touch_matrix, uint8_t gpio_dir) 
 
     /* do not set PCLK yet - wait for just after the first display list */
 
-    /* disable Audio */
+    /* disable audio */
     eve_write16(REG_SOUND, 0x0000);         /* set synthesizer to silence */
     eve_write8(REG_VOL_SOUND, 0x00);        /* turn synthesizer volume off */
     eve_write8(REG_VOL_PB, 0x00);           /* turn recorded audio volume off */
@@ -413,40 +427,6 @@ static int _init(int touch_calibrate, uint32_t *touch_matrix, uint8_t gpio_dir) 
     /* nothing is being displayed yet... the pixel clock is still 0x00 */
     eve_write16(REG_GPIOX, 0x8000);         /* enable the DISP signal to the LCD panel, it is set to output in REG_GPIOX_DIR by default */
     eve_write8(REG_PCLK, EVE_PCLK);         /* now start clocking data to the LCD panel */
-
-    /* configure Touch */
-    eve_write16(REG_TOUCH_CONFIG, 0xb81);                   /* enable touch low power mode: 0xb81 - default: 0x381 */
-    eve_write8(REG_TOUCH_MODE, EVE_TMODE_CONTINUOUS);       /* enable touch */
-    eve_write16(REG_TOUCH_RZTHRESH, EVE_TOUCH_RZTHRESH);    /* eliminate any false touches */
-
-    if (touch_calibrate) {
-        eve_write8(REG_PWM_DUTY, 0x40);
-        eve_cmd_dl(CMD_DLSTART);
-        eve_cmd_dl(CLEAR_COLOR_RGB(0,0,0));
-        eve_cmd_dl(CLEAR(1,1,1));
-        eve_cmd(CMD_TEXT, "hhhhs", EVE_HSIZE/2, EVE_VSIZE/2, 27, EVE_OPT_CENTER, "Please tap on the dot.");
-        eve_cmd(CMD_CALIBRATE, "w", 0);
-        eve_cmd_dl(DISPLAY());
-        eve_cmd_dl(CMD_SWAP);
-        eve_cmd_exec(1);
-        eve_write8(REG_PWM_DUTY, 0);
-
-        touch_matrix[0] = eve_read32(REG_TOUCH_TRANSFORM_A);
-        touch_matrix[1] = eve_read32(REG_TOUCH_TRANSFORM_B);
-        touch_matrix[2] = eve_read32(REG_TOUCH_TRANSFORM_C);
-        touch_matrix[3] = eve_read32(REG_TOUCH_TRANSFORM_D);
-        touch_matrix[4] = eve_read32(REG_TOUCH_TRANSFORM_E);
-        touch_matrix[5] = eve_read32(REG_TOUCH_TRANSFORM_F);
-    } else {
-        eve_write32(REG_TOUCH_TRANSFORM_A, touch_matrix[0]);
-        eve_write32(REG_TOUCH_TRANSFORM_B, touch_matrix[1]);
-        eve_write32(REG_TOUCH_TRANSFORM_C, touch_matrix[2]);
-        eve_write32(REG_TOUCH_TRANSFORM_D, touch_matrix[3]);
-        eve_write32(REG_TOUCH_TRANSFORM_E, touch_matrix[4]);
-        eve_write32(REG_TOUCH_TRANSFORM_F, touch_matrix[5]);
-    }
-
-    eve_write8(REG_CTOUCH_EXTENDED, 0x00);
 
     eve_cmd(CMD_SETROTATE, "w", 2);
     eve_cmd_exec(1);
@@ -467,7 +447,7 @@ int eve_init(int pwr_on, int touch_calibrate, uint32_t *touch_matrix, uint8_t gp
         eve_active();
     }
 
-    eve_touch_init();
+    eve_touch_init(pwr_on, touch_calibrate, touch_matrix);
     eve_platform_init();
 
     eve_spi_stop();

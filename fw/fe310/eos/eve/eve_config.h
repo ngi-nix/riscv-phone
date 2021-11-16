@@ -33,7 +33,7 @@
 #define EVE_PCLK            (1L)                            /* 60MHz / REG_PCLK = PCLK frequency - 30 MHz */
 #define EVE_CSPREAD         (0L)                            /* helps with noise, when set to 1 fewer signals are changed simultaneously, reset-default: 1 */
 #define EVE_TOUCH_RZTHRESH  (1200L)                         /* touch-sensitivity */
-#define EVE_HAS_CRYSTAL
-#define FT81X_ENABLE
+
+#define EVE_GEN             4
 
 #endif /* EVE_CONFIG_H */

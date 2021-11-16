@@ -299,7 +299,48 @@ void eve_handle_time(void) {
     }
 }
 
-void eve_touch_init(void) {
+static void _init(int touch_calibrate, uint32_t *touch_matrix) {
+    /* configure touch */
+    eve_write16(REG_TOUCH_CONFIG, 0xb81);                   /* enable touch low power mode: 0xb81 - default: 0x381 */
+    eve_write8(REG_TOUCH_MODE, EVE_TMODE_CONTINUOUS);       /* enable touch */
+    eve_write16(REG_TOUCH_RZTHRESH, EVE_TOUCH_RZTHRESH);    /* eliminate any false touches */
+
+    if (touch_calibrate) {
+        eve_write8(REG_PWM_DUTY, 0x40);
+        eve_cmd_dl(CMD_DLSTART);
+        eve_cmd_dl(CLEAR_COLOR_RGB(0,0,0));
+        eve_cmd_dl(CLEAR(1,1,1));
+        eve_cmd(CMD_TEXT, "hhhhs", EVE_HSIZE/2, EVE_VSIZE/2, 27, EVE_OPT_CENTER, "Please tap on the dot.");
+        eve_cmd(CMD_CALIBRATE, "w", 0);
+        eve_cmd_dl(DISPLAY());
+        eve_cmd_dl(CMD_SWAP);
+        eve_cmd_exec(1);
+        eve_write8(REG_PWM_DUTY, 0);
+
+        touch_matrix[0] = eve_read32(REG_TOUCH_TRANSFORM_A);
+        touch_matrix[1] = eve_read32(REG_TOUCH_TRANSFORM_B);
+        touch_matrix[2] = eve_read32(REG_TOUCH_TRANSFORM_C);
+        touch_matrix[3] = eve_read32(REG_TOUCH_TRANSFORM_D);
+        touch_matrix[4] = eve_read32(REG_TOUCH_TRANSFORM_E);
+        touch_matrix[5] = eve_read32(REG_TOUCH_TRANSFORM_F);
+    } else {
+        eve_write32(REG_TOUCH_TRANSFORM_A, touch_matrix[0]);
+        eve_write32(REG_TOUCH_TRANSFORM_B, touch_matrix[1]);
+        eve_write32(REG_TOUCH_TRANSFORM_C, touch_matrix[2]);
+        eve_write32(REG_TOUCH_TRANSFORM_D, touch_matrix[3]);
+        eve_write32(REG_TOUCH_TRANSFORM_E, touch_matrix[4]);
+        eve_write32(REG_TOUCH_TRANSFORM_F, touch_matrix[5]);
+    }
+
+    eve_write8(REG_CTOUCH_EXTENDED, 0x00);
+
+    /* configure interrupts */
+    eve_write8(REG_INT_MASK, touch_intr_mask);
+    eve_write8(REG_INT_EN, 0x01);
+    while(eve_read8(REG_INT_FLAGS));
+}
+
+void eve_touch_init(int pwr_on, int touch_calibrate, uint32_t *touch_matrix) {
     int i;
 
     eve_vtrack_init();
@@ -309,9 +350,7 @@ void eve_touch_init(void) {
         touch->eevt |= EVE_TOUCH_EETYPE_NOTOUCH;
     }
 
-    eve_write8(REG_INT_MASK, touch_intr_mask);
-    eve_write8(REG_INT_EN, 0x01);
-    while(eve_read8(REG_INT_FLAGS));
+    if (pwr_on) _init(touch_calibrate, touch_matrix);
 }
 
 void eve_touch_set_handler(eve_touch_handler_t handler, void *param) {

@@ -44,7 +44,9 @@ void eos_init(void) {
 
     eos_net_start(wakeup_cause);
 
-    eve_init(wakeup_cause == EOS_PWR_WAKE_RST, touch_calibrate, touch_matrix, EVE_GPIO_DIR);
+    int rv = eve_init(wakeup_cause == EOS_PWR_WAKE_RST, touch_calibrate, touch_matrix, EVE_GPIO_DIR);
+
+    printf("EVE INIT: %d\n", rv);
     if (touch_calibrate) {
         printf("TOUCH MATRIX:\n");
         printf("uint32_t touch_matrix[6] = {0x%x,0x%x,0x%x,0x%x,0x%x,0x%x}\n", touch_matrix[0], touch_matrix[1], touch_matrix[2], touch_matrix[3], touch_matrix[4], touch_matrix[5]);

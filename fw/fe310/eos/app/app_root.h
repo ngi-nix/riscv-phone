@@ -9,4 +9,4 @@
 EVEWindowRoot *app_root(void);
 void app_root_refresh(void);
 
-void app_root_init(eve_view_constructor_t home_page);
+void app_root_init(eve_view_constructor_t home_page, int b);
