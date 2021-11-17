@@ -7,7 +7,7 @@
 
 typedef void (*eos_uart_handler_t) (unsigned char);
 
-void eos_uart_init(void);
+void eos_uart_init(uint8_t wakeup_cause);
 void eos_uart_set_handler(unsigned char type, eos_uart_handler_t handler);
 
 void eos_uart_txwm_set(uint8_t wm);

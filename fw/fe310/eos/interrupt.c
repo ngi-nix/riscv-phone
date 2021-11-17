@@ -25,7 +25,7 @@ uintptr_t eos_intr_handle(uintptr_t int_num) {
     return int_num;
 }
 
-void eos_intr_init(void) {
+void eos_intr_init(uint8_t wakeup_cause) {
     for (int i = 0; i < PLIC_NUM_INTERRUPTS; i++){
         ext_interrupt_handler[i] = NULL;
     }

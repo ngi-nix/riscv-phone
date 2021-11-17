@@ -4,7 +4,7 @@
 
 typedef void (*eos_evt_handler_t) (unsigned char, unsigned char *, uint16_t);
 
-void eos_evtq_init(void);
+void eos_evtq_init(uint8_t wakeup_cause);
 int eos_evtq_push(unsigned char type, unsigned char *buffer, uint16_t len);
 int eos_evtq_push_isr(unsigned char type, unsigned char *buffer, uint16_t len);
 void eos_evtq_pop(unsigned char *type, unsigned char **buffer, uint16_t *len);

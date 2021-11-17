@@ -3,20 +3,28 @@
 #include <stdio.h>
 
 #include "eos.h"
+#include "power.h"
 #include "i2c.h"
 #include "i2c/bq25895.h"
 
-void eos_bq25895_init(void) {
-    uint8_t data = 0;
+void eos_bq25895_init(uint8_t wakeup_cause) {
+    int rst = (wakeup_cause == EOS_PWR_WAKE_RST);
     int i, ret = EOS_OK;
+    uint8_t data = 0;
 
     eos_i2c_start(100000);
-    ret = eos_i2c_write8(BQ25895_ADDR, 0x07, 0x8d);   // disable watchdog
-    if (ret) printf("I2C ERROR 0x07\n");
-    ret = eos_i2c_write8(BQ25895_ADDR, 0x00, 0x28);   // 2.1A input current
-    if (ret) printf("I2C ERROR 0x00\n");
-    ret = eos_i2c_write8(BQ25895_ADDR, 0x03, 0x1e);   // sysmin 3.7, disable otg
-    if (ret) printf("I2C ERROR 0x03\n");
+    if (rst) {
+        ret = eos_i2c_write8(BQ25895_ADDR, 0x14, 0x80);   // reset
+        if (ret) printf("I2C ERROR 0x14\n");
+        ret = eos_i2c_write8(BQ25895_ADDR, 0x14, 0x00);   // disable watchdog
+        if (ret) printf("I2C ERROR 0x14\n");
+        ret = eos_i2c_write8(BQ25895_ADDR, 0x07, 0x8d);   // disable watchdog
+        if (ret) printf("I2C ERROR 0x07\n");
+        ret = eos_i2c_write8(BQ25895_ADDR, 0x00, 0x28);   // 2.1A input current
+        if (ret) printf("I2C ERROR 0x00\n");
+        ret = eos_i2c_write8(BQ25895_ADDR, 0x02, 0x20);   // disaable MaxCharge, ICO and
+        if (ret) printf("I2C ERROR 0x02\n");
+    }
 
     printf("BQ25895:\n");
     for (i=0; i<0x15; i++) {

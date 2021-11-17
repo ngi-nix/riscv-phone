@@ -1,3 +1,5 @@
+#include <stdint.h>
+
 #define EOS_OK                  0
 #define EOS_ERR                 -1
 #define EOS_ERR_TIMEOUT         -2
@@ -10,3 +12,4 @@
 #define EOS_ERR_NET             -20
 
 void eos_init(void);
+void eos_start(uint8_t wakeup_cause);

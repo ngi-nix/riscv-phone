@@ -24,7 +24,7 @@ static void evtq_handler(unsigned char type, unsigned char *buffer, uint16_t len
     }
 }
 
-void eos_evtq_init(void) {
+void eos_evtq_init(uint8_t wakeup_cause) {
     int i;
 
     evt_handler[0] = evtq_handler;

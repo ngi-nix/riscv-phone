@@ -11,7 +11,7 @@
 
 typedef void (*eos_timer_handler_t) (unsigned char);
 
-void eos_timer_init(void);
+void eos_timer_init(uint8_t wakeup_cause);
 void eos_timer_set_handler(unsigned char evt, eos_timer_handler_t handler);
 
 uint32_t eos_timer_get(unsigned char evt);

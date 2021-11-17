@@ -135,7 +135,7 @@ static void _spk_vol_set(uint8_t vol) {
 
 extern void _eos_i2s_start_pwm(void);
 
-void eos_i2s_init(void) {
+void eos_i2s_init(uint8_t wakeup_cause) {
     eos_evtq_set_handler(EOS_EVT_I2S, i2s_handle_evt);
 
     GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_CK);

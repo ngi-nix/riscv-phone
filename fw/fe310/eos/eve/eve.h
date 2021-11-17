@@ -67,4 +67,4 @@ void eve_sleep(void);
 void eve_wake(void);
 void eve_brightness(uint8_t b);
 
-int eve_init(int pwr_on, int touch_calibrate, uint32_t *touch_matrix, uint8_t gpio_dir);
+int eve_init(uint8_t wakeup_cause, int touch_calibrate, uint32_t *touch_matrix, uint8_t gpio_dir);

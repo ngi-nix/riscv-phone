@@ -47,7 +47,7 @@ static void spi_handle_evt(unsigned char type, unsigned char *buffer, uint16_t l
     }
 }
 
-void eos_spi_init(void) {
+void eos_spi_init(uint8_t wakeup_cause) {
     int i;
 
     for (i=0; i<EOS_SPI_MAX_EVT; i++) {

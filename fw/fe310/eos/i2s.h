@@ -11,7 +11,7 @@ typedef struct EOSABuf {
 
 typedef void (*eos_i2s_handler_t) (unsigned char);
 
-void eos_i2s_init(void);
+void eos_i2s_init(uint8_t wakeup_cause);
 void eos_i2s_start(uint32_t sample_rate, unsigned char fmt);
 void eos_i2s_stop(void);
 void eos_i2s_mic_init(uint8_t *mic_arr, uint16_t mic_arr_size);

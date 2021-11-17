@@ -13,7 +13,7 @@
 #define EOS_PWR_RST_EXT         1
 #define EOS_PWR_RST_WDOG        2
 
-void eos_power_init(void);
+void eos_power_init(uint8_t wakeup_cause);
 uint8_t eos_power_wakeup_cause(void);
 uint8_t eos_power_reset_cause(void);
 void eos_power_sleep(void);

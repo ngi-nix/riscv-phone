@@ -11,7 +11,7 @@
 #define EOS_SDC_CAP_ERASE_EN        0x20
 #define EOS_SDC_CAP_MASK            0xf0
 
-void eos_sdc_init(void);
+void eos_sdc_init(uint8_t wakeup_cause);
 uint8_t eos_sdc_type(void);
 uint8_t eos_sdc_cap(void);
 int eos_sdc_get_sect_count(uint32_t timeout, uint32_t *sectors);

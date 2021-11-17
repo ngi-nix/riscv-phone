@@ -49,7 +49,7 @@ static void power_handle_btn(unsigned char type, unsigned char *buffer, uint16_t
     eos_power_sleep();
 }
 
-void eos_power_init(void) {
+void eos_power_init(uint8_t wakeup_cause) {
     int i;
 
     for (i=0; i<EOS_PWR_MAX_MTYPE; i++) {

@@ -7,7 +7,7 @@
 
 #define EOS_SPI_MAX_DEV         4
 
-void eos_spi_dev_init(void);
+void eos_spi_dev_init(uint8_t wakeup_cause);
 int eos_spi_select(unsigned char dev);
 int eos_spi_deselect(void);
 

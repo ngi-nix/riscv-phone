@@ -2,6 +2,7 @@
 #include <string.h>
 #include <math.h>
 
+#include "power.h"
 #include "eve.h"
 
 static int touch_intr_mask = EVE_INT_TAG | EVE_INT_TOUCH;
@@ -340,7 +341,8 @@ static void _init(int touch_calibrate, uint32_t *touch_matrix) {
     while(eve_read8(REG_INT_FLAGS));
 }
 
-void eve_touch_init(int pwr_on, int touch_calibrate, uint32_t *touch_matrix) {
+void eve_touch_init(uint8_t wakeup_cause, int touch_calibrate, uint32_t *touch_matrix) {
+    int rst = (wakeup_cause == EOS_PWR_WAKE_RST);
     int i;
 
     eve_vtrack_init();
@@ -350,7 +352,7 @@ void eve_touch_init(int pwr_on, int touch_calibrate, uint32_t *touch_matrix) {
         touch->eevt |= EVE_TOUCH_EETYPE_NOTOUCH;
     }
 
-    if (pwr_on) _init(touch_calibrate, touch_matrix);
+    if (rst) _init(touch_calibrate, touch_matrix);
 }
 
 void eve_touch_set_handler(eve_touch_handler_t handler, void *param) {

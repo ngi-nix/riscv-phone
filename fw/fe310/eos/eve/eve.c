@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
+#include "power.h"
 #include "eve.h"
 
 #define EVE_MEM_WRITE           0x800000
@@ -434,12 +435,12 @@ static int _init(int touch_calibrate, uint32_t *touch_matrix, uint8_t gpio_dir) 
     return EVE_OK;
 }
 
-int eve_init(int pwr_on, int touch_calibrate, uint32_t *touch_matrix, uint8_t gpio_dir) {
+int eve_init(uint8_t wakeup_cause, int touch_calibrate, uint32_t *touch_matrix, uint8_t gpio_dir) {
+    int rst = (wakeup_cause == EOS_PWR_WAKE_RST);
+
     eve_spi_start();
 
-    pwr_on = 1; // override this for now
-
-    if (pwr_on) {
+    if (rst) {
         int rv = _init(touch_calibrate, touch_matrix, gpio_dir);
         if (rv) return rv;
     } else {
@@ -447,7 +448,7 @@ int eve_init(int pwr_on, int touch_calibrate, uint32_t *touch_matrix, uint8_t gp
         eve_active();
     }
 
-    eve_touch_init(pwr_on, touch_calibrate, touch_matrix);
+    eve_touch_init(wakeup_cause, touch_calibrate, touch_matrix);
     eve_platform_init();
 
     eve_spi_stop();

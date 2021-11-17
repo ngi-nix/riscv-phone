@@ -46,7 +46,7 @@ void _eos_timer_handle(void) {
     if (*mtimecmp == 0) clear_csr(mie, MIP_MTIP);
 }
 
-void eos_timer_init(void) {
+void eos_timer_init(uint8_t wakeup_cause) {
     int i;
     uint64_t *mtimecmp = (uint64_t *) (CLINT_CTRL_ADDR + CLINT_MTIMECMP);
 

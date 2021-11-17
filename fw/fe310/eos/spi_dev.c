@@ -21,7 +21,7 @@ static uint8_t spi_dev;
 static uint8_t spi_lock;
 static uint16_t spi_div[EOS_SPI_MAX_DEV];
 
-void eos_spi_dev_init(void) {
+void eos_spi_dev_init(uint8_t wakeup_cause) {
     int i;
 
     for (i=0; i<EOS_SPI_MAX_DEV; i++) {

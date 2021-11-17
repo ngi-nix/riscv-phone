@@ -34,7 +34,7 @@ static void uart_handle_intr(void) {
     }
 }
 
-void eos_uart_init(void) {
+void eos_uart_init(uint8_t wakeup_cause) {
     int i;
 
     for (i=0; i<EOS_UART_MAX_ETYPE; i++) {

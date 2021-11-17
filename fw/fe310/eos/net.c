@@ -305,7 +305,7 @@ static void net_resume(void) {
     }
 }
 
-void eos_net_init(void) {
+void eos_net_init(uint8_t wakeup_cause) {
     int i;
 
     eos_msgq_init(&net_send_q, net_sndq_array, EOS_NET_SIZE_BUFQ);
