@@ -22,7 +22,7 @@ void eos_bq25895_init(uint8_t wakeup_cause) {
         if (ret) printf("I2C ERROR 0x07\n");
         ret = eos_i2c_write8(BQ25895_ADDR, 0x00, 0x28);   // 2.1A input current
         if (ret) printf("I2C ERROR 0x00\n");
-        ret = eos_i2c_write8(BQ25895_ADDR, 0x02, 0x20);   // disaable MaxCharge, ICO and
+        ret = eos_i2c_write8(BQ25895_ADDR, 0x02, 0x30);   // enable ICO, disaable MaxCharge and D+/D-
         if (ret) printf("I2C ERROR 0x02\n");
     }
 

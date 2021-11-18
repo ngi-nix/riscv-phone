@@ -13,7 +13,6 @@ static uint16_t cmd_offset;
 static char dl_burst;
 static uint32_t dl_addr;
 
-static uint8_t brigtness;
 static uint8_t power_state;
 
 void eve_command(uint8_t command, uint8_t parameter) {
@@ -323,37 +322,44 @@ void eve_gpio_set_dir(uint8_t dir) {
 }
 
 void eve_active(void) {
+    uint16_t gpiox;
+
     eve_command(EVE_ACTIVE, 0);
-    if (power_state == EVE_PSTATE_SLEEP) eve_time_sleep(40);
 
-    eve_write8(REG_PWM_DUTY, brigtness);
-    if (power_state != EVE_PSTATE_SLEEP) return;
+    if (power_state == EVE_PSTATE_SLEEP) {
+        eve_time_sleep(40);
+        eve_touch_active();
+    }
 
-    eve_write8(REG_TOUCH_MODE, EVE_TMODE_CONTINUOUS);
-    eve_write8(REG_CTOUCH_EXTENDED, 0x00);
+    gpiox = eve_read16(REG_GPIOX) | 0x8000;
+    eve_write16(REG_GPIOX, gpiox);
 
     power_state = EVE_PSTATE_ACTIVE;
 }
 
 void eve_standby(void) {
+    uint16_t gpiox;
+
     if (power_state != EVE_PSTATE_ACTIVE) return;
 
-    brigtness = eve_read8(REG_PWM_DUTY);
+    gpiox = eve_read16(REG_GPIOX) & ~0x8000;
+    eve_write16(REG_GPIOX, gpiox);
+
     eve_command(EVE_STANDBY, 0);
 
     power_state = EVE_PSTATE_STANDBY;
 }
 
 void eve_sleep(void) {
+    uint16_t gpiox;
+
     if (power_state != EVE_PSTATE_ACTIVE) return;
 
-    brigtness = eve_read8(REG_PWM_DUTY);
-    eve_write8(REG_PWM_DUTY, 0x0);
+    gpiox = eve_read16(REG_GPIOX) & ~0x8000;
+    eve_write16(REG_GPIOX, gpiox);
 
-    eve_write8(REG_CTOUCH_EXTENDED, 0x01);
-    eve_write8(REG_TOUCH_MODE, EVE_TMODE_OFF);
+    eve_touch_sleep();
 
-    eve_time_sleep(500);
     eve_command(EVE_SLEEP, 0);
 
     power_state = EVE_PSTATE_SLEEP;
@@ -394,7 +400,7 @@ static int _init(int touch_calibrate, uint32_t *touch_matrix, uint8_t gpio_dir) 
 
     eve_write8(REG_PWM_DUTY, 0x00);
     eve_write16(REG_GPIOX_DIR, 0x8000 | (gpio_dir & 0x0f));
-    eve_write16(REG_GPIOX, 0);
+    eve_write16(REG_GPIOX, 0x8000);
 
     /* initialize display */
     eve_write16(REG_HCYCLE,  EVE_HCYCLE);   /* total number of clocks per line, incl front/back porch */

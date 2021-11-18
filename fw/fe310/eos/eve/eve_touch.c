@@ -300,11 +300,18 @@ void eve_handle_time(void) {
     }
 }
 
+void eve_touch_active(void) {
+    eve_write8(REG_TOUCH_MODE, EVE_TMODE_CONTINUOUS);
+}
+
+void eve_touch_sleep(void) {
+    eve_write8(REG_TOUCH_MODE, EVE_TMODE_OFF);
+}
+
 static void _init(int touch_calibrate, uint32_t *touch_matrix) {
     /* configure touch */
-    eve_write16(REG_TOUCH_CONFIG, 0xb81);                   /* enable touch low power mode: 0xb81 - default: 0x381 */
+    eve_write16(REG_TOUCH_CONFIG, 0x381);                   /* default */
     eve_write8(REG_TOUCH_MODE, EVE_TMODE_CONTINUOUS);       /* enable touch */
-    eve_write16(REG_TOUCH_RZTHRESH, EVE_TOUCH_RZTHRESH);    /* eliminate any false touches */
 
     if (touch_calibrate) {
         eve_write8(REG_PWM_DUTY, 0x40);
