@@ -26,12 +26,13 @@ void eos_spi_dev_init(uint8_t wakeup_cause) {
 
     for (i=0; i<EOS_SPI_MAX_DEV; i++) {
         spi_div[i] = spi_cfg[i].div;
-        if (spi_cfg[i].csid == SPI_CSID_NONE) {
+        if (spi_cfg[i].cspin != SPI_CSPIN_NONE) {
+            GPIO_REG(GPIO_OUTPUT_VAL)   |=  (1 << spi_cfg[i].cspin);
+
             GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << spi_cfg[i].cspin);
             GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << spi_cfg[i].cspin);
             GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << spi_cfg[i].cspin);
             GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << spi_cfg[i].cspin);
-            GPIO_REG(GPIO_OUTPUT_VAL)   |=  (1 << spi_cfg[i].cspin);
         }
     }
 }

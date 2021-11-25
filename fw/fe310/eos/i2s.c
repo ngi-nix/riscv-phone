@@ -140,6 +140,9 @@ extern void _eos_i2s_start_pwm(void);
 void eos_i2s_init(uint8_t wakeup_cause) {
     eos_evtq_set_handler(EOS_EVT_I2S, i2s_handle_evt);
 
+    GPIO_REG(GPIO_OUTPUT_VAL)   |=  (1 << I2S_PIN_CK_SW);
+    GPIO_REG(GPIO_OUTPUT_VAL)   &= ~((1 << I2S_PIN_CK) | (1 << I2S_PIN_CK_SR) | (1 << I2S_PIN_WS_MIC) | (1 << I2S_PIN_WS_SPK));
+
     GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_CK);
     GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << I2S_PIN_CK);
     GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << I2S_PIN_CK);
@@ -177,9 +180,6 @@ void eos_i2s_init(uint8_t wakeup_cause) {
 
     GPIO_REG(GPIO_IOF_EN)       &= ~I2S_PIN_PWM;
     GPIO_REG(GPIO_IOF_SEL)      |=  I2S_PIN_PWM;
-
-    GPIO_REG(GPIO_OUTPUT_VAL)   |=  (1 << I2S_PIN_CK_SW);
-    GPIO_REG(GPIO_OUTPUT_VAL)   &= ~((1 << I2S_PIN_CK) | (1 << I2S_PIN_CK_SR) | (1 << I2S_PIN_WS_MIC) | (1 << I2S_PIN_WS_SPK));
 }
 
 void eos_i2s_start(uint32_t sample_rate, unsigned char fmt) {

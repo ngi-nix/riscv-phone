@@ -8,15 +8,17 @@
 #define SPI_CSID_SDC            SPI_CSID_NONE
 #define SPI_CSID_CAM            2
 
-#define SPI_CSPIN_NET           SPI_CSPIN_NONE
-#define SPI_CSPIN_EVE           SPI_CSPIN_NONE
-#define SPI_CSPIN_SDC           0
-#define SPI_CSPIN_CAM           SPI_CSPIN_NONE
+#define SPI_IOF_MASK            ((1 << IOF_SPI1_SCK) | (1 << IOF_SPI1_MOSI) | (1 << IOF_SPI1_MISO) | (1 << IOF_SPI1_SS0) | (1 << IOF_SPI1_SS2) | (1 << IOF_SPI1_SS3))
 
-#define SPI_IOF_MASK_CS         (((uint32_t)1 << IOF_SPI1_SS0) | ((uint32_t)1 << IOF_SPI1_SS2) | ((uint32_t)1 << IOF_SPI1_SS3))
+#define SPI_CSPIN_NET           2
+#define SPI_CSPIN_EVE           10
+#define SPI_CSPIN_SDC           0
+#define SPI_CSPIN_CAM           9
 
 #define NET_PIN_RTS             20
 #define NET_PIN_CTS             22
+
+#define DISP_PIN_CS             11
 
 #define EVE_PIN_INTR            23
 

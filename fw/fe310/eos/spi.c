@@ -21,8 +21,6 @@
 
 #define SPI_FLAG_XCHG           0x10
 
-#define SPI_IOF_MASK            (((uint32_t)1 << IOF_SPI1_SCK) | ((uint32_t)1 << IOF_SPI1_MOSI) | ((uint32_t)1 << IOF_SPI1_MISO)) | SPI_IOF_MASK_CS
-
 #define MIN(X, Y)               (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y)               (((X) > (Y)) ? (X) : (Y))
 
@@ -55,6 +53,24 @@ void eos_spi_init(uint8_t wakeup_cause) {
     }
     eos_evtq_set_handler(EOS_EVT_SPI, spi_handle_evt);
     eos_intr_set(INT_SPI1_BASE, IRQ_PRIORITY_SPI_XCHG, NULL);
+
+    GPIO_REG(GPIO_OUTPUT_VAL)   &= ~(1 << IOF_SPI1_SCK);
+    GPIO_REG(GPIO_OUTPUT_VAL)   |=  (1 << IOF_SPI1_MOSI);
+
+    GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << IOF_SPI1_SCK);
+    GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << IOF_SPI1_SCK);
+    GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << IOF_SPI1_SCK);
+    GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << IOF_SPI1_SCK);
+
+    GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << IOF_SPI1_MOSI);
+    GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << IOF_SPI1_MOSI);
+    GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << IOF_SPI1_MOSI);
+    GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << IOF_SPI1_MOSI);
+
+    GPIO_REG(GPIO_INPUT_EN)     |=  (1 << IOF_SPI1_MISO);
+    GPIO_REG(GPIO_OUTPUT_EN)    &= ~(1 << IOF_SPI1_MISO);
+    GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << IOF_SPI1_MISO);
+    GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << IOF_SPI1_MISO);
 
     SPI1_REG(SPI_REG_SCKMODE) = SPI_MODE0;
     SPI1_REG(SPI_REG_FMT) = SPI_FMT_PROTO(SPI_PROTO_S) |
