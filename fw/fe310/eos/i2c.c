@@ -6,15 +6,24 @@
 #include "prci_driver.h"
 
 #include "eos.h"
+#include "i2s.h"
 #include "i2c.h"
 
-void eos_i2c_start(uint32_t baud_rate) {
-    eos_i2c_set_baud_rate(baud_rate);
+void eos_i2c_init(uint8_t wakeup_cause) {
     GPIO_REG(GPIO_IOF_SEL)      &= ~IOF0_I2C0_MASK;
+}
+
+int eos_i2c_start(uint32_t baud_rate) {
+    if (eos_i2s_running()) return EOS_ERR_BUSY;
+
+    eos_i2c_set_baud_rate(baud_rate);
     GPIO_REG(GPIO_IOF_EN)       |=  IOF0_I2C0_MASK;
+
+    return EOS_OK;
 }
 
 void eos_i2c_stop(void) {
+    if (eos_i2s_running()) return;
     GPIO_REG(GPIO_IOF_EN)       &=  ~IOF0_I2C0_MASK;
 }
 

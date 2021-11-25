@@ -1,5 +1,7 @@
 #include <stdint.h>
 
+#define EOS_SPI_MAX_DEV         4
+
 typedef struct {
     uint16_t div;
     uint8_t csid;
@@ -7,7 +9,7 @@ typedef struct {
     unsigned char evt;
 } SPIConfig;
 
-static const SPIConfig spi_cfg[] = {
+static const SPIConfig spi_cfg[EOS_SPI_MAX_DEV] = {
     {   // DEV_NET
         .div = SPI_DIV_NET,
         .csid = SPI_CSID_NET,

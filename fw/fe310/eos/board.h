@@ -1,6 +1,5 @@
 #define SPI_DIV_NET             16
 #define SPI_DIV_EVE             4
-#define SPI_DIV_EVE_SLOW        16
 #define SPI_DIV_SDC             1024
 #define SPI_DIV_CAM             24
 
@@ -14,7 +13,7 @@
 #define SPI_CSPIN_SDC           0
 #define SPI_CSPIN_CAM           SPI_CSPIN_NONE
 
-#define SPI_IOF_MASK_CS         (((uint32_t)1 << IOF_SPI1_SS0) | ((uint32_t)1 << IOF_SPI1_SS3))
+#define SPI_IOF_MASK_CS         (((uint32_t)1 << IOF_SPI1_SS0) | ((uint32_t)1 << IOF_SPI1_SS2) | ((uint32_t)1 << IOF_SPI1_SS3))
 
 #define NET_PIN_RTS             20
 #define NET_PIN_CTS             22
@@ -41,5 +40,6 @@
 #define EVE_GPIO_DIR            0xf
 
 #define EVE_GPIO_CAM            0
-#define EVE_GPIO_EXT            1
-#define EVE_GPIO_MOTOR          3
+#define EVE_GPIO_DISP_EN        1
+#define EVE_GPIO_GAIN_SEL       2
+#define EVE_GPIO_HAPT           3

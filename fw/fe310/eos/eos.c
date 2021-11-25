@@ -5,6 +5,7 @@
 #include "timer.h"
 #include "power.h"
 #include "i2s.h"
+#include "i2c.h"
 #include "uart.h"
 #include "spi.h"
 #include "spi_dev.h"
@@ -32,6 +33,7 @@ void eos_init(void) {
     eos_intr_init(wakeup_cause);
     eos_timer_init(wakeup_cause);
     eos_i2s_init(wakeup_cause);
+    eos_i2c_init(wakeup_cause);
     eos_uart_init(wakeup_cause);
     eos_spi_init(wakeup_cause);
     eos_spi_dev_init(wakeup_cause);

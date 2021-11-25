@@ -18,6 +18,8 @@
 #define I2S_REG_WS_MIC(o)   _REG32(I2S_CTRL_ADDR_WS_MIC, o)
 #define I2S_REG_WS_SPK(o)   _REG32(I2S_CTRL_ADDR_WS_SPK, o)
 
+#define I2S_PIN_PWM         ((1 << I2S_PIN_CK) | (1 << I2S_PIN_CK_SW) | (1 << I2S_PIN_WS_MIC) | (1 << I2S_PIN_WS_SPK))
+
 #define MIN(X, Y)           (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y)           (((X) > (Y)) ? (X) : (Y))
 
@@ -148,6 +150,11 @@ void eos_i2s_init(uint8_t wakeup_cause) {
     GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << I2S_PIN_CK_SW);
     GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << I2S_PIN_CK_SW);
 
+    GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_CK_SR);
+    GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << I2S_PIN_CK_SR);
+    GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << I2S_PIN_CK_SR);
+    GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << I2S_PIN_CK_SR);
+
     GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_WS_MIC);
     GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << I2S_PIN_WS_MIC);
     GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << I2S_PIN_WS_MIC);
@@ -158,12 +165,7 @@ void eos_i2s_init(uint8_t wakeup_cause) {
     GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << I2S_PIN_WS_SPK);
     GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << I2S_PIN_WS_SPK);
 
-    GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_CK_SR);
-    GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << I2S_PIN_CK_SR);
-    GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << I2S_PIN_CK_SR);
-    GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << I2S_PIN_CK_SR);
-
-    GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_SD_IN);
+    GPIO_REG(GPIO_INPUT_EN)     |=  (1 << I2S_PIN_SD_IN);
     GPIO_REG(GPIO_OUTPUT_EN)    &= ~(1 << I2S_PIN_SD_IN);
     GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << I2S_PIN_SD_IN);
     GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << I2S_PIN_SD_IN);
@@ -172,6 +174,9 @@ void eos_i2s_init(uint8_t wakeup_cause) {
     GPIO_REG(GPIO_OUTPUT_EN)    &= ~(1 << I2S_PIN_SD_OUT);
     GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << I2S_PIN_SD_OUT);
     GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << I2S_PIN_SD_OUT);
+
+    GPIO_REG(GPIO_IOF_EN)       &= ~I2S_PIN_PWM;
+    GPIO_REG(GPIO_IOF_SEL)      |=  I2S_PIN_PWM;
 
     GPIO_REG(GPIO_OUTPUT_VAL)   |=  (1 << I2S_PIN_CK_SW);
     GPIO_REG(GPIO_OUTPUT_VAL)   &= ~((1 << I2S_PIN_CK) | (1 << I2S_PIN_CK_SR) | (1 << I2S_PIN_WS_MIC) | (1 << I2S_PIN_WS_SPK));
@@ -212,20 +217,8 @@ void eos_i2s_start(uint32_t sample_rate, unsigned char fmt) {
     I2S_REG_WS_SPK(PWM_CFG)     = PWM_CFG_ENALWAYS | PWM_CFG_ZEROCMP | PWM_CFG_CMP1GANG;
     */
 
-    GPIO_REG(GPIO_INPUT_EN)     |=  (1 << I2S_PIN_SD_IN);
     GPIO_REG(GPIO_OUTPUT_VAL)   |=  (1 << I2S_PIN_CK_SR);
-
-    GPIO_REG(GPIO_IOF_SEL)      |=  (1 << I2S_PIN_CK);
-    GPIO_REG(GPIO_IOF_EN)       |=  (1 << I2S_PIN_CK);
-
-    GPIO_REG(GPIO_IOF_SEL)      |=  (1 << I2S_PIN_CK_SW);
-    GPIO_REG(GPIO_IOF_EN)       |=  (1 << I2S_PIN_CK_SW);
-
-    GPIO_REG(GPIO_IOF_SEL)      |=  (1 << I2S_PIN_WS_MIC);
-    GPIO_REG(GPIO_IOF_EN)       |=  (1 << I2S_PIN_WS_MIC);
-
-    GPIO_REG(GPIO_IOF_SEL)      |=  (1 << I2S_PIN_WS_SPK);
-    GPIO_REG(GPIO_IOF_EN)       |=  (1 << I2S_PIN_WS_SPK);
+    GPIO_REG(GPIO_IOF_EN)       |=  I2S_PIN_PWM;
 }
 
 void eos_i2s_stop(void) {
@@ -243,22 +236,12 @@ void eos_i2s_stop(void) {
     eos_intr_disable(I2S_IRQ_WS_ID);
     eos_intr_disable(I2S_IRQ_SD_ID);
 
-    GPIO_REG(GPIO_IOF_EN)       &= ~(1 << I2S_PIN_CK);
-    GPIO_REG(GPIO_IOF_SEL)      &= ~(1 << I2S_PIN_CK);
+    GPIO_REG(GPIO_OUTPUT_VAL)   &= ~(1 << I2S_PIN_CK_SR);
+    GPIO_REG(GPIO_IOF_EN)       &= ~I2S_PIN_PWM;
+}
 
-    GPIO_REG(GPIO_IOF_EN)       &= ~(1 << I2S_PIN_CK_SW);
-    GPIO_REG(GPIO_IOF_SEL)      &= ~(1 << I2S_PIN_CK_SW);
-
-    GPIO_REG(GPIO_IOF_EN)       &= ~(1 << I2S_PIN_WS_MIC);
-    GPIO_REG(GPIO_IOF_SEL)      &= ~(1 << I2S_PIN_WS_MIC);
-
-    GPIO_REG(GPIO_IOF_EN)       &= ~(1 << I2S_PIN_WS_SPK);
-    GPIO_REG(GPIO_IOF_SEL)      &= ~(1 << I2S_PIN_WS_SPK);
-
-    GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_SD_IN);
-
-    GPIO_REG(GPIO_OUTPUT_VAL)   |=  (1 << I2S_PIN_CK_SW);
-    GPIO_REG(GPIO_OUTPUT_VAL)   &= ~((1 << I2S_PIN_CK) | (1 << I2S_PIN_CK_SR) | (1 << I2S_PIN_WS_MIC) | (1 << I2S_PIN_WS_SPK));
+int eos_i2s_running(void) {
+    return !!(GPIO_REG(GPIO_IOF_EN) & I2S_PIN_PWM);
 }
 
 void eos_i2s_mic_init(uint8_t *mic_arr, uint16_t mic_arr_size) {

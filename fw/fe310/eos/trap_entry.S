@@ -111,7 +111,7 @@ i2s_abuf_pop:
   and x20, x20, x18
   lw x21, I2S_ABUF_OFF_ARRAY(x9)
   add x21, x21, x20
-  bnez x23, 0f
+  beqz x23, 0f
   lbu x8, 0(x21)
   addi x18, x18, 1
   j 1f
@@ -146,7 +146,7 @@ i2s_abuf_pop:
   sb x18, MSGQ_ITEM_OFF_TYPE(x21)
 
 i2s_decode:
-  bnez x23, i2s_handle_sd_xchg
+  beqz x23, i2s_handle_sd_xchg
   # aLaw decode -> x8
   xori x8, x8, 0x55
   andi x9, x8, 0x80
@@ -260,7 +260,7 @@ i2s_handle_sd_xchg:
   lw x23, 0(x9)
 
 i2s_encode:
-  bnez x23, i2s_abuf_push
+  beqz x23, i2s_abuf_push
   # aLaw encode -> x8
   li x18, 0x800
   li x19, 7
@@ -307,7 +307,7 @@ i2s_abuf_push:
   and x20, x20, x19
   lw x21, I2S_ABUF_OFF_ARRAY(x9)
   add x21, x21, x20
-  bnez x23, 0f
+  beqz x23, 0f
   sb x8, 0(x21)
   addi x19, x19, 1
   addi x18, x18, 1

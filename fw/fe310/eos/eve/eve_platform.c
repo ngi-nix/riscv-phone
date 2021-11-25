@@ -66,14 +66,6 @@ void eve_spi_stop(void) {
     eos_spi_deselect();
 }
 
-void eve_spi_set_fast(void) {
-    eos_spi_set_div(EOS_SPI_DEV_EVE, SPI_DIV_EVE);
-}
-
-void eve_spi_set_slow(void) {
-    eos_spi_set_div(EOS_SPI_DEV_EVE, SPI_DIV_EVE_SLOW);
-}
-
 #include <stdio.h>
 
 void *eve_malloc(size_t size) {
