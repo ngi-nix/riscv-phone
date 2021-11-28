@@ -1672,7 +1672,7 @@ Wire Wire Line
 Connection ~ 3200 1800
 Wire Wire Line
 	3200 1800 3800 1800
-Text GLabel 9850 6400 2    55   Input ~ 0
+Text GLabel 9900 6400 2    55   Input ~ 0
 BT81X.DISP
 Text GLabel 13000 2300 2    55   Input ~ 0
 BT81X.DISP
@@ -1858,17 +1858,6 @@ F 1 "GND" H 7255 1277 50  0000 C CNN
 F 2 "" H 7250 1450 50  0001 C CNN
 F 3 "" H 7250 1450 50  0001 C CNN
 	1    7250 1450
-	1    0    0    -1  
-$EndComp
-$Comp
-L Device:R R418
-U 1 1 6026DA78
-P 13750 7300
-F 0 "R418" V 13850 7300 50  0000 C CNN
-F 1 "100K" V 13750 7300 50  0000 C CNN
-F 2 "Resistor_SMD:R_0603_1608Metric" V 13680 7300 50  0001 C CNN
-F 3 "~" H 13750 7300 50  0001 C CNN
-	1    13750 7300
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
@@ -2093,8 +2082,6 @@ Wire Wire Line
 Wire Wire Line
 	13650 6650 14100 6650
 Wire Wire Line
-	13650 6750 13750 6750
-Wire Wire Line
 	13650 6950 14100 6950
 $Comp
 L power:GND #PWR0174
@@ -2137,8 +2124,6 @@ Wire Wire Line
 Connection ~ 14700 6250
 Wire Wire Line
 	14100 6850 14000 6850
-Wire Wire Line
-	14000 6850 14000 7500
 $Comp
 L power:+3.3V #PWR0176
 U 1 1 61D35920
@@ -2179,19 +2164,7 @@ Wire Wire Line
 	14000 6250 14000 6850
 Connection ~ 14000 6850
 Wire Wire Line
-	13750 7450 13750 7500
-Wire Wire Line
-	13750 7500 14000 7500
-Connection ~ 14000 7500
-Wire Wire Line
-	14000 7500 14000 7550
-Wire Wire Line
 	13650 7050 14100 7050
-Wire Wire Line
-	13750 7150 13750 6750
-Connection ~ 13750 6750
-Wire Wire Line
-	13750 6750 14100 6750
 NoConn ~ 14600 5650
 Wire Wire Line
 	4850 2150 5000 2150
@@ -2302,7 +2275,7 @@ Wire Wire Line
 Wire Wire Line
 	10400 6200 9450 6200
 Wire Wire Line
-	9850 6400 9450 6400
+	9900 6400 9450 6400
 Wire Wire Line
 	9450 6500 9500 6500
 Wire Wire Line
@@ -2376,4 +2349,8 @@ Text GLabel 1850 4800 0    60   Output ~ 0
 BT81X.AUDIO
 Wire Wire Line
 	2150 4800 1850 4800
+Wire Wire Line
+	13650 6750 14100 6750
+Wire Wire Line
+	14000 6850 14000 7550
 $EndSCHEMATC
