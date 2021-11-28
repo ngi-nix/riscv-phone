@@ -2,4 +2,4 @@
 
 #define BQ25895_ADDR        0x6A
 
-void eos_bq25895_init(uint8_t wakeup_cause);
+int eos_bq25895_init(uint8_t wakeup_cause);

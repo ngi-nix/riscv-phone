@@ -300,28 +300,16 @@ void eve_handle_time(void) {
     }
 }
 
-void eve_touch_active(void) {
-    eve_write8(REG_TOUCH_MODE, EVE_TMODE_CONTINUOUS);
-}
-
-void eve_touch_sleep(void) {
-    eve_write8(REG_TOUCH_MODE, EVE_TMODE_OFF);
-}
-
 static void _init(int touch_calibrate, uint32_t *touch_matrix) {
     /* configure touch */
-    eve_write16(REG_TOUCH_CONFIG, 0x381);                   /* default */
-    eve_write8(REG_TOUCH_MODE, EVE_TMODE_CONTINUOUS);       /* enable touch */
+    eve_write8(REG_CPURESET, 2);                            /* touch engine reset */
+    eve_write16(REG_TOUCH_CONFIG, 0x4000);                  /* host mode multi touch */
+    eve_write8(REG_CPURESET, 0);                            /* clear reset */
 
     if (touch_calibrate) {
         eve_write8(REG_PWM_DUTY, 0x40);
-        eve_cmd_dl(CMD_DLSTART);
-        eve_cmd_dl(CLEAR_COLOR_RGB(0,0,0));
-        eve_cmd_dl(CLEAR(1,1,1));
         eve_cmd(CMD_TEXT, "hhhhs", EVE_HSIZE/2, EVE_VSIZE/2, 27, EVE_OPT_CENTER, "Please tap on the dot.");
         eve_cmd(CMD_CALIBRATE, "w", 0);
-        eve_cmd_dl(DISPLAY());
-        eve_cmd_dl(CMD_SWAP);
         eve_cmd_exec(1);
         eve_write8(REG_PWM_DUTY, 0);
 
@@ -340,7 +328,7 @@ static void _init(int touch_calibrate, uint32_t *touch_matrix) {
         eve_write32(REG_TOUCH_TRANSFORM_F, touch_matrix[5]);
     }
 
-    eve_write8(REG_CTOUCH_EXTENDED, 0x00);
+    eve_write8(REG_CTOUCH_EXTENDED, 0x00);                  /* set extended mode */
 
     /* configure interrupts */
     eve_write8(REG_INT_MASK, touch_intr_mask);
@@ -349,7 +337,7 @@ static void _init(int touch_calibrate, uint32_t *touch_matrix) {
 }
 
 void eve_touch_init(uint8_t wakeup_cause, int touch_calibrate, uint32_t *touch_matrix) {
-    int rst = (wakeup_cause == EOS_PWR_WAKE_RST);
+    int rst = (wakeup_cause == EVE_INIT_RST);
     int i;
 
     eve_vtrack_init();
@@ -360,6 +348,14 @@ void eve_touch_init(uint8_t wakeup_cause, int touch_calibrate, uint32_t *touch_m
     }
 
     if (rst) _init(touch_calibrate, touch_matrix);
+}
+
+void eve_touch_start(uint8_t wakeup_cause) {
+    eve_write8(REG_TOUCH_MODE, EVE_TMODE_CONTINUOUS);
+}
+
+void eve_touch_stop(void) {
+    eve_write8(REG_TOUCH_MODE, EVE_TMODE_OFF);
 }
 
 void eve_touch_set_handler(eve_touch_handler_t handler, void *param) {

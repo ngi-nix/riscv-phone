@@ -34,7 +34,7 @@ static void uart_handle_intr(void) {
     }
 }
 
-void eos_uart_init(uint8_t wakeup_cause) {
+int eos_uart_init(uint8_t wakeup_cause) {
     int i;
 
     for (i=0; i<EOS_UART_MAX_ETYPE; i++) {
@@ -42,6 +42,8 @@ void eos_uart_init(uint8_t wakeup_cause) {
     }
     eos_evtq_set_handler(EOS_EVT_UART, uart_handle_evt);
     eos_intr_set(INT_UART0_BASE, IRQ_PRIORITY_UART, uart_handle_intr);
+
+    return EOS_OK;
 }
 
 void eos_uart_set_handler(unsigned char type, eos_uart_handler_t handler) {

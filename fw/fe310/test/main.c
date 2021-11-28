@@ -4,6 +4,8 @@
 #include <string.h>
 
 #include <eos.h>
+#include <timer.h>
+#include <power.h>
 
 #include <eve/eve.h>
 #include <eve/eve_kbd.h>
@@ -16,6 +18,8 @@
 #include <eve/widget/widgets.h>
 
 #include <app/app_root.h>
+
+#include <prci_driver.h>
 
 #include "status.h"
 #include "cell_dev.h"
@@ -77,17 +81,20 @@ void app_home_page(EVEWindow *window, EVEViewStack *stack) {
 }
 
 int main() {
+    uint8_t wakeup_cause = eos_power_wakeup_cause();
+    int rst = (wakeup_cause == EVE_INIT_RST);
+
     printf("\nREADY.\n");
+    printf("FREQ:%lu\n", PRCI_get_cpu_freq());
 
     eos_init();
 
-    app_root_init(app_home_page, -1);
+    app_root_init(app_home_page, 0x20);
     app_status_init();
     app_phone_init();
     app_wifi_init();
     app_cell_dev_init();
     app_cell_pdp_init();
     app_fs_init();
-
     eos_evtq_loop();
 }

@@ -305,7 +305,7 @@ static void net_resume(void) {
     }
 }
 
-void eos_net_init(uint8_t wakeup_cause) {
+int eos_net_init(uint8_t wakeup_cause) {
     int i;
 
     eos_msgq_init(&net_send_q, net_sndq_array, EOS_NET_SIZE_BUFQ);
@@ -342,6 +342,8 @@ void eos_net_init(uint8_t wakeup_cause) {
     if (GPIO_REG(GPIO_INPUT_VAL) & (1 << NET_PIN_CTS)) net_state_flags |= NET_STATE_FLAG_CTS;
     if (GPIO_REG(GPIO_INPUT_VAL) & (1 << NET_PIN_RTS)) net_state_flags |= NET_STATE_FLAG_RTS;
     set_csr(mstatus, MSTATUS_MIE);
+
+    return EOS_OK;
 }
 
 void eos_net_start(uint8_t wakeup_cause) {
@@ -350,8 +352,8 @@ void eos_net_start(uint8_t wakeup_cause) {
     SPI1_REG(SPI_REG_CSID) = eos_spi_csid(EOS_SPI_DEV_NET);
 
     clear_csr(mstatus, MSTATUS_MIE);
-    if (wakeup_cause) {
-        if (wakeup_cause != EOS_PWR_WAKE_BTN) {
+    if ((wakeup_cause & EOS_PWR_INIT) && (wakeup_cause != EOS_INIT_RST)) {
+        if (wakeup_cause != EOS_INIT_BTN) {
             net_xchg_wake();
         }
         if (!(net_state_flags & NET_STATE_FLAG_CTS)) {

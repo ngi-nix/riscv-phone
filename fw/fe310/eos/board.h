@@ -18,7 +18,7 @@
 #define NET_PIN_RTS             20
 #define NET_PIN_CTS             22
 
-#define DISP_PIN_CS             11
+#define LCD_PIN_CS              11
 
 #define EVE_PIN_INTR            23
 
@@ -42,6 +42,6 @@
 #define EVE_GPIO_DIR            0xf
 
 #define EVE_GPIO_CAM            0
-#define EVE_GPIO_DISP_EN        1
+#define EVE_GPIO_LCD_EN         1
 #define EVE_GPIO_GAIN_SEL       2
 #define EVE_GPIO_HAPT           3

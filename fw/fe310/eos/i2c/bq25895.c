@@ -7,16 +7,13 @@
 #include "i2c.h"
 #include "i2c/bq25895.h"
 
-void eos_bq25895_init(uint8_t wakeup_cause) {
-    int rst = (wakeup_cause == EOS_PWR_WAKE_RST);
+int eos_bq25895_init(uint8_t wakeup_cause) {
+    int rst = (wakeup_cause == EOS_INIT_RST);
     int i, rv = EOS_OK;
     uint8_t data = 0;
 
     rv = eos_i2c_start(100000);
-    if (rv) {
-        printf("I2C BUSY\n");
-        return;
-    }
+    if (rv) return rv;
     if (rst) {
         rv = eos_i2c_write8(BQ25895_ADDR, 0x14, 0x80);  // reset
         if (rv) printf("I2C ERROR 0x14\n");
@@ -36,4 +33,6 @@ void eos_bq25895_init(uint8_t wakeup_cause) {
         if (!rv) printf("REG%02x: %02x\n", i, data);
     }
     eos_i2c_stop();
+
+    return EOS_OK;
 }

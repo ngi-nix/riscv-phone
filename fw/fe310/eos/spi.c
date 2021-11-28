@@ -45,7 +45,7 @@ static void spi_handle_evt(unsigned char type, unsigned char *buffer, uint16_t l
     }
 }
 
-void eos_spi_init(uint8_t wakeup_cause) {
+int eos_spi_init(uint8_t wakeup_cause) {
     int i;
 
     for (i=0; i<EOS_SPI_MAX_EVT; i++) {
@@ -83,6 +83,7 @@ void eos_spi_init(uint8_t wakeup_cause) {
 
     // There is no way here to change the CS polarity.
     // SPI1_REG(SPI_REG_CSDEF) = 0xFFFF;
+    return EOS_OK;
 }
 
 void eos_spi_start(uint16_t div, uint8_t csid, uint8_t cspin, unsigned char evt) {

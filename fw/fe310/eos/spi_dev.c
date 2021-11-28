@@ -21,7 +21,7 @@ static uint8_t spi_dev;
 static uint8_t spi_lock;
 static uint16_t spi_div[EOS_SPI_MAX_DEV];
 
-void eos_spi_dev_init(uint8_t wakeup_cause) {
+int eos_spi_dev_init(uint8_t wakeup_cause) {
     int i;
 
     for (i=0; i<EOS_SPI_MAX_DEV; i++) {
@@ -35,6 +35,8 @@ void eos_spi_dev_init(uint8_t wakeup_cause) {
             GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << spi_cfg[i].cspin);
         }
     }
+
+    return EOS_OK;
 }
 
 int eos_spi_select(unsigned char dev) {

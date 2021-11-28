@@ -7,6 +7,7 @@
 #include "platform.h"
 #include "plic_driver.h"
 
+#include "eos.h"
 #include "interrupt.h"
 
 // Global Instance data for the PLIC
@@ -25,7 +26,7 @@ uintptr_t eos_intr_handle(uintptr_t int_num) {
     return int_num;
 }
 
-void eos_intr_init(uint8_t wakeup_cause) {
+int eos_intr_init(uint8_t wakeup_cause) {
     for (int i = 0; i < PLIC_NUM_INTERRUPTS; i++){
         ext_interrupt_handler[i] = NULL;
     }
@@ -43,6 +44,8 @@ void eos_intr_init(uint8_t wakeup_cause) {
 
     // Enable all interrupts
     set_csr(mstatus, MSTATUS_MIE);
+
+    return EOS_OK;
 }
 
 void eos_intr_set(uint8_t int_num, uint8_t priority, eos_intr_handler_t handler) {

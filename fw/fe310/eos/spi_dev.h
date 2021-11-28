@@ -5,7 +5,7 @@
 #define EOS_SPI_DEV_SDC         2
 #define EOS_SPI_DEV_CAM         3
 
-void eos_spi_dev_init(uint8_t wakeup_cause);
+int eos_spi_dev_init(uint8_t wakeup_cause);
 int eos_spi_select(unsigned char dev);
 int eos_spi_deselect(void);
 

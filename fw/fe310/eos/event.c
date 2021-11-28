@@ -6,6 +6,7 @@
 #include "encoding.h"
 #include "platform.h"
 
+#include "eos.h"
 #include "msgq.h"
 #include "event.h"
 
@@ -24,7 +25,7 @@ static void evtq_handler(unsigned char type, unsigned char *buffer, uint16_t len
     }
 }
 
-void eos_evtq_init(uint8_t wakeup_cause) {
+int eos_evtq_init(uint8_t wakeup_cause) {
     int i;
 
     evt_handler[0] = evtq_handler;
@@ -32,6 +33,8 @@ void eos_evtq_init(uint8_t wakeup_cause) {
         evt_handler[i + 1] = eos_evtq_bad_handler;
     }
     eos_msgq_init(&_eos_event_q, event_q_array, EOS_EVT_SIZE_Q);
+
+    return EOS_OK;
 }
 
 int eos_evtq_push(unsigned char type, unsigned char *buffer, uint16_t len) {

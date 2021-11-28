@@ -2,6 +2,7 @@
 
 #include "spi.h"
 #include "spi_dev.h"
+#include "power.h"
 #include "timer.h"
 
 #define EVE_ETYPE_INTR      1
@@ -10,6 +11,10 @@
 
 #define EVE_SPI_FLAG_BSWAP  EOS_SPI_FLAG_BSWAP
 #define EVE_SPI_FLAG_TX     EOS_SPI_FLAG_TX
+
+#define EVE_INIT_RST        EOS_INIT_RST
+#define EVE_INIT_RTC        EOS_INIT_RTC
+#define EVE_INIT_BTN        EOS_INIT_BTN
 
 void *eve_malloc(size_t);
 void eve_free(void *);

@@ -9,8 +9,10 @@
 #include "i2s.h"
 #include "i2c.h"
 
-void eos_i2c_init(uint8_t wakeup_cause) {
+int eos_i2c_init(uint8_t wakeup_cause) {
     GPIO_REG(GPIO_IOF_SEL)      &= ~IOF0_I2C0_MASK;
+
+    return EOS_OK;
 }
 
 int eos_i2c_start(uint32_t baud_rate) {

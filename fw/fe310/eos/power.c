@@ -10,6 +10,7 @@
 #include "spi.h"
 #include "spi_dev.h"
 #include "net.h"
+#include "lcd.h"
 #include "eve/eve.h"
 
 #include "power.h"
@@ -49,7 +50,7 @@ static void power_handle_btn(unsigned char type, unsigned char *buffer, uint16_t
     eos_power_sleep();
 }
 
-void eos_power_init(uint8_t wakeup_cause) {
+int eos_power_init(uint8_t wakeup_cause) {
     int i;
 
     for (i=0; i<EOS_PWR_MAX_MTYPE; i++) {
@@ -65,6 +66,8 @@ void eos_power_init(uint8_t wakeup_cause) {
     AON_REG(AON_RTCCFG) = PWR_RTC_SCALE;
     AON_REG(AON_RTCHI) = 0;
     AON_REG(AON_RTCLO) = 0;
+
+    return EOS_OK;
 }
 
 uint8_t eos_power_wakeup_cause(void) {
@@ -75,14 +78,23 @@ uint8_t eos_power_reset_cause(void) {
     return (AON_REG(AON_PMUCAUSE) >> 8) & 0xff;
 }
 
-void eos_power_sleep(void) {
+int eos_power_sleep(void) {
+    int rv;
+
+    rv = eos_lcd_sleep();
+    if (rv) return rv;
+
     eos_spi_select(EOS_SPI_DEV_EVE);
     eve_sleep();
     eos_spi_deselect();
-    eos_net_sleep(1000);
+
+    rv = eos_net_sleep(1000);
+    if (rv) return rv;
 
     AON_REG(AON_PMUKEY) = 0x51F15E;
     AON_REG(AON_PMUSLEEP) = 1;
+
+    return EOS_OK;
 }
 
 void eos_power_wake_at(uint32_t msec) {

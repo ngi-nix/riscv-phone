@@ -352,7 +352,7 @@ static int sdc_init(uint32_t timeout) {
     return EOS_OK;
 }
 
-void eos_sdc_init(uint8_t wakeup_cause) {
+int eos_sdc_init(uint8_t wakeup_cause) {
     int rv;
 
     eos_spi_select(EOS_SPI_DEV_SDC);
@@ -363,6 +363,8 @@ void eos_sdc_init(uint8_t wakeup_cause) {
         printf("SDC OK:%x\n", sdc_type);
     }
     eos_spi_deselect();
+
+    return EOS_OK;
 }
 
 uint8_t eos_sdc_type(void) {
