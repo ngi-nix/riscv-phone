@@ -8,15 +8,10 @@
 #define EOS_PWR_WAKE_RST        0
 #define EOS_PWR_WAKE_RTC        1
 #define EOS_PWR_WAKE_BTN        2
-#define EOS_PWR_INIT            0x80
 
 #define EOS_PWR_RST_PWRON       0
 #define EOS_PWR_RST_EXT         1
 #define EOS_PWR_RST_WDOG        2
-
-#define EOS_INIT_RST            (EOS_PWR_WAKE_RST | EOS_PWR_INIT)
-#define EOS_INIT_RTC            (EOS_PWR_WAKE_RTC | EOS_PWR_INIT)
-#define EOS_INIT_BTN            (EOS_PWR_WAKE_BTN | EOS_PWR_INIT)
 
 int eos_power_init(uint8_t wakeup_cause);
 uint8_t eos_power_wakeup_cause(void);

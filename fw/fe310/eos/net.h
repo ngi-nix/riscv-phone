@@ -23,7 +23,8 @@
 #define EOS_NET_SIZE_BUFQ           2
 
 int eos_net_init(uint8_t wakeup_cause);
-void eos_net_start(uint8_t wakeup_cause);
+int eos_net_run(uint8_t wakeup_cause);
+void eos_net_start(void);
 void eos_net_stop(void);
 int eos_net_sleep(uint32_t timeout);
 

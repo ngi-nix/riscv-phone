@@ -12,4 +12,4 @@
 #define EOS_ERR_NET             -20
 
 void eos_init(void);
-void eos_start(uint8_t wakeup_cause);
+void eos_run(uint8_t wakeup_cause);

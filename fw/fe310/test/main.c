@@ -82,7 +82,7 @@ void app_home_page(EVEWindow *window, EVEViewStack *stack) {
 
 int main() {
     uint8_t wakeup_cause = eos_power_wakeup_cause();
-    int rst = (wakeup_cause == EVE_INIT_RST);
+    int rst = (wakeup_cause == EOS_PWR_WAKE_RST);
 
     printf("\nREADY.\n");
     printf("FREQ:%lu\n", PRCI_get_cpu_freq());

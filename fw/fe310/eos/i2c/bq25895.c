@@ -8,7 +8,7 @@
 #include "i2c/bq25895.h"
 
 int eos_bq25895_init(uint8_t wakeup_cause) {
-    int rst = (wakeup_cause == EOS_INIT_RST);
+    int rst = (wakeup_cause == EOS_PWR_WAKE_RST);
     int i, rv = EOS_OK;
     uint8_t data = 0;
 

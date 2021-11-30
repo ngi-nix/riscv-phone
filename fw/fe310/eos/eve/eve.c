@@ -375,8 +375,25 @@ static int _init(uint8_t gpio_dir) {
     return EVE_OK;
 }
 
+static void _start(void) {
+    uint16_t gpiox;
+
+    gpiox = eve_read16(REG_GPIOX) | 0x8000;
+    eve_write16(REG_GPIOX, gpiox);          /* enable the DISP signal to the LCD panel, it is set to output in REG_GPIOX_DIR by default */
+    eve_write8(REG_PCLK, EVE_PCLK);         /* now start clocking data to the LCD panel */
+}
+
+static void _stop(void) {
+    uint16_t gpiox;
+
+    gpiox = eve_read16(REG_GPIOX) & ~0x8000;
+    eve_write16(REG_GPIOX, gpiox);
+    eve_write8(REG_PCLK, 0);
+}
+
 int eve_init(uint8_t wakeup_cause, int touch_calibrate, uint32_t *touch_matrix, uint8_t gpio_dir) {
-    int rst = (wakeup_cause == EVE_INIT_RST);
+    int rv;
+    int rst = (wakeup_cause == EVE_WAKE_RST);
 
     if (rst) {
         int rv = _init(gpio_dir);
@@ -386,30 +403,33 @@ int eve_init(uint8_t wakeup_cause, int touch_calibrate, uint32_t *touch_matrix, 
         eve_time_sleep(40);
     }
 
-    eve_touch_init(wakeup_cause, touch_calibrate, touch_matrix);
+    rv = eve_touch_init(wakeup_cause, touch_calibrate, touch_matrix);
+    if (rv) return rv;
+
     eve_platform_init();
 
     return EVE_OK;
 }
 
-void eve_start(uint8_t wakeup_cause) {
-    uint16_t gpiox;
+int eve_run(uint8_t wakeup_cause) {
+    int rv;
 
-    gpiox = eve_read16(REG_GPIOX) | 0x8000;
-    eve_write16(REG_GPIOX, gpiox);          /* enable the DISP signal to the LCD panel, it is set to output in REG_GPIOX_DIR by default */
-    eve_write8(REG_PCLK, EVE_PCLK);         /* now start clocking data to the LCD panel */
+    _start();
+    rv = eve_touch_run(wakeup_cause);
 
-    eve_touch_start(wakeup_cause);
+    return rv;
+}
+
+void eve_start(void) {
+    _start();
+    eve_touch_start();
 }
 
 void eve_stop(void) {
     uint16_t gpiox;
 
     eve_touch_stop();
-
-    gpiox = eve_read16(REG_GPIOX) & ~0x8000;
-    eve_write16(REG_GPIOX, gpiox);
-    eve_write8(REG_PCLK, 0);
+    _stop();
 }
 
 int eve_gpio_get(int gpio) {
@@ -469,7 +489,7 @@ void eve_active(void) {
 
     if (power_state == EVE_PSTATE_SLEEP) {
         eve_time_sleep(40);
-        eve_start(0);
+        eve_start();
     }
 
     power_state = EVE_PSTATE_ACTIVE;

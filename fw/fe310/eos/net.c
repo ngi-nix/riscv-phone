@@ -305,6 +305,12 @@ static void net_resume(void) {
     }
 }
 
+static void net_start(void) {
+    eos_intr_set_handler(INT_SPI1_BASE, net_handle_xchg);
+    SPI1_REG(SPI_REG_SCKDIV) = eos_spi_div(EOS_SPI_DEV_NET);
+    SPI1_REG(SPI_REG_CSID) = eos_spi_csid(EOS_SPI_DEV_NET);
+}
+
 int eos_net_init(uint8_t wakeup_cause) {
     int i;
 
@@ -346,14 +352,12 @@ int eos_net_init(uint8_t wakeup_cause) {
     return EOS_OK;
 }
 
-void eos_net_start(uint8_t wakeup_cause) {
-    eos_intr_set_handler(INT_SPI1_BASE, net_handle_xchg);
-    SPI1_REG(SPI_REG_SCKDIV) = eos_spi_div(EOS_SPI_DEV_NET);
-    SPI1_REG(SPI_REG_CSID) = eos_spi_csid(EOS_SPI_DEV_NET);
+int eos_net_run(uint8_t wakeup_cause) {
+    net_start();
 
     clear_csr(mstatus, MSTATUS_MIE);
-    if ((wakeup_cause & EOS_PWR_INIT) && (wakeup_cause != EOS_INIT_RST)) {
-        if (wakeup_cause != EOS_INIT_BTN) {
+    if (wakeup_cause != EOS_PWR_WAKE_RST) {
+        if (wakeup_cause != EOS_PWR_WAKE_BTN) {
             net_xchg_wake();
         }
         if (!(net_state_flags & NET_STATE_FLAG_CTS)) {
@@ -364,6 +368,16 @@ void eos_net_start(uint8_t wakeup_cause) {
         }
         net_xchg_reset();
     }
+    net_resume();
+    set_csr(mstatus, MSTATUS_MIE);
+
+    return EOS_OK;
+}
+
+void eos_net_start(void) {
+    net_start();
+
+    clear_csr(mstatus, MSTATUS_MIE);
     net_resume();
     set_csr(mstatus, MSTATUS_MIE);
 }

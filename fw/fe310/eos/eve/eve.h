@@ -57,7 +57,8 @@ void eve_cmd_burst_start(void);
 void eve_cmd_burst_end(void);
 
 int eve_init(uint8_t wakeup_cause, int touch_calibrate, uint32_t *touch_matrix, uint8_t gpio_dir);
-void eve_start(uint8_t wakeup_cause);
+int eve_run(uint8_t wakeup_cause);
+void eve_start(void);
 void eve_stop(void);
 
 int eve_gpio_get(int gpio);

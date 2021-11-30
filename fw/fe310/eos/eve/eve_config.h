@@ -3,18 +3,19 @@
 
 /* FocusLCDs E50RG84885LWAM520-CA */
 
-#define EVE_HLPW    20      /* horizontal low pulse width */
-#define EVE_HBP     60      /* horizontal back porch */
-#define EVE_HFP     40      /* horizontal front porch */
+#define EVE_HLPW    6       /* horizontal low pulse width */
+#define EVE_HBP     6       /* horizontal back porch */
+#define EVE_HFP     6       /* horizontal front porch */
 #define EVE_HACT    480     /* horizontal active pixels */
 #define EVE_HTOT    (EVE_HLPW + EVE_HBP + EVE_HFP + EVE_HACT + 10)
 
 
-#define EVE_VLPW    26      /* vertical low pulse width */
-#define EVE_VBP     50      /* vertical back porch */
-#define EVE_VFP     30      /* vertical front porch */
+#define EVE_VLPW    6       /* vertical low pulse width */
+#define EVE_VBP     6       /* vertical back porch */
+#define EVE_VFP     6       /* vertical front porch */
 #define EVE_VACT    854     /* vertical active pixels */
 #define EVE_VTOT    (EVE_VLPW + EVE_VBP + EVE_VFP + EVE_VACT + 10)
+
 
 #define EVE_HCYCLE          (EVE_HTOT)                      /* Th Total length of line (visible and non-visible) (in PCLKs) */
 #define EVE_HSIZE           (EVE_HACT)                      /* Length of visible part of line (in PCLKs) - display width */
@@ -32,7 +33,8 @@
 #define EVE_SWIZZLE         0                               /* Defines the arrangement of the RGB pins */
 #define EVE_CSPREAD         0                               /* helps with noise, when set to 1 fewer signals are changed simultaneously, reset-default: 1 */
 
-#define EVE_PCLK            2                               /* 36 MHz */
+#define EVE_PCLK            1                               /* Clock from EVE_PCLK_FREQ */
+#define EVE_PCLK_FREQ       27000000
 
 #define EVE_GEN             4
 

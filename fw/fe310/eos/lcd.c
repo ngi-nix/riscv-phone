@@ -41,7 +41,7 @@ int eos_lcd_select(void) {
 void eos_lcd_deselect(void) {
     GPIO_REG(GPIO_OUTPUT_VAL) |= (1 << IOF_SPI1_MOSI);
     GPIO_REG(GPIO_IOF_EN) |= SPI_IOF_MASK;
-    eos_net_start(0);
+    eos_net_start();
 }
 
 void eos_lcd_cs_set(void) {
@@ -100,7 +100,7 @@ static int _init(void) {
     eos_lcd_write(1, 0x04);
     eos_lcd_write(1, 0x01);
 
-    // eos_lcd_write(0, 0x08); //Output SDA
+    // eos_lcd_write(0, 0x08); // Output SDA
     // eos_lcd_write(1, 0x10);
 
     eos_lcd_write(0, 0x20);    // set DE/VSYNC mode

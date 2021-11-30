@@ -336,8 +336,16 @@ static void _init(int touch_calibrate, uint32_t *touch_matrix) {
     while(eve_read8(REG_INT_FLAGS));
 }
 
-void eve_touch_init(uint8_t wakeup_cause, int touch_calibrate, uint32_t *touch_matrix) {
-    int rst = (wakeup_cause == EVE_INIT_RST);
+static void _start(void) {
+    eve_write8(REG_TOUCH_MODE, EVE_TMODE_CONTINUOUS);
+}
+
+static void _stop(void) {
+    eve_write8(REG_TOUCH_MODE, EVE_TMODE_OFF);
+}
+
+int eve_touch_init(uint8_t wakeup_cause, int touch_calibrate, uint32_t *touch_matrix) {
+    int rst = (wakeup_cause == EVE_WAKE_RST);
     int i;
 
     eve_vtrack_init();
@@ -348,14 +356,22 @@ void eve_touch_init(uint8_t wakeup_cause, int touch_calibrate, uint32_t *touch_m
     }
 
     if (rst) _init(touch_calibrate, touch_matrix);
+
+    return EVE_OK;
 }
 
-void eve_touch_start(uint8_t wakeup_cause) {
-    eve_write8(REG_TOUCH_MODE, EVE_TMODE_CONTINUOUS);
+int eve_touch_run(uint8_t wakeup_cause) {
+    _start();
+
+    return EVE_OK;
+}
+
+void eve_touch_start(void) {
+    _start();
 }
 
 void eve_touch_stop(void) {
-    eve_write8(REG_TOUCH_MODE, EVE_TMODE_OFF);
+    _stop();
 }
 
 void eve_touch_set_handler(eve_touch_handler_t handler, void *param) {
