@@ -339,11 +339,11 @@ static const uint8_t saturation_regs[NUM_SATURATION_LEVELS + 1][5] = {
 };
 
 static int reg_read(int8_t reg, uint8_t *data) {
-    return eos_i2c_read8(OV2640_ADDR, reg, data);
+    return eos_i2c_read8(OV2640_ADDR, reg, data, 1);
 }
 
 static int reg_write(uint8_t reg, uint8_t data) {
-    return eos_i2c_write8(OV2640_ADDR, reg, data);
+    return eos_i2c_write8(OV2640_ADDR, reg, &data, 1);
 }
 
 static int regarr_write(const uint8_t (*regs)[2]) {

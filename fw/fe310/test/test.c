@@ -24,6 +24,14 @@
 
 #include <stdio.h>
 
+static int reg_read(uint8_t reg, uint8_t *data) {
+    return eos_i2c_read8(BQ25895_ADDR, reg, data, 1);
+}
+
+static int reg_write(uint8_t reg, uint8_t data) {
+    return eos_i2c_write8(BQ25895_ADDR, reg, &data, 1);
+}
+
 int app_test_uievt(EVEForm *form, uint16_t evt, void *param) {
     uint8_t data = 0;
     int rv, ret = 0, i;
@@ -32,13 +40,13 @@ int app_test_uievt(EVEForm *form, uint16_t evt, void *param) {
         case EVE_UIEVT_PAGE_TOUCH:
             printf("PAGE TOUCH\n");
             printf("BQ25895:\n");
-            rv = eos_i2c_start(400000);
+            rv = eos_i2c_start();
             if (rv) {
                 printf("I2C BUSY\n");
                 return 0;
             }
             for (i=0; i<0x15; i++) {
-                rv = eos_i2c_read8(BQ25895_ADDR, i, &data);
+                rv = reg_read(i, &data);
                 if (!rv) printf("REG%02x: %02x\n", i, data);
             }
             eos_i2c_stop();

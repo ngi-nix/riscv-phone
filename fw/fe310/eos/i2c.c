@@ -10,33 +10,31 @@
 #include "i2c.h"
 
 int eos_i2c_init(uint8_t wakeup_cause) {
-    GPIO_REG(GPIO_IOF_SEL)      &= ~IOF0_I2C0_MASK;
-
+    eos_i2c_stop();
+    eos_i2c_speed(EOS_I2C_SPEED);
     return EOS_OK;
 }
 
-int eos_i2c_start(uint32_t baud_rate) {
+int eos_i2c_start(void) {
     if (eos_i2s_running()) return EOS_ERR_BUSY;
 
-    eos_i2c_set_baud_rate(baud_rate);
-    GPIO_REG(GPIO_IOF_EN)       |=  IOF0_I2C0_MASK;
+    GPIO_REG(GPIO_IOF_EN)   |=  IOF0_I2C0_MASK;
+    I2C0_REGB(I2C_CONTROL)  |=  I2C_CONTROL_EN;
 
     return EOS_OK;
 }
 
 void eos_i2c_stop(void) {
-    if (eos_i2s_running()) return;
-    GPIO_REG(GPIO_IOF_EN)       &=  ~IOF0_I2C0_MASK;
+    GPIO_REG(GPIO_IOF_EN)   &= ~IOF0_I2C0_MASK;
+    I2C0_REGB(I2C_CONTROL)  &= ~I2C_CONTROL_EN;
 }
 
-void eos_i2c_set_baud_rate(uint32_t baud_rate) {
+void eos_i2c_speed(uint32_t baud_rate) {
     unsigned long clock_rate = PRCI_get_cpu_freq();
     uint16_t prescaler = (clock_rate / (baud_rate * 5)) - 1;
 
-    I2C0_REGB(I2C_CONTROL) &= ~I2C_CONTROL_EN;
     I2C0_REGB(I2C_PRESCALE_LOW) = prescaler & 0xFF;
     I2C0_REGB(I2C_PRESCALE_HIGH) = (prescaler >> 8) & 0xFF;
-    I2C0_REGB(I2C_CONTROL) |= I2C_CONTROL_EN;
 }
 
 
@@ -60,7 +58,7 @@ static int i2c_addr(uint8_t addr, uint8_t rw_flag) {
     return i2c_write(I2C_CMD_START, ((addr & 0x7F) << 1) | (rw_flag & 0x1));
 }
 
-int eos_i2c_read(uint8_t addr, uint8_t reg, uint8_t *buffer, uint16_t len) {
+int eos_i2c_read8(uint8_t addr, uint8_t reg, uint8_t *buffer, uint16_t len) {
     int rv;
     int i;
 
@@ -83,7 +81,33 @@ int eos_i2c_read(uint8_t addr, uint8_t reg, uint8_t *buffer, uint16_t len) {
     return EOS_OK;
 }
 
-int eos_i2c_write(uint8_t addr, uint8_t reg, uint8_t *buffer, uint16_t len) {
+int eos_i2c_read16(uint8_t addr, uint16_t reg, uint8_t *buffer, uint16_t len) {
+    int rv;
+    int i;
+
+    rv = i2c_addr(addr, I2C_WRITE);
+    if (rv) return rv;
+
+    rv = i2c_write(0, reg >> 8);
+    if (rv) return rv;
+
+    rv = i2c_write(0, reg & 0xff);
+    if (rv) return rv;
+
+    rv = i2c_addr(addr, I2C_READ);
+    if (rv) return rv;
+
+    for (i=0; i<len; i++) {
+        rv = i2c_read(i == (len - 1) ? (I2C_CMD_ACK | I2C_CMD_STOP) : 0);  /* Set NACK to end read, and generate STOP condition */
+        if (rv < 0) return rv;
+
+        buffer[i] = (uint8_t)rv;
+    }
+
+    return EOS_OK;
+}
+
+int eos_i2c_write8(uint8_t addr, uint8_t reg, uint8_t *buffer, uint16_t len) {
     int rv;
     int i;
 
@@ -101,10 +125,23 @@ int eos_i2c_write(uint8_t addr, uint8_t reg, uint8_t *buffer, uint16_t len) {
     return EOS_OK;
 }
 
-int eos_i2c_read8(uint8_t addr, uint8_t reg, uint8_t *data) {
-    return eos_i2c_read(addr, reg, data, 1);
-}
+int eos_i2c_write16(uint8_t addr, uint16_t reg, uint8_t *buffer, uint16_t len) {
+    int rv;
+    int i;
 
-int eos_i2c_write8(uint8_t addr, uint8_t reg, uint8_t data) {
-    return eos_i2c_write(addr, reg, &data, 1);
+    rv = i2c_addr(addr, I2C_WRITE);
+    if (rv) return rv;
+
+    rv = i2c_write(0, reg >> 8);
+    if (rv) return rv;
+
+    rv = i2c_write(0, reg & 0xff);
+    if (rv) return rv;
+
+    for (i=0; i<len; i++) {
+        rv = i2c_write(i == (len - 1) ? I2C_CMD_STOP : 0, buffer[i]);
+        if (rv) return rv;
+    }
+
+    return EOS_OK;
 }
