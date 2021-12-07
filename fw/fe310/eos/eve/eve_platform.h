@@ -1,9 +1,9 @@
 #include <stdint.h>
+#include <stdlib.h>
 
+#include "timer.h"
 #include "spi.h"
 #include "spi_dev.h"
-#include "power.h"
-#include "timer.h"
 
 #define EVE_ETYPE_INTR      1
 
@@ -11,10 +11,6 @@
 
 #define EVE_SPI_FLAG_BSWAP  EOS_SPI_FLAG_BSWAP
 #define EVE_SPI_FLAG_TX     EOS_SPI_FLAG_TX
-
-#define EVE_WAKE_RST        EOS_PWR_WAKE_RST
-#define EVE_WAKE_RTC        EOS_PWR_WAKE_RTC
-#define EVE_WAKE_BTN        EOS_PWR_WAKE_BTN
 
 void *eve_malloc(size_t);
 void eve_free(void *);
@@ -36,8 +32,6 @@ void eve_spi_stop(void);
 #define eve_spi_unlock      eos_spi_unlock
 
 void eve_time_sleep(uint32_t ms);
+uint64_t eve_time_get_tick(void);
 void eve_timer_set(uint32_t ms);
 void eve_timer_clear(void);
-uint64_t eve_time_get_tick(void);
-
-void eve_platform_init(void);

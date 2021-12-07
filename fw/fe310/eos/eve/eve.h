@@ -56,17 +56,21 @@ int eve_cmd_exec(int w);
 void eve_cmd_burst_start(void);
 void eve_cmd_burst_end(void);
 
-int eve_init(uint8_t wakeup_cause, int touch_calibrate, uint32_t *touch_matrix, uint8_t gpio_dir);
-int eve_run(uint8_t wakeup_cause);
+void eve_handle_intr(void);
+
+int eve_init(uint8_t gpio_dir, int touch_calibrate, uint32_t *touch_matrix);
 void eve_start(void);
 void eve_stop(void);
+void eve_start_clk(void);
+void eve_stop_clk(void);
+
+void eve_active(void);
+void eve_standby(void);
+void eve_sleep(void);
+void eve_wake(void);
 
 int eve_gpio_get(int gpio);
 void eve_gpio_set(int gpio, int val);
 uint8_t eve_gpio_get_dir(void);
 void eve_gpio_set_dir(uint8_t dir);
-
-void eve_standby(void);
-void eve_sleep(void);
-void eve_active(void);
 void eve_brightness(uint8_t b);

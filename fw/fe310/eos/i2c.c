@@ -12,6 +12,7 @@
 int eos_i2c_init(uint8_t wakeup_cause) {
     eos_i2c_stop();
     eos_i2c_speed(EOS_I2C_SPEED);
+
     return EOS_OK;
 }
 

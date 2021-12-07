@@ -39,6 +39,9 @@
 
 #define I2S_IDLE_CYCLES         8
 
+#define CTP_PIN_INT             1
+#define CTP_PIN_RST             19
+
 #define EVE_GPIO_DIR            0xf
 
 #define EVE_GPIO_CAM            0

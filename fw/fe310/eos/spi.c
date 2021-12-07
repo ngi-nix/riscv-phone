@@ -102,6 +102,7 @@ void eos_spi_start(uint16_t div, uint8_t csid, uint8_t cspin, unsigned char evt)
 
 void eos_spi_stop(void) {
     eos_spi_flush();
+    eos_intr_set_handler(INT_SPI1_BASE, NULL);
     spi_evt = 0;
 }
 

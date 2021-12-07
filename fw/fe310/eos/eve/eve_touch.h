@@ -98,11 +98,10 @@ typedef struct EVETouchTimer {
 
 typedef void (*eve_touch_handler_t) (EVETouch *, uint16_t, uint8_t, void *);
 
-void eve_handle_touch(void);
+void eve_handle_touch(uint16_t intr_flags);
 void eve_handle_time(void);
 
-int eve_touch_init(uint8_t wakeup_cause, int touch_calibrate, uint32_t *touch_matrix);
-int eve_touch_run(uint8_t wakeup_cause);
+void eve_touch_init(int touch_calibrate, uint32_t *touch_matrix);
 void eve_touch_start(void);
 void eve_touch_stop(void);
 

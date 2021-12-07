@@ -5,7 +5,6 @@
 #include "power.h"
 #include "eve.h"
 
-static int touch_intr_mask = EVE_INT_TAG | EVE_INT_TOUCH;
 static int touch_multi;
 static uint8_t touch_tag0;
 
@@ -39,16 +38,15 @@ static const uint32_t _reg_track[] = {
     REG_TRACKER_4
 };
 
-void eve_handle_touch(void) {
+void eve_handle_touch(uint16_t intr_flags) {
     int i;
     char touch_ex = 0;
     char int_ccomplete = 0;
-    uint8_t flags;
+    uint16_t intr_mask;
 
-    eve_spi_start();
+    intr_mask = eve_read16(REG_INT_MASK);
+    if (!touch_multi && (intr_flags & EVE_INT_TOUCH)) touch_multi = 1;
 
-    flags = eve_read8(REG_INT_FLAGS) & touch_intr_mask;
-    if (!touch_multi && (flags & EVE_INT_TOUCH)) touch_multi = 1;
     for (i=0; i<EVE_MAX_TOUCH; i++) {
         uint8_t touch_tag;
         uint32_t touch_xy;
@@ -123,7 +121,7 @@ void eve_handle_touch(void) {
             }
             touch->x = touch_x;
             touch->y = touch_y;
-            if (touch_multi || (flags & EVE_INT_TAG)) {
+            if (touch_multi || (intr_flags & EVE_INT_TAG)) {
                 touch_tag = eve_read8(_reg_tag[i]);
             } else {
                 touch_tag = touch->tag;
@@ -241,16 +239,12 @@ void eve_handle_touch(void) {
 
     if (touch_multi) int_ccomplete = 1;
 
-    if (int_ccomplete && !(touch_intr_mask & EVE_INT_CONVCOMPLETE)) {
-        touch_intr_mask |= EVE_INT_CONVCOMPLETE;
-        eve_write8(REG_INT_MASK, touch_intr_mask);
+    if (int_ccomplete && !(intr_mask & EVE_INT_CONVCOMPLETE)) {
+        eve_write16(REG_INT_MASK, intr_mask | EVE_INT_CONVCOMPLETE);
     }
-    if (!int_ccomplete && (touch_intr_mask & EVE_INT_CONVCOMPLETE)) {
-        touch_intr_mask &= ~EVE_INT_CONVCOMPLETE;
-        eve_write8(REG_INT_MASK, touch_intr_mask);
+    if (!int_ccomplete && (intr_mask & EVE_INT_CONVCOMPLETE)) {
+        eve_write16(REG_INT_MASK, intr_mask & ~EVE_INT_CONVCOMPLETE);
     }
-
-    eve_spi_stop();
 }
 
 void eve_handle_time(void) {
@@ -259,8 +253,6 @@ void eve_handle_time(void) {
     if (touch_timer.evt) {
         int more = 0;
         uint16_t touch_evt = 0;
-
-        eve_spi_start();
 
         if (touch_timer.evt & EVE_TOUCH_ETYPE_LPRESS) {
             touch_evt |= EVE_TOUCH_ETYPE_LPRESS;
@@ -295,12 +287,10 @@ void eve_handle_time(void) {
         if (touch_handler && touch_evt) {
             touch_handler(touch, touch_evt, touch_timer.tag0, touch_handler_param);
         }
-
-        eve_spi_stop();
     }
 }
 
-static void _init(int touch_calibrate, uint32_t *touch_matrix) {
+void eve_touch_init(int touch_calibrate, uint32_t *touch_matrix) {
     /* configure touch */
     eve_write8(REG_CPURESET, 2);                            /* touch engine reset */
     eve_write16(REG_TOUCH_CONFIG, 0x4000);                  /* host mode multi touch */
@@ -329,49 +319,37 @@ static void _init(int touch_calibrate, uint32_t *touch_matrix) {
     }
 
     eve_write8(REG_CTOUCH_EXTENDED, 0x00);                  /* set extended mode */
-
-    /* configure interrupts */
-    eve_write8(REG_INT_MASK, touch_intr_mask);
-    eve_write8(REG_INT_EN, 0x01);
-    while(eve_read8(REG_INT_FLAGS));
-}
-
-static void _start(void) {
-    eve_write8(REG_TOUCH_MODE, EVE_TMODE_CONTINUOUS);
-}
-
-static void _stop(void) {
-    eve_write8(REG_TOUCH_MODE, EVE_TMODE_OFF);
-}
-
-int eve_touch_init(uint8_t wakeup_cause, int touch_calibrate, uint32_t *touch_matrix) {
-    int rst = (wakeup_cause == EVE_WAKE_RST);
-    int i;
-
-    eve_vtrack_init();
-
-    for (i=0; i<EVE_MAX_TOUCH; i++) {
-        EVETouch *touch = &touch_obj[i];
-        touch->eevt |= EVE_TOUCH_EETYPE_NOTOUCH;
-    }
-
-    if (rst) _init(touch_calibrate, touch_matrix);
-
-    return EVE_OK;
-}
-
-int eve_touch_run(uint8_t wakeup_cause) {
-    _start();
-
-    return EVE_OK;
 }
 
 void eve_touch_start(void) {
-    _start();
+    uint16_t intr_mask;
+    int i;
+
+    touch_multi = 0;
+    touch_tag0 = 0;
+    memset(&touch_timer, 0, sizeof(touch_timer));
+    for (i=0; i<EVE_MAX_TOUCH; i++) {
+        EVETouch *touch = &touch_obj[i];
+
+        memset(&touch_obj[i], 0, sizeof(EVETouch));
+        touch->eevt |= EVE_TOUCH_EETYPE_NOTOUCH;
+    }
+    eve_vtrack_init();
+
+    intr_mask = eve_read16(REG_INT_MASK);
+    eve_write16(REG_INT_MASK, intr_mask | EVE_INT_TAG | EVE_INT_TOUCH);
+
+    eve_write8(REG_TOUCH_MODE, EVE_TMODE_CONTINUOUS);
 }
 
 void eve_touch_stop(void) {
-    _stop();
+    uint16_t intr_mask;
+
+    intr_mask = eve_read16(REG_INT_MASK);
+    eve_write16(REG_INT_MASK, intr_mask & ~(EVE_INT_TAG | EVE_INT_TOUCH | EVE_INT_CONVCOMPLETE));
+    eve_touch_timer_clear(touch_timer.touch);
+
+    eve_write8(REG_TOUCH_MODE, EVE_TMODE_OFF);
 }
 
 void eve_touch_set_handler(eve_touch_handler_t handler, void *param) {

@@ -16,7 +16,7 @@
 #include "cell.h"
 #include "sock.h"
 #include "i2c/bq25895.h"
-#include "eve/eve.h"
+#include "eve/eve_eos.h"
 
 #include "board.h"
 
@@ -56,7 +56,7 @@ void eos_init(void) {
     if (rv) printf("BQ25895 INIT ERR:%d\n", rv);
 
     eos_spi_select(EOS_SPI_DEV_EVE);
-    rv = eve_init(wakeup_cause, touch_calibrate, touch_matrix, EVE_GPIO_DIR);
+    rv = eos_eve_init(wakeup_cause, EVE_GPIO_DIR, touch_calibrate, touch_matrix);
     eos_spi_deselect();
     if (rv) printf("EVE INIT ERR:%d\n", rv);
 
@@ -74,7 +74,7 @@ void eos_run(uint8_t wakeup_cause) {
     int rv;
 
     eos_spi_select(EOS_SPI_DEV_EVE);
-    rv = eve_run(wakeup_cause);
+    rv = eos_eve_run(wakeup_cause);
     eos_spi_deselect();
     if (rv) printf("EVE RUN ERR:%d\n", rv);
 

@@ -311,6 +311,10 @@ static void net_start(void) {
     SPI1_REG(SPI_REG_CSID) = eos_spi_csid(EOS_SPI_DEV_NET);
 }
 
+static void net_stop(void) {
+    eos_intr_set_handler(INT_SPI1_BASE, NULL);
+}
+
 int eos_net_init(uint8_t wakeup_cause) {
     int i;
 
@@ -400,6 +404,7 @@ void eos_net_stop(void) {
         if (!done) asm volatile ("wfi");
         set_csr(mstatus, MSTATUS_MIE);
     }
+    net_stop();
 }
 
 int eos_net_sleep(uint32_t timeout) {

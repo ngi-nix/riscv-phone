@@ -303,7 +303,14 @@ void eve_cmd_burst_end(void) {
     cmd_burst = 0;
 }
 
-static int _init(uint8_t gpio_dir) {
+void eve_handle_intr(void) {
+    uint16_t intr_flags;
+
+    intr_flags = eve_read16(REG_INT_FLAGS);
+    eve_handle_touch(intr_flags);
+}
+
+int eve_init(uint8_t gpio_dir, int touch_calibrate, uint32_t *touch_matrix) {
     uint8_t chipid = 0;
     uint8_t reset = 0x07;
     uint16_t timeout;
@@ -359,6 +366,9 @@ static int _init(uint8_t gpio_dir) {
     eve_write8(REG_VOL_SOUND, 0x00);        /* turn synthesizer volume off */
     eve_write8(REG_VOL_PB, 0x00);           /* turn recorded audio volume off */
 
+    /* configure interrupts */
+    eve_write16(REG_INT_MASK, 0);
+
     /* write a basic display-list to get things started */
     eve_dl_start(EVE_RAM_DL, 0);
     eve_dl_write(CLEAR_COLOR_RGB(0,0,0));
@@ -372,18 +382,35 @@ static int _init(uint8_t gpio_dir) {
 #endif
     /* nothing is being displayed yet... the pixel clock is still 0x00 */
 
+    eve_touch_init(touch_calibrate, touch_matrix);
     return EVE_OK;
 }
 
-static void _start(void) {
-    uint16_t gpiox;
+void eve_start(void) {
+    eve_touch_start();
 
-    gpiox = eve_read16(REG_GPIOX) | 0x8000;
-    eve_write16(REG_GPIOX, gpiox);          /* enable the DISP signal to the LCD panel, it is set to output in REG_GPIOX_DIR by default */
-    eve_write8(REG_PCLK, EVE_PCLK);         /* now start clocking data to the LCD panel */
+    /* enable interrupts */
+    eve_write8(REG_INT_EN, 0x01);
+    while(eve_read8(REG_INT_FLAGS));
 }
 
-static void _stop(void) {
+void eve_stop(void) {
+    eve_touch_stop();
+
+    /* disable interrupts */
+    eve_write8(REG_INT_EN, 0x00);
+    while(eve_read8(REG_INT_FLAGS));
+}
+
+void eve_start_clk(void) {
+    uint16_t gpiox;
+
+    eve_write8(REG_PCLK, EVE_PCLK);         /* start clocking data to the LCD panel */
+    gpiox = eve_read16(REG_GPIOX) | 0x8000;
+    eve_write16(REG_GPIOX, gpiox);          /* enable the DISP signal to the LCD panel, it is set to output in REG_GPIOX_DIR */
+}
+
+void eve_stop_clk(void) {
     uint16_t gpiox;
 
     gpiox = eve_read16(REG_GPIOX) & ~0x8000;
@@ -391,45 +418,43 @@ static void _stop(void) {
     eve_write8(REG_PCLK, 0);
 }
 
-int eve_init(uint8_t wakeup_cause, int touch_calibrate, uint32_t *touch_matrix, uint8_t gpio_dir) {
-    int rv;
-    int rst = (wakeup_cause == EVE_WAKE_RST);
+void eve_active(void) {
+    eve_command(EVE_ACTIVE, 0);
+    eve_time_sleep(40);
+}
 
-    if (rst) {
-        int rv = _init(gpio_dir);
-        if (rv) return rv;
-    } else {
-        eve_command(EVE_ACTIVE, 0);
-        eve_time_sleep(40);
+void eve_standby(void) {
+    if (power_state != EVE_PSTATE_ACTIVE) return;
+
+    eve_command(EVE_STANDBY, 0);
+
+    power_state = EVE_PSTATE_STANDBY;
+}
+
+void eve_sleep(void) {
+    if (power_state != EVE_PSTATE_ACTIVE) return;
+
+    eve_stop_clk();
+    eve_stop();
+
+    eve_command(EVE_SLEEP, 0);
+
+    power_state = EVE_PSTATE_SLEEP;
+}
+
+void eve_wake(void) {
+    eve_active();
+
+    if (power_state == EVE_PSTATE_SLEEP) {
+        eve_start();
+        eve_start_clk();
     }
 
-    rv = eve_touch_init(wakeup_cause, touch_calibrate, touch_matrix);
-    if (rv) return rv;
-
-    eve_platform_init();
-
-    return EVE_OK;
+    power_state = EVE_PSTATE_ACTIVE;
 }
 
-int eve_run(uint8_t wakeup_cause) {
-    int rv;
-
-    _start();
-    rv = eve_touch_run(wakeup_cause);
-
-    return rv;
-}
-
-void eve_start(void) {
-    _start();
-    eve_touch_start();
-}
-
-void eve_stop(void) {
-    uint16_t gpiox;
-
-    eve_touch_stop();
-    _stop();
+void eve_brightness(uint8_t b) {
+    eve_write8(REG_PWM_DUTY, b);
 }
 
 int eve_gpio_get(int gpio) {
@@ -458,43 +483,4 @@ void eve_gpio_set_dir(uint8_t dir) {
     reg &= 0xfff0;
     reg |= dir & 0x0f;
     eve_write16(REG_GPIOX_DIR, reg);
-}
-
-void eve_standby(void) {
-    uint16_t gpiox;
-
-    if (power_state != EVE_PSTATE_ACTIVE) return;
-
-    eve_command(EVE_STANDBY, 0);
-
-    power_state = EVE_PSTATE_STANDBY;
-}
-
-void eve_sleep(void) {
-    uint16_t gpiox;
-
-    if (power_state != EVE_PSTATE_ACTIVE) return;
-
-    eve_stop();
-
-    eve_command(EVE_SLEEP, 0);
-
-    power_state = EVE_PSTATE_SLEEP;
-}
-
-void eve_active(void) {
-    uint16_t gpiox;
-
-    eve_command(EVE_ACTIVE, 0);
-
-    if (power_state == EVE_PSTATE_SLEEP) {
-        eve_time_sleep(40);
-        eve_start();
-    }
-
-    power_state = EVE_PSTATE_ACTIVE;
-}
-
-void eve_brightness(uint8_t b) {
-    eve_write8(REG_PWM_DUTY, b);
 }
