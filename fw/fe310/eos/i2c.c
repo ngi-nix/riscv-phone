@@ -10,19 +10,16 @@
 #include "i2c.h"
 
 int eos_i2c_init(uint8_t wakeup_cause) {
-    eos_i2c_stop();
     eos_i2c_speed(EOS_I2C_SPEED);
+    // eos_i2c_start();
 
     return EOS_OK;
 }
 
-int eos_i2c_start(void) {
-    if (eos_i2s_running()) return EOS_ERR_BUSY;
-
-    GPIO_REG(GPIO_IOF_EN)   |=  IOF0_I2C0_MASK;
+void eos_i2c_start(void) {
     I2C0_REGB(I2C_CONTROL)  |=  I2C_CONTROL_EN;
-
-    return EOS_OK;
+    GPIO_REG(GPIO_IOF_SEL)  &= ~IOF0_I2C0_MASK;
+    GPIO_REG(GPIO_IOF_EN)   |=  IOF0_I2C0_MASK;
 }
 
 void eos_i2c_stop(void) {

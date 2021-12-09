@@ -5,9 +5,15 @@
 
 #define EOS_UART_MAX_ETYPE      2
 
+#define EOS_UART_SPEED          115200
+
 typedef void (*eos_uart_handler_t) (unsigned char);
 
 int eos_uart_init(uint8_t wakeup_cause);
+void eos_uart_start(void);
+void eos_uart_stop(void);
+void eos_uart_speed(uint32_t baud_rate);
+
 void eos_uart_set_handler(unsigned char type, eos_uart_handler_t handler);
 
 void eos_uart_txwm_set(uint8_t wm);

@@ -428,7 +428,7 @@ handle_intr:
   jalr x0, x18
 
   .section      .text.entry
-  .align 2
+  .align 4
 
 trap_entry_text:
   addi sp, sp, -24*REGBYTES

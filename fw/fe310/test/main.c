@@ -5,7 +5,7 @@
 
 #include <eos.h>
 #include <timer.h>
-#include <power.h>
+#include <pwr.h>
 
 #include <eve/eve.h>
 #include <eve/eve_kbd.h>
@@ -28,7 +28,8 @@
 #include "modem.h"
 #include "wifi.h"
 #include "cam.h"
-#include "fs.h"
+// #include "fs.h"
+#include "audio.h"
 #include "test.h"
 
 void app_home_page(EVEWindow *window, EVEViewStack *stack) {
@@ -63,12 +64,14 @@ void app_home_page(EVEWindow *window, EVEViewStack *stack) {
             .widget.spec.page.title = "Camera",
             .widget.spec.page.constructor = app_cam
         },
+        /*
         {
             .widget.type = EVE_WIDGET_TYPE_PAGE,
             .widget.g.w = APP_SCREEN_W,
             .widget.spec.page.title = "File system",
             .widget.spec.page.constructor = app_fs
         },
+        */
         {
             .widget.type = EVE_WIDGET_TYPE_PAGE,
             .widget.g.w = APP_SCREEN_W,
@@ -77,17 +80,13 @@ void app_home_page(EVEWindow *window, EVEViewStack *stack) {
         },
     };
 
-    EVEForm *form = eve_form_create(window, stack, spec, 7, NULL, NULL, NULL);
+    EVEForm *form = eve_form_create(window, stack, spec, 6, NULL, NULL, NULL);
 }
 
 int main() {
-    uint8_t wakeup_cause = eos_power_wakeup_cause();
-    int rst = (wakeup_cause == EOS_PWR_WAKE_RST);
-
-    printf("\nREADY.\n");
-    printf("FREQ:%lu\n", PRCI_get_cpu_freq());
-
     eos_init();
+    printf("FREQ:%lu\n", PRCI_get_cpu_freq());
+    printf("\nREADY.\n");
 
     app_root_init(app_home_page, 0x20);
     app_status_init();
@@ -95,6 +94,7 @@ int main() {
     app_wifi_init();
     app_cell_dev_init();
     app_cell_pdp_init();
-    app_fs_init();
+    // app_fs_init();
+    audio_start();
     eos_evtq_loop();
 }

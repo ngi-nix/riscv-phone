@@ -3,7 +3,7 @@
 #include <stdio.h>
 
 #include "eos.h"
-#include "power.h"
+#include "pwr.h"
 #include "i2c.h"
 #include "i2c/bq25895.h"
 
@@ -20,8 +20,6 @@ int eos_bq25895_init(uint8_t wakeup_cause) {
     int i, rv = EOS_OK;
     uint8_t data = 0;
 
-    rv = eos_i2c_start();
-    if (rv) return rv;
     if (rst) {
         rv = reg_write(0x14, 0x80);  // reset
         if (rv) printf("I2C ERROR 0x14\n");
@@ -40,7 +38,6 @@ int eos_bq25895_init(uint8_t wakeup_cause) {
         rv = reg_read(i, &data);
         if (!rv) printf("REG%02x: %02x\n", i, data);
     }
-    eos_i2c_stop();
 
     return EOS_OK;
 }

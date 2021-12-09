@@ -26,7 +26,7 @@ static void wifi_handle_msg(unsigned char type, unsigned char *buffer, uint16_t 
     }
 }
 
-void eos_wifi_init(void) {
+void eos_wifi_netinit(void) {
     int i;
 
     for (i=0; i<EOS_WIFI_MAX_MTYPE; i++) {

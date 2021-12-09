@@ -141,8 +141,8 @@ void app_cam(EVEWindow *window, EVEViewStack *stack) {
     eos_time_sleep(100);
 
     eos_i2c_speed(100000);
-    rv = eos_i2c_start();
-    if (!rv) rv = eos_ov2640_init();
+    eos_i2c_start();
+    rv = eos_ov2640_init();
     if (!rv) rv = eos_ov2640_set_pixfmt(PIXFORMAT_JPEG);
     if (!rv) rv = eos_ov2640_set_framesize(FRAMESIZE_VGA);
     eos_i2c_stop();

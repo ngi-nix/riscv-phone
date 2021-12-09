@@ -28,7 +28,7 @@ static void cell_handle_msg(unsigned char type, unsigned char *buffer, uint16_t 
     }
 }
 
-void eos_cell_init(void) {
+void eos_cell_netinit(void) {
     int i;
 
     for (i=0; i<EOS_CELL_MAX_MTYPE; i++) {

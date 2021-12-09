@@ -31,8 +31,6 @@ int eos_spi_dev_init(uint8_t wakeup_cause) {
 
             GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << spi_cfg[i].cspin);
             GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << spi_cfg[i].cspin);
-            GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << spi_cfg[i].cspin);
-            GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << spi_cfg[i].cspin);
         }
     }
 

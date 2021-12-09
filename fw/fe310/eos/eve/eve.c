@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
-#include "power.h"
 #include "eve.h"
 
 #define EVE_MEM_WRITE           0x800000

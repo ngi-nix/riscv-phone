@@ -16,7 +16,7 @@ typedef struct EOSNetAddr {
     uint16_t port;
 } EOSNetAddr;
 
-void eos_sock_init(void);
+void eos_sock_netinit(void);
 void eos_sock_set_handler(unsigned char sock, eos_evt_handler_t handler);
 eos_evt_handler_t eos_sock_get_handler(unsigned char sock);
 

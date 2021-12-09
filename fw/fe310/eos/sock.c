@@ -34,7 +34,7 @@ static void sock_handle_msg(unsigned char type, unsigned char *buffer, uint16_t 
     }
 }
 
-void eos_sock_init(void) {
+void eos_sock_netinit(void) {
     int i;
 
     for (i=0; i<EOS_SOCK_MAX_SOCK; i++) {

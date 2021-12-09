@@ -5,7 +5,6 @@
 #include "platform.h"
 
 #include "eos.h"
-#include "power.h"
 #include "timer.h"
 #include "i2s.h"
 #include "net.h"
@@ -33,13 +32,18 @@ int eos_lcd_select(void) {
     if (eos_spi_dev() != EOS_SPI_DEV_NET) return EOS_ERR_BUSY;
 
     eos_net_stop();
-    GPIO_REG(GPIO_IOF_EN) &= ~SPI_IOF_MASK;
+
+    GPIO_REG(GPIO_OUTPUT_VAL)   &= ~(1 << LCD_PIN_CS);
+
+    GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << LCD_PIN_CS);
+    GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << LCD_PIN_CS);
+
+    GPIO_REG(GPIO_IOF_EN)       &=  ~SPI_IOF_MASK;
 
     return EOS_OK;
 }
 
 void eos_lcd_deselect(void) {
-    GPIO_REG(GPIO_OUTPUT_VAL) |= (1 << IOF_SPI1_MOSI);
     GPIO_REG(GPIO_IOF_EN) |= SPI_IOF_MASK;
     eos_net_start();
 }

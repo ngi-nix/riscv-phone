@@ -140,52 +140,47 @@ extern void _eos_i2s_start_pwm(void);
 int eos_i2s_init(uint8_t wakeup_cause) {
     eos_evtq_set_handler(EOS_EVT_I2S, i2s_handle_evt);
 
-    GPIO_REG(GPIO_OUTPUT_VAL)   |=  (1 << I2S_PIN_CK_SW);
-    GPIO_REG(GPIO_OUTPUT_VAL)   &= ~((1 << I2S_PIN_CK) | (1 << I2S_PIN_CK_SR) | (1 << I2S_PIN_WS_MIC) | (1 << I2S_PIN_WS_SPK));
+    eos_i2s_init_mux();
 
-    GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_CK);
-    GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << I2S_PIN_CK);
-    GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << I2S_PIN_CK);
-    GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << I2S_PIN_CK);
+    GPIO_REG(GPIO_OUTPUT_VAL)   |=  (1 << I2S_PIN_CK_SW);
+    GPIO_REG(GPIO_OUTPUT_VAL)   &= ~(1 << I2S_PIN_CK_SR);
 
     GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_CK_SW);
     GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << I2S_PIN_CK_SW);
-    GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << I2S_PIN_CK_SW);
-    GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << I2S_PIN_CK_SW);
 
     GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_CK_SR);
     GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << I2S_PIN_CK_SR);
-    GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << I2S_PIN_CK_SR);
-    GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << I2S_PIN_CK_SR);
-
-    GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_WS_MIC);
-    GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << I2S_PIN_WS_MIC);
-    GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << I2S_PIN_WS_MIC);
-    GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << I2S_PIN_WS_MIC);
-
-    GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_WS_SPK);
-    GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << I2S_PIN_WS_SPK);
-    GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << I2S_PIN_WS_SPK);
-    GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << I2S_PIN_WS_SPK);
-
-    GPIO_REG(GPIO_INPUT_EN)     |=  (1 << I2S_PIN_SD_IN);
-    GPIO_REG(GPIO_OUTPUT_EN)    &= ~(1 << I2S_PIN_SD_IN);
-    GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << I2S_PIN_SD_IN);
-    GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << I2S_PIN_SD_IN);
-
-    GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_SD_OUT);
-    GPIO_REG(GPIO_OUTPUT_EN)    &= ~(1 << I2S_PIN_SD_OUT);
-    GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << I2S_PIN_SD_OUT);
-    GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << I2S_PIN_SD_OUT);
-
-    GPIO_REG(GPIO_IOF_EN)       &= ~I2S_PIN_PWM;
-    GPIO_REG(GPIO_IOF_SEL)      |=  I2S_PIN_PWM;
 
     return EOS_OK;
 }
 
+void eos_i2s_init_mux(void) {
+    GPIO_REG(GPIO_OUTPUT_VAL)   &= ~((1 << I2S_PIN_CK) | (1 << I2S_PIN_WS_MIC) | (1 << I2S_PIN_WS_SPK));
+
+    GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_CK);
+    GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << I2S_PIN_CK);
+
+    GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_WS_MIC);
+    GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << I2S_PIN_WS_MIC);
+
+    GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_WS_SPK);
+    GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << I2S_PIN_WS_SPK);
+
+    GPIO_REG(GPIO_INPUT_EN)     |=  (1 << I2S_PIN_SD_IN);
+    GPIO_REG(GPIO_OUTPUT_EN)    &= ~(1 << I2S_PIN_SD_IN);
+
+    GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_SD_OUT);
+    GPIO_REG(GPIO_OUTPUT_EN)    &= ~(1 << I2S_PIN_SD_OUT);
+}
+
 void eos_i2s_start(uint32_t sample_rate, unsigned char fmt) {
     i2s_clk_period = ((PRCI_get_cpu_freq() / (sample_rate * 64)) & ~I2S_PWM_SCALE_CK_MASK) + 1;
+
+    GPIO_REG(GPIO_INPUT_EN)     |=  (1 << I2S_PIN_SD_IN);
+    GPIO_REG(GPIO_OUTPUT_EN)    &= ~(1 << I2S_PIN_SD_IN);
+
+    GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_SD_OUT);
+    GPIO_REG(GPIO_OUTPUT_EN)    &= ~(1 << I2S_PIN_SD_OUT);
 
     I2S_REG_CK(PWM_CMP0)        = i2s_clk_period >> I2S_PWM_SCALE_CK;
     I2S_REG_CK(PWM_CMP1)        = I2S_REG_CK(PWM_CMP0) / 2;
@@ -219,8 +214,9 @@ void eos_i2s_start(uint32_t sample_rate, unsigned char fmt) {
     I2S_REG_WS_SPK(PWM_CFG)     = PWM_CFG_ENALWAYS | PWM_CFG_ZEROCMP | PWM_CFG_CMP1GANG;
     */
 
-    GPIO_REG(GPIO_OUTPUT_VAL)   |=  (1 << I2S_PIN_CK_SR);
-    GPIO_REG(GPIO_IOF_EN)       |=  I2S_PIN_PWM;
+    GPIO_REG(GPIO_OUTPUT_VAL)   |= (1 << I2S_PIN_CK_SR);
+    GPIO_REG(GPIO_IOF_SEL)      |= I2S_PIN_PWM;
+    GPIO_REG(GPIO_IOF_EN)       |= I2S_PIN_PWM;
 }
 
 void eos_i2s_stop(void) {
@@ -238,7 +234,10 @@ void eos_i2s_stop(void) {
     eos_intr_disable(I2S_IRQ_WS_ID);
     eos_intr_disable(I2S_IRQ_SD_ID);
 
+    GPIO_REG(GPIO_OUTPUT_VAL)   |=  (1 << I2S_PIN_CK_SW);
     GPIO_REG(GPIO_OUTPUT_VAL)   &= ~(1 << I2S_PIN_CK_SR);
+
+    GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << I2S_PIN_WS_SPK);
     GPIO_REG(GPIO_IOF_EN)       &= ~I2S_PIN_PWM;
 }
 

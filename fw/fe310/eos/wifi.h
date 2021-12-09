@@ -8,6 +8,6 @@
 
 #define EOS_WIFI_MAX_MTYPE          5
 
-void eos_wifi_init(void);
+void eos_wifi_netinit(void);
 void eos_wifi_set_handler(unsigned char mtype, eos_evt_handler_t handler);
 eos_evt_handler_t eos_wifi_get_handler(unsigned char mtype);

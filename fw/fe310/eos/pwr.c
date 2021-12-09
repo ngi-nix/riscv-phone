@@ -13,7 +13,7 @@
 #include "lcd.h"
 #include "eve/eve.h"
 
-#include "power.h"
+#include "pwr.h"
 
 #define PWR_RTC_SCALE   15
 #define PWR_RTC_SFREQ   (EOS_TIMER_RTC_FREQ >> PWR_RTC_SCALE)
@@ -21,44 +21,7 @@
 static eos_evt_handler_t evt_handler[EOS_PWR_MAX_MTYPE];
 static unsigned char power_btn_down;
 
-static void power_handle_msg(unsigned char type, unsigned char *buffer, uint16_t len) {
-    unsigned char mtype;
-
-    if ((buffer == NULL) || (len < 1)) {
-        eos_net_bad_handler(type, buffer, len);
-        return;
-    }
-
-    mtype = buffer[0];
-    if ((mtype < EOS_PWR_MAX_MTYPE) && evt_handler[mtype]) {
-        evt_handler[mtype](mtype, buffer, len);
-    } else {
-        eos_net_bad_handler(type, buffer, len);
-    }
-}
-
-static void power_handle_btn(unsigned char type, unsigned char *buffer, uint16_t len) {
-    unsigned char level = buffer[1];
-
-    eos_net_free(buffer, 0);
-    if (!level) {
-        power_btn_down = 1;
-        return;
-    }
-    if (!power_btn_down) return;
-
-    eos_power_sleep();
-}
-
-int eos_power_init(uint8_t wakeup_cause) {
-    int i;
-
-    for (i=0; i<EOS_PWR_MAX_MTYPE; i++) {
-        evt_handler[i] = NULL;
-    }
-    eos_net_set_handler(EOS_NET_MTYPE_POWER, power_handle_msg);
-    eos_power_set_handler(EOS_PWR_MTYPE_BUTTON, power_handle_btn);
-
+int eos_pwr_init(uint8_t wakeup_cause) {
     AON_REG(AON_PMUKEY) = 0x51F15E;
     AON_REG(AON_PMUIE) = 0x5;
 
@@ -70,15 +33,15 @@ int eos_power_init(uint8_t wakeup_cause) {
     return EOS_OK;
 }
 
-uint8_t eos_power_wakeup_cause(void) {
+uint8_t eos_pwr_wakeup_cause(void) {
     return AON_REG(AON_PMUCAUSE) & 0xff;
 }
 
-uint8_t eos_power_reset_cause(void) {
+uint8_t eos_pwr_reset_cause(void) {
     return (AON_REG(AON_PMUCAUSE) >> 8) & 0xff;
 }
 
-int eos_power_sleep(void) {
+int eos_pwr_sleep(void) {
     int rv;
 
     rv = eos_lcd_sleep();
@@ -97,7 +60,7 @@ int eos_power_sleep(void) {
     return EOS_OK;
 }
 
-void eos_power_wake_at(uint32_t msec) {
+void eos_pwr_wake_at(uint32_t msec) {
     uint32_t pmuie;
 
     AON_REG(AON_RTCCFG) |= AON_RTCCFG_ENALWAYS;
@@ -108,7 +71,7 @@ void eos_power_wake_at(uint32_t msec) {
     AON_REG(AON_PMUIE) = pmuie;
 }
 
-void eos_power_wake_disable(void) {
+void eos_pwr_wake_disable(void) {
     uint32_t pmuie;
 
     AON_REG(AON_RTCCMP) = 0xFFFFFFFF;
@@ -121,11 +84,50 @@ void eos_power_wake_disable(void) {
     AON_REG(AON_PMUIE) = pmuie;
 }
 
-void eos_power_set_handler(unsigned char mtype, eos_evt_handler_t handler) {
+static void pwr_handle_msg(unsigned char type, unsigned char *buffer, uint16_t len) {
+    unsigned char mtype;
+
+    if ((buffer == NULL) || (len < 1)) {
+        eos_net_bad_handler(type, buffer, len);
+        return;
+    }
+
+    mtype = buffer[0];
+    if ((mtype < EOS_PWR_MAX_MTYPE) && evt_handler[mtype]) {
+        evt_handler[mtype](mtype, buffer, len);
+    } else {
+        eos_net_bad_handler(type, buffer, len);
+    }
+}
+
+static void pwr_handle_btn(unsigned char type, unsigned char *buffer, uint16_t len) {
+    unsigned char level = buffer[1];
+
+    eos_net_free(buffer, 0);
+    if (!level) {
+        power_btn_down = 1;
+        return;
+    }
+    if (!power_btn_down) return;
+
+    eos_pwr_sleep();
+}
+
+void eos_pwr_netinit(void) {
+    int i;
+
+    for (i=0; i<EOS_PWR_MAX_MTYPE; i++) {
+        evt_handler[i] = NULL;
+    }
+    eos_net_set_handler(EOS_NET_MTYPE_POWER, pwr_handle_msg);
+    eos_pwr_set_handler(EOS_PWR_MTYPE_BUTTON, pwr_handle_btn);
+}
+
+void eos_pwr_set_handler(unsigned char mtype, eos_evt_handler_t handler) {
     if (mtype < EOS_PWR_MAX_MTYPE) evt_handler[mtype] = handler;
 }
 
-eos_evt_handler_t eos_power_get_handler(unsigned char mtype) {
+eos_evt_handler_t eos_pwr_get_handler(unsigned char mtype) {
     if (mtype < EOS_PWR_MAX_MTYPE) return evt_handler[mtype];
     return NULL;
 }

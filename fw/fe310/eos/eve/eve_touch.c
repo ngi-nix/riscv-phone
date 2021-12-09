@@ -2,7 +2,6 @@
 #include <string.h>
 #include <math.h>
 
-#include "power.h"
 #include "eve.h"
 
 static int touch_multi;

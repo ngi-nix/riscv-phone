@@ -46,6 +46,6 @@
 #define EOS_CELL_SMS_ADDRTYPE_ALPHA     2
 #define EOS_CELL_SMS_ADDRTYPE_OTHER     3
 
-void eos_cell_init(void);
+void eos_cell_netinit(void);
 void eos_cell_set_handler(unsigned char mtype, eos_evt_handler_t handler);
 eos_evt_handler_t eos_cell_get_handler(unsigned char mtype);

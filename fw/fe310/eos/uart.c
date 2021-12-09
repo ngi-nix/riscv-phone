@@ -4,6 +4,7 @@
 
 #include "encoding.h"
 #include "platform.h"
+#include "prci_driver.h"
 
 #include "eos.h"
 #include "interrupt.h"
@@ -43,7 +44,26 @@ int eos_uart_init(uint8_t wakeup_cause) {
     eos_evtq_set_handler(EOS_EVT_UART, uart_handle_evt);
     eos_intr_set(INT_UART0_BASE, IRQ_PRIORITY_UART, uart_handle_intr);
 
+    UART0_REG(UART_REG_TXCTRL)  |=  UART_TXEN;
+    UART0_REG(UART_REG_RXCTRL)  |=  UART_RXEN;
+
+    eos_uart_speed(EOS_UART_SPEED);
+    eos_uart_start();
+
     return EOS_OK;
+}
+
+void eos_uart_start(void) {
+    GPIO_REG(GPIO_IOF_SEL)      &= ~IOF0_UART0_MASK;
+    GPIO_REG(GPIO_IOF_EN)       |=  IOF0_UART0_MASK;
+}
+
+void eos_uart_stop(void) {
+    GPIO_REG(GPIO_IOF_EN)       &= ~IOF0_UART0_MASK;
+}
+
+void eos_uart_speed(uint32_t baud_rate) {
+    UART0_REG(UART_REG_DIV) = PRCI_get_cpu_freq() / baud_rate - 1;
 }
 
 void eos_uart_set_handler(unsigned char type, eos_uart_handler_t handler) {

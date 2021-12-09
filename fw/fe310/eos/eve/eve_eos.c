@@ -5,7 +5,7 @@
 #include "eos.h"
 #include "interrupt.h"
 #include "event.h"
-#include "power.h"
+#include "pwr.h"
 
 #include "board.h"
 
@@ -38,16 +38,41 @@ static void handle_intr(void) {
     eos_evtq_push_isr(EOS_EVT_UI | EVE_ETYPE_INTR, NULL, 0);
 }
 
+
+static void _start(void) {
+    eve_start();
+
+    GPIO_REG(GPIO_INPUT_EN)     |=  (1 << EVE_PIN_INTR);
+    GPIO_REG(GPIO_OUTPUT_EN)    &= ~(1 << EVE_PIN_INTR);
+
+    GPIO_REG(GPIO_LOW_IE)       |=  (1 << EVE_PIN_INTR);
+
+    eos_intr_enable(INT_GPIO_BASE + EVE_PIN_INTR);
+    _run = 1;
+}
+
+static void _stop(void) {
+    _run = 0;
+    eos_intr_disable(INT_GPIO_BASE + EVE_PIN_INTR);
+
+    GPIO_REG(GPIO_LOW_IE)       &= ~(1 << EVE_PIN_INTR);
+
+    eve_stop();
+}
+
 int eos_eve_init(uint8_t wakeup_cause, uint8_t gpio_dir, int touch_calibrate, uint32_t *touch_matrix) {
     int rst = (wakeup_cause == EOS_PWR_WAKE_RST);
-    int rv;
+    int rv = EVE_OK;
 
+    eve_spi_start();
     if (rst) {
         rv = eve_init(gpio_dir, touch_calibrate, touch_matrix);
-        if (rv) return EOS_ERR;
     } else {
         eve_active();
     }
+    eve_spi_stop();
+
+    if (rv) return EOS_ERR;
 
     eos_evtq_set_handler(EOS_EVT_UI, handle_evt);
     eos_timer_set_handler(EOS_TIMER_ETYPE_UI, handle_time);
@@ -58,31 +83,22 @@ int eos_eve_init(uint8_t wakeup_cause, uint8_t gpio_dir, int touch_calibrate, ui
 }
 
 int eos_eve_run(uint8_t wakeup_cause) {
-    eos_eve_start();
+    eve_spi_start();
+    _start();
     eve_start_clk();
+    eve_spi_stop();
 
     return EOS_OK;
 }
 
 void eos_eve_start(void) {
-    eve_start();
-
-    GPIO_REG(GPIO_INPUT_EN)     |=  (1 << EVE_PIN_INTR);
-    GPIO_REG(GPIO_OUTPUT_EN)    &= ~(1 << EVE_PIN_INTR);
-    GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << EVE_PIN_INTR);
-    GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << EVE_PIN_INTR);
-
-    GPIO_REG(GPIO_LOW_IE)       |=  (1 << EVE_PIN_INTR);
-
-    eos_intr_enable(INT_GPIO_BASE + EVE_PIN_INTR);
-    _run = 1;
+    eve_spi_start();
+    _start();
+    eve_spi_stop();
 }
 
 void eos_eve_stop(void) {
-    _run = 0;
-    eos_intr_disable(INT_GPIO_BASE + EVE_PIN_INTR);
-
-    GPIO_REG(GPIO_LOW_IE)       &= ~(1 << EVE_PIN_INTR);
-
-    eve_stop();
+    eve_spi_start();
+    _stop();
+    eve_spi_stop();
 }

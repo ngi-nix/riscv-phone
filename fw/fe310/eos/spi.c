@@ -59,18 +59,12 @@ int eos_spi_init(uint8_t wakeup_cause) {
 
     GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << IOF_SPI1_SCK);
     GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << IOF_SPI1_SCK);
-    GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << IOF_SPI1_SCK);
-    GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << IOF_SPI1_SCK);
 
     GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << IOF_SPI1_MOSI);
     GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << IOF_SPI1_MOSI);
-    GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << IOF_SPI1_MOSI);
-    GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << IOF_SPI1_MOSI);
 
     GPIO_REG(GPIO_INPUT_EN)     |=  (1 << IOF_SPI1_MISO);
     GPIO_REG(GPIO_OUTPUT_EN)    &= ~(1 << IOF_SPI1_MISO);
-    GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << IOF_SPI1_MISO);
-    GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << IOF_SPI1_MISO);
 
     SPI1_REG(SPI_REG_SCKMODE) = SPI_MODE0;
     SPI1_REG(SPI_REG_FMT) = SPI_FMT_PROTO(SPI_PROTO_S) |
@@ -78,8 +72,8 @@ int eos_spi_init(uint8_t wakeup_cause) {
       SPI_FMT_DIR(SPI_DIR_RX) |
       SPI_FMT_LEN(8);
 
-    GPIO_REG(GPIO_IOF_SEL) &= ~SPI_IOF_MASK;
-    GPIO_REG(GPIO_IOF_EN) |= SPI_IOF_MASK;
+    GPIO_REG(GPIO_IOF_SEL)      &= ~SPI_IOF_MASK;
+    GPIO_REG(GPIO_IOF_EN)       |=  SPI_IOF_MASK;
 
     // There is no way here to change the CS polarity.
     // SPI1_REG(SPI_REG_CSDEF) = 0xFFFF;

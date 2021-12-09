@@ -40,11 +40,7 @@ int app_test_uievt(EVEForm *form, uint16_t evt, void *param) {
         case EVE_UIEVT_PAGE_TOUCH:
             printf("PAGE TOUCH\n");
             printf("BQ25895:\n");
-            rv = eos_i2c_start();
-            if (rv) {
-                printf("I2C BUSY\n");
-                return 0;
-            }
+            eos_i2c_start();
             for (i=0; i<0x15; i++) {
                 rv = reg_read(i, &data);
                 if (!rv) printf("REG%02x: %02x\n", i, data);

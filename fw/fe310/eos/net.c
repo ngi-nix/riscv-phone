@@ -9,7 +9,7 @@
 #include "interrupt.h"
 #include "event.h"
 #include "timer.h"
-#include "power.h"
+#include "pwr.h"
 
 #include "board.h"
 
@@ -332,16 +332,12 @@ int eos_net_init(uint8_t wakeup_cause) {
 
     GPIO_REG(GPIO_INPUT_EN)     |=  (1 << NET_PIN_CTS);
     GPIO_REG(GPIO_OUTPUT_EN)    &= ~(1 << NET_PIN_CTS);
-    GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << NET_PIN_CTS);
-    GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << NET_PIN_CTS);
 
     GPIO_REG(GPIO_RISE_IE)      |=  (1 << NET_PIN_CTS);
     eos_intr_set(INT_GPIO_BASE + NET_PIN_CTS, IRQ_PRIORITY_NET_CTS, net_handle_cts);
 
     GPIO_REG(GPIO_INPUT_EN)     |=  (1 << NET_PIN_RTS);
     GPIO_REG(GPIO_OUTPUT_EN)    &= ~(1 << NET_PIN_RTS);
-    GPIO_REG(GPIO_PULLUP_EN)    &= ~(1 << NET_PIN_RTS);
-    GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << NET_PIN_RTS);
 
     GPIO_REG(GPIO_RISE_IE)      |=  (1 << NET_PIN_RTS);
     GPIO_REG(GPIO_FALL_IE)      |=  (1 << NET_PIN_RTS);
