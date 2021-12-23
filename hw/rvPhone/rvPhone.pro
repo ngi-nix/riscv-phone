@@ -1,4 +1,4 @@
-update=Tuesday, September 28, 2021 at 01:04:26 PM
+update=Thursday, December 23, 2021 at 01:53:06 AM
 version=1
 last_client=kicad
 [cvpcb]
@@ -12,7 +12,7 @@ LibDir=
 [schematic_editor]
 version=1
 PageLayoutDescrFile=
-PlotDirectoryName=
+PlotDirectoryName=shema/
 SubpartIdSeparator=0
 SubpartFirstId=65
 NetFmtName=Pcbnew
@@ -299,7 +299,7 @@ dPairWidth=0.2
 dPairGap=0.25
 dPairViaGap=0.25
 [pcbnew/Netclasses/6]
-Name=FE310_L
+Name=PRIMARY
 Clearance=0.2
 TrackWidth=0.2
 ViaDiameter=0.6
@@ -310,17 +310,6 @@ dPairWidth=0.2
 dPairGap=0.25
 dPairViaGap=0.25
 [pcbnew/Netclasses/7]
-Name=USB
-Clearance=0.2
-TrackWidth=0.2
-ViaDiameter=0.6
-ViaDrill=0.3
-uViaDiameter=0.3
-uViaDrill=0.1
-dPairWidth=0.2
-dPairGap=0.25
-dPairViaGap=0.25
-[pcbnew/Netclasses/8]
 Name=USB2DIFF
 Clearance=0.1524
 TrackWidth=0.2288
@@ -330,4 +319,15 @@ uViaDiameter=0.3
 uViaDrill=0.1
 dPairWidth=0.2288
 dPairGap=0.1524
+dPairViaGap=0.25
+[pcbnew/Netclasses/8]
+Name=USB2UART
+Clearance=0.2
+TrackWidth=0.2
+ViaDiameter=0.6
+ViaDrill=0.3
+uViaDiameter=0.3
+uViaDrill=0.1
+dPairWidth=0.2
+dPairGap=0.25
 dPairViaGap=0.25
