@@ -202,7 +202,7 @@ int main(int argc, char *argv[]) {
     if (!rv) rv = ecp_dhkey_gen(&ctx_s, &key_perma_s);
 
     for (i=0; i<num_s; i++) {
-        if (!rv) rv = ecp_sock_create(&sock_s[i], &ctx_s, &key_perma_s);
+        if (!rv) rv = ecp_sock_init(&sock_s[i], &ctx_s, &key_perma_s);
 
         strcpy(addr, "0.0.0.0:");
         sprintf(addr+strlen(addr), "%d", 3000+i);
@@ -230,7 +230,7 @@ int main(int argc, char *argv[]) {
         ctx_c[i].handler[CTYPE_TEST] = &handler_c;
 
         if (!rv) rv = ecp_dhkey_gen(&ctx_c[i], &key_perma_c[i]);
-        if (!rv) rv = ecp_sock_create(&sock_c[i], &ctx_c[i], &key_perma_c[i]);
+        if (!rv) rv = ecp_sock_init(&sock_c[i], &ctx_c[i], &key_perma_c[i]);
         if (!rv) rv = ecp_sock_open(&sock_c[i], NULL);
 
         if (!rv) rv = pthread_create(&r_thd[i], NULL, (void *(*)(void *))ecp_receiver, (void *)&sock_c[i]);
@@ -239,7 +239,7 @@ int main(int argc, char *argv[]) {
         sprintf(addr+strlen(addr), "%d", 3000 + (i % num_s));
         if (!rv) rv = ecp_node_init(&node[i], &key_perma_s.public, addr);
 
-        if (!rv) rv = ecp_conn_create(&conn[i], &sock_c[i], CTYPE_TEST);
+        if (!rv) rv = ecp_conn_init(&conn[i], &sock_c[i], CTYPE_TEST);
         conn[i].conn_data = (void *)i;
 
         if (!rv) rv = ecp_conn_open(&conn[i], &node[i]);

@@ -97,13 +97,7 @@ void ecp_timer_pop(ECPConnection *conn, unsigned char mtype) {
             } else {
                 memset(timer->item+i, 0, sizeof(ECPTimerItem));
             }
-#ifdef ECP_WITH_PTHREAD
-            pthread_mutex_lock(&conn->mutex);
-#endif
-            conn->refcount--;
-#ifdef ECP_WITH_PTHREAD
-            pthread_mutex_unlock(&conn->mutex);
-#endif
+            ecp_conn_refcount_dec(conn);
             timer->head--;
             break;
         }
@@ -132,13 +126,7 @@ void ecp_timer_remove(ECPConnection *conn) {
             } else {
                 memset(timer->item+i, 0, sizeof(ECPTimerItem));
             }
-#ifdef ECP_WITH_PTHREAD
-            pthread_mutex_lock(&conn->mutex);
-#endif
-            conn->refcount--;
-#ifdef ECP_WITH_PTHREAD
-            pthread_mutex_unlock(&conn->mutex);
-#endif
+            ecp_conn_refcount_dec(conn);
             timer->head--;
         }
     }
@@ -184,7 +172,7 @@ ecp_cts_t ecp_timer_exe(ECPSocket *sock) {
         ECPConnection *conn = to_exec[i].conn;
         unsigned char mtype = to_exec[i].mtype;
         ecp_timer_retry_t retry = to_exec[i].retry;
-        ecp_conn_handler_msg_t handler = conn->sock->ctx->handler[conn->type] ? conn->sock->ctx->handler[conn->type]->msg[mtype & ECP_MTYPE_MASK] : NULL;
+        ecp_conn_msg_handler_t handler = ecp_conn_get_msg_handler(conn, mtype & ECP_MTYPE_MASK);
         int rv = ECP_OK;
 
         if (to_exec[i].cnt > 0) {
@@ -199,15 +187,7 @@ ecp_cts_t ecp_timer_exe(ECPSocket *sock) {
         } else if (handler) {
             handler(conn, 0, mtype, NULL, ECP_ERR_TIMEOUT, NULL);
         }
-
-#ifdef ECP_WITH_PTHREAD
-        pthread_mutex_lock(&conn->mutex);
-#endif
-        conn->refcount--;
-#ifdef ECP_WITH_PTHREAD
-        pthread_mutex_unlock(&conn->mutex);
-#endif
-
+        ecp_conn_refcount_dec(conn);
     }
 
     return ret;

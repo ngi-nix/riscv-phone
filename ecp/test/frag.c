@@ -74,8 +74,8 @@ int main(int argc, char *argv[]) {
     rv = ecp_dhkey_gen(&ctx_s, &key_perma_s);
     printf("ecp_dhkey_gen RV:%d\n", rv);
 
-    rv = ecp_sock_create(&sock_s, &ctx_s, &key_perma_s);
-    printf("ecp_sock_create RV:%d\n", rv);
+    rv = ecp_sock_init(&sock_s, &ctx_s, &key_perma_s);
+    printf("ecp_sock_init RV:%d\n", rv);
 
     rv = ecp_sock_open(&sock_s, "0.0.0.0:3000");
     printf("ecp_sock_open RV:%d\n", rv);
@@ -94,8 +94,8 @@ int main(int argc, char *argv[]) {
     rv = ecp_dhkey_gen(&ctx_c, &key_perma_c);
     printf("ecp_dhkey_gen RV:%d\n", rv);
 
-    rv = ecp_sock_create(&sock_c, &ctx_c, &key_perma_c);
-    printf("ecp_sock_create RV:%d\n", rv);
+    rv = ecp_sock_init(&sock_c, &ctx_c, &key_perma_c);
+    printf("ecp_sock_init RV:%d\n", rv);
 
     rv = ecp_sock_open(&sock_c, NULL);
     printf("ecp_sock_open RV:%d\n", rv);
@@ -106,8 +106,8 @@ int main(int argc, char *argv[]) {
     rv = ecp_node_init(&node, &key_perma_s.public, "127.0.0.1:3000");
     printf("ecp_node_init RV:%d\n", rv);
 
-    rv = ecp_conn_create(&conn, &sock_c, CTYPE_TEST);
-    printf("ecp_conn_create RV:%d\n", rv);
+    rv = ecp_conn_init(&conn, &sock_c, CTYPE_TEST);
+    printf("ecp_conn_init RV:%d\n", rv);
 
     rv = ecp_rbuf_create(&conn, NULL, NULL, 0, &rbuf_recv, rbuf_r_msg, 128);
     printf("ecp_rbuf_create RV:%d\n", rv);

@@ -2,6 +2,7 @@
 #include "cr.h"
 
 #include "dir.h"
+#include "dir_srv.h"
 
 static int dir_update(ECPDirList *list, ECPDirItem *item) {
     int i;

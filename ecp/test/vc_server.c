@@ -24,7 +24,7 @@ ssize_t handle_open(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned
 }
 
 ssize_t handle_msg(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigned char *p, ssize_t s, ECP2Buffer *b) {
-    // printf("MSG S:%s size:%ld\n", p, s);
+    printf("MSG S:%s size:%ld\n", p, s);
 
     char *msg = "VAISTINU JE CAR!";
     unsigned char buf[1000];
@@ -42,34 +42,34 @@ static void usage(char *arg) {
 
 int main(int argc, char *argv[]) {
     int rv;
-    
+
     if (argc != 3) usage(argv[0]);
-    
+
     rv = ecp_init(&ctx);
     printf("ecp_init RV:%d\n", rv);
-    
+
     rv = ecp_conn_handler_init(&handler);
     handler.msg[ECP_MTYPE_OPEN] = handle_open;
     handler.msg[MTYPE_MSG] = handle_msg;
     ctx.handler[CTYPE_TEST] = &handler;
-    
+
     rv = ecp_util_key_load(&ctx, &key_perma, argv[1]);
     printf("ecp_util_key_load RV:%d\n", rv);
-    
-    rv = ecp_sock_create(&sock, &ctx, &key_perma);
-    printf("ecp_sock_create RV:%d\n", rv);
+
+    rv = ecp_sock_init(&sock, &ctx, &key_perma);
+    printf("ecp_sock_init RV:%d\n", rv);
 
     rv = ecp_sock_open(&sock, NULL);
     printf("ecp_sock_open RV:%d\n", rv);
-    
+
     rv = ecp_start_receiver(&sock);
     printf("ecp_start_receiver RV:%d\n", rv);
 
     rv = ecp_util_node_load(&ctx, &node, argv[2]);
     printf("ecp_util_node_load RV:%d\n", rv);
 
-    rv = ecp_conn_create(&conn, &sock, ECP_CTYPE_VLINK);
-    printf("ecp_conn_create RV:%d\n", rv);
+    rv = ecp_conn_init(&conn, &sock, ECP_CTYPE_VLINK);
+    printf("ecp_conn_init RV:%d\n", rv);
 
     rv = ecp_conn_open(&conn, &node);
     printf("ecp_conn_open RV:%d\n", rv);

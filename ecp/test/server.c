@@ -46,8 +46,8 @@ int main(int argc, char *argv[]) {
     rv = ecp_util_key_load(&ctx, &key_perma, argv[2]);
     printf("ecp_util_key_load RV:%d\n", rv);
     
-    rv = ecp_sock_create(&sock, &ctx, &key_perma);
-    printf("ecp_sock_create RV:%d\n", rv);
+    rv = ecp_sock_init(&sock, &ctx, &key_perma);
+    printf("ecp_sock_init RV:%d\n", rv);
 
     rv = ecp_sock_open(&sock, argv[1]);
     printf("ecp_sock_open RV:%d\n", rv);

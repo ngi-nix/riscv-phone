@@ -15,16 +15,31 @@ static int v_rng(void *buf, size_t bufsize) {
     return 0;
 }
 
-static ECPConnection *conn_alloc(unsigned char type) {
+static ECPConnection *conn_alloc(ECPSocket *sock, unsigned char type) {
+    ECPConnection *conn;
+    int rv;
+
     switch (type) {
         case ECP_CTYPE_VCONN:
-            return malloc(sizeof(ECPVConnIn));
+            conn = malloc(sizeof(ECPVConnIn));
+            break;
         default:
-            return malloc(sizeof(ECPConnection));
+            conn = malloc(sizeof(ECPConnection));
+            break;
     }
+    if (conn == NULL) return NULL;
+
+    rv = ecp_conn_init(conn, sock, type);
+    if (rv) {
+        printf("free1\n");
+        free(conn);
+        return NULL;
+    }
+    return conn;
 }
 
 static void conn_free(ECPConnection *conn) {
+    printf("free2\n");
     free(conn);
 }
 

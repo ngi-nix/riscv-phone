@@ -41,7 +41,7 @@ static void cc_flush(ECPConnection *conn) {
     unsigned short max_t = 0;
 
     if (pkt_to_send) {
-        unsigned int idx = ecp_rbuf_msg_idx(rbuf, buf->seq_cc);
+        unsigned int idx = _ecp_rbuf_msg_idx(rbuf, buf->seq_cc);
         unsigned int _idx = idx;
 
         for (i=0; i<pkt_to_send; i++) {
@@ -118,7 +118,7 @@ ssize_t ecp_rbuf_handle_ack(ECPConnection *conn, ecp_seq_t seq, unsigned char mt
 #endif
 
     ECPRBuffer *rbuf = &buf->rbuf;
-    int idx = ecp_rbuf_msg_idx(rbuf, seq_ack);
+    int idx = _ecp_rbuf_msg_idx(rbuf, seq_ack);
     if (idx < 0) rv = idx;
 
     if (!rv) {
@@ -217,7 +217,7 @@ int ecp_rbuf_send_create(ECPConnection *conn, ECPRBSend *buf, ECPRBMessage *msg,
     int rv;
 
     memset(buf, 0, sizeof(ECPRBRecv));
-    rv = ecp_rbuf_init(&buf->rbuf, msg, msg_size);
+    rv = _ecp_rbuf_init(&buf->rbuf, msg, msg_size);
     if (rv) return rv;
 
 #ifdef ECP_WITH_PTHREAD
@@ -246,10 +246,10 @@ int ecp_rbuf_send_start(ECPConnection *conn) {
 
     if (buf == NULL) return ECP_ERR;
 
-    return ecp_rbuf_start(&buf->rbuf, conn->seq_out);
+    return _ecp_rbuf_start(&buf->rbuf, conn->seq_out);
 }
 
-int ecp_rbuf_send_set_wsize(ECPConnection *conn, ecp_win_t size) {
+int ecp_rbuf_set_wsize(ECPConnection *conn, ecp_win_t size) {
     ECPRBSend *buf = conn->rbuf.send;
 
     if (buf == NULL) return ECP_ERR;
@@ -268,7 +268,7 @@ int ecp_rbuf_send_set_wsize(ECPConnection *conn, ecp_win_t size) {
     return ECP_OK;
 }
 
-int ecp_rbuf_send_flush(ECPConnection *conn) {
+int ecp_rbuf_flush(ECPConnection *conn) {
     ECPRBSend *buf = conn->rbuf.send;
     ecp_seq_t seq;
     ssize_t rv;
@@ -302,95 +302,4 @@ int ecp_rbuf_send_flush(ECPConnection *conn) {
     if (rv < 0) return rv;
 
     return ECP_OK;
-}
-
-int ecp_rbuf_pkt_prep(ECPRBSend *buf, ECPSeqItem *si, unsigned char mtype) {
-    int idx;
-
-    if (si->rb_pass) return ECP_OK;
-
-#ifdef ECP_WITH_PTHREAD
-    pthread_mutex_lock(&buf->mutex);
-#endif
-    idx = ecp_rbuf_msg_idx(&buf->rbuf, si->seq);
-#ifdef ECP_WITH_PTHREAD
-    pthread_mutex_unlock(&buf->mutex);
-#endif
-
-    if (idx < 0) return idx;
-
-    si->rb_mtype = mtype;
-    si->rb_idx = idx;
-    buf->rbuf.msg[idx].size = 0;
-    buf->rbuf.msg[idx].flags = 0;
-
-    return ECP_OK;
-}
-
-ssize_t ecp_rbuf_pkt_send(ECPRBSend *buf, ECPSocket *sock, ECPNetAddr *addr, ECPBuffer *packet, size_t pkt_size, unsigned char flags, ECPTimerItem *ti, ECPSeqItem *si) {
-    int do_send = 1;
-    ssize_t rv = 0;
-
-    if (!si->rb_pass) {
-        unsigned char flags = 0;
-        ecp_seq_t seq = si->seq;
-        unsigned int idx = si->rb_idx;
-        unsigned char mtype = si->rb_mtype & ECP_MTYPE_MASK;
-
-        if (mtype < ECP_MAX_MTYPE_SYS) flags |= ECP_RBUF_FLAG_SYS;
-
-        rv = ecp_rbuf_msg_store(&buf->rbuf, seq, idx, packet->buffer, pkt_size, 0, flags);
-        if (rv < 0) return rv;
-
-        if (buf->flags & ECP_RBUF_FLAG_CCONTROL) {
-            int _rv = ECP_OK;
-
-#ifdef ECP_WITH_PTHREAD
-            pthread_mutex_lock(&buf->mutex);
-#endif
-
-            if (ECP_SEQ_LT(buf->rbuf.seq_max, seq)) buf->rbuf.seq_max = seq;
-
-            if (buf->cnt_cc || (buf->in_transit >= buf->win_size)) {
-                if (!buf->cnt_cc) buf->seq_cc = seq;
-                buf->cnt_cc++;
-                buf->rbuf.msg[idx].flags |= ECP_RBUF_FLAG_IN_CCONTROL;
-                do_send = 0;
-                if (ti) {
-                    ECPRBTimer *timer = &buf->timer;
-                    ECPRBTimerItem *item = &timer->item[timer->idx_w];
-
-                    if (!item->occupied) {
-                        item->occupied = 1;
-                        item->item = *ti;
-                        buf->rbuf.msg[idx].idx_t = timer->idx_w;
-                        timer->idx_w = (timer->idx_w) % ECP_MAX_TIMER;
-                    } else {
-                        _rv = ECP_ERR_MAX_TIMER;
-                    }
-                } else {
-                    buf->rbuf.msg[idx].idx_t = -1;
-                }
-            } else {
-                buf->in_transit++;
-            }
-
-#ifdef ECP_WITH_PTHREAD
-            pthread_mutex_unlock(&buf->mutex);
-#endif
-
-            if (_rv) return _rv;
-        }
-    }
-
-    if (do_send) {
-        if (ti) {
-            int _rv;
-
-            _rv = ecp_timer_push(ti);
-            if (_rv) return _rv;
-        }
-        rv = ecp_pkt_send(sock, addr, packet, pkt_size, flags);
-    }
-    return rv;
 }

@@ -4,10 +4,10 @@
 #define ECP_MTYPE_RELAY     0x08
 #define ECP_MTYPE_EXEC      0x09
 
-typedef struct ECPVConnection {
+typedef struct ECPVConnOut {
     ECPConnection b;
     ECPConnection *next;
-} ECPVConnection;
+} ECPVConnOut;
 
 typedef struct ECPVConnIn {
     ECPConnection b;
@@ -16,6 +16,7 @@ typedef struct ECPVConnIn {
     unsigned char key_out[ECP_ECDH_SIZE_KEY];
 } ECPVConnIn;
 
+ssize_t ecp_vconn_handle_exec(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size, ECP2Buffer *b);
 int ecp_vconn_ctx_init(ECPContext *ctx);
-int ecp_vconn_set_remote(ECPConnection *conn, ECPNode *conn_node, ECPVConnection vconn[], ECPNode vconn_node[], int size);
-int ecp_vconn_open(ECPConnection *conn, ECPNode *conn_node, ECPVConnection vconn[], ECPNode vconn_node[], int size);
+int ecp_vconn_create_parent(ECPConnection *conn, ECPNode *conn_node, ECPVConnOut vconn[], ECPNode vconn_node[], int size);
+int ecp_vconn_open(ECPConnection *conn, ECPNode *conn_node, ECPVConnOut vconn[], ECPNode vconn_node[], int size);

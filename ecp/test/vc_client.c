@@ -14,7 +14,7 @@ ECPConnHandler handler;
 ECPConnection conn;
 ECPNode node;
 
-ECPVConnection vconn[20];
+ECPVConnOut vconn[20];
 ECPNode vconn_node[20];
 
 #define CTYPE_TEST  0
@@ -63,8 +63,8 @@ int main(int argc, char *argv[]) {
     handler.msg[MTYPE_MSG] = handle_msg;
     ctx.handler[CTYPE_TEST] = &handler;
 
-    rv = ecp_sock_create(&sock, &ctx, NULL);
-    printf("ecp_sock_create RV:%d\n", rv);
+    rv = ecp_sock_init(&sock, &ctx, NULL);
+    printf("ecp_sock_init RV:%d\n", rv);
 
     rv = ecp_sock_open(&sock, NULL);
     printf("ecp_sock_open RV:%d\n", rv);
@@ -80,8 +80,8 @@ int main(int argc, char *argv[]) {
         printf("ecp_util_node_load RV:%d\n", rv);
     }
 
-    rv = ecp_conn_create(&conn, &sock, CTYPE_TEST);
-    printf("ecp_conn_create RV:%d\n", rv);
+    rv = ecp_conn_init(&conn, &sock, CTYPE_TEST);
+    printf("ecp_conn_init RV:%d\n", rv);
 
     rv = ecp_vconn_open(&conn, &node, vconn, vconn_node, argc-2);
     printf("ecp_vconn_open RV:%d\n", rv);

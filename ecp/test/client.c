@@ -58,8 +58,8 @@ int main(int argc, char *argv[]) {
     handler.msg[MTYPE_MSG] = handle_msg;
     ctx.handler[CTYPE_TEST] = &handler;
     
-    rv = ecp_sock_create(&sock, &ctx, NULL);
-    printf("ecp_sock_create RV:%d\n", rv);
+    rv = ecp_sock_init(&sock, &ctx, NULL);
+    printf("ecp_sock_init RV:%d\n", rv);
 
     rv = ecp_sock_open(&sock, NULL);
     printf("ecp_sock_open RV:%d\n", rv);
@@ -70,8 +70,8 @@ int main(int argc, char *argv[]) {
     rv = ecp_util_node_load(&ctx, &node, argv[1]);
     printf("ecp_util_node_load RV:%d\n", rv);
 
-    rv = ecp_conn_create(&conn, &sock, CTYPE_TEST);
-    printf("ecp_conn_create RV:%d\n", rv);
+    rv = ecp_conn_init(&conn, &sock, CTYPE_TEST);
+    printf("ecp_conn_init RV:%d\n", rv);
 
     rv = ecp_conn_open(&conn, &node);
     printf("ecp_conn_open RV:%d\n", rv);
