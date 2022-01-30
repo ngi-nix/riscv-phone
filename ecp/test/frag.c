@@ -46,7 +46,7 @@ ssize_t handle_msg_c(ECPConnection *conn, ecp_seq_t sq, unsigned char t, unsigne
     printf("MSG C:%s size:%ld\n", p, s);
 
     ECPRBuffer *rbuf = &conn->rbuf.recv->rbuf;
-    printf("RBUF: %d %d %d %d\n", rbuf->seq_start, rbuf->seq_max, rbuf->msg_start, rbuf->msg_size);
+    printf("RBUF: %d %d %d %d\n", rbuf->seq_start, rbuf->seq_max, rbuf->idx_start, rbuf->arr_size);
     return s;
 }
 

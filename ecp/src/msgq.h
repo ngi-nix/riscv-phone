@@ -1,7 +1,6 @@
 #ifdef ECP_WITH_MSGQ
 
 #define ECP_MSGQ_MAX_MSG        32
-#define ECP_MSGQ_ERR_MAX_MSG    -110
 
 typedef struct ECPConnMsgQ {
     unsigned short idx_w[ECP_MAX_MTYPE];

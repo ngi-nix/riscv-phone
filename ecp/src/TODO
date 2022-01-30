@@ -7,5 +7,3 @@
 rbuf:
 - implement _wait variants of open / send
 - msgq should subtract ECP_MAX_MTYPE_SYS from mtype (make ECPConnMsgQ smaller)
-- consider adding one buffer for all msgs (frag. issue)
-
