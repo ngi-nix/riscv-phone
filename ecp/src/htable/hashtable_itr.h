@@ -26,7 +26,7 @@ hashtable_iterator(struct hashtable_itr *, struct hashtable *h);
 
 /*****************************************************************************/
 /* hashtable_iterator_key
- * - return the value of the (key,value) pair at the current position */
+ * - return the key of the (key,value) pair at the current position */
 
 extern inline void *
 hashtable_iterator_key(struct hashtable_itr *i)
@@ -35,12 +35,23 @@ hashtable_iterator_key(struct hashtable_itr *i)
 }
 
 /*****************************************************************************/
-/* value - return the value of the (key,value) pair at the current position */
+/* hashtable_iterator_value
+ * - return the value of the (key,value) pair at the current position */
 
 extern inline void *
 hashtable_iterator_value(struct hashtable_itr *i)
 {
     return i->e->v;
+}
+
+/*****************************************************************************/
+/* hashtable_iterator_entry
+ * - return the hash table entry at the current position */
+
+extern inline struct entry *
+hashtable_iterator_entry(struct hashtable_itr *i)
+{
+    return i->e;
 }
 
 /*****************************************************************************/
@@ -73,7 +84,7 @@ int fnname (struct hashtable_itr *i, keytype *k) \
 }
 
 /*****************************************************************************/
-/* search next - advance the iterator to point to the entry
+/* search next - advance the iterator to point to next entry
  *          matching the supplied key.
  *          returns zero if not found. */
 int
@@ -90,23 +101,23 @@ int fnname (struct hashtable_itr *i, keytype *k) \
 /*
  * Copyright (c) 2002, 2004, Christopher Clark
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * * Redistributions of source code must retain the above copyright
  * notice, this list of conditions and the following disclaimer.
- * 
+ *
  * * Redistributions in binary form must reproduce the above copyright
  * notice, this list of conditions and the following disclaimer in the
  * documentation and/or other materials provided with the distribution.
- * 
+ *
  * * Neither the name of the original author; nor the names of any contributors
  * may be used to endorse or promote products derived from this software
  * without specific prior written permission.
- * 
- * 
+ *
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR

@@ -34,6 +34,7 @@ hashtable_iterator(struct hashtable_itr *itr, struct hashtable *h)
 /*****************************************************************************/
 /* key      - return the key of the (key,value) pair at the current position */
 /* value    - return the value of the (key,value) pair at the current position */
+/* entry    - return the hash table entry at the current position */
 
 void *
 hashtable_iterator_key(struct hashtable_itr *i)
@@ -42,6 +43,10 @@ hashtable_iterator_key(struct hashtable_itr *i)
 void *
 hashtable_iterator_value(struct hashtable_itr *i)
 { return i->e->v; }
+
+struct entry *
+hashtable_iterator_entry(struct hashtable_itr *i)
+{ return i->e; }
 
 /*****************************************************************************/
 /* advance - advance the iterator to the next element
@@ -90,10 +95,23 @@ hashtable_iterator_advance(struct hashtable_itr *itr)
  *          element.
  *          If you want the value, read it before you remove:
  *          beware memory leaks if you don't.
- *          Returns zero if end of iteration. --- modified by majstor */
+ *          Returns zero if end of iteration. */
 
 int
 hashtable_iterator_remove(struct hashtable_itr *itr)
+{
+    struct entry *e;
+    int ret;
+
+    e = hashtable_iterator_entry(itr);
+    ret = hashtable_iterator_remove_static(itr);
+    freekey(e->k);
+    free(e);
+    return ret;
+}
+
+int
+hashtable_iterator_remove_static(struct hashtable_itr *itr)
 {
     struct entry *remember_e, *remember_parent;
     int ret;
@@ -110,14 +128,11 @@ hashtable_iterator_remove(struct hashtable_itr *itr)
     /* itr->e is now outside the hashtable */
     remember_e = itr->e;
     itr->h->entrycount--;
-    if (itr->h->fn_free_k) itr->h->fn_free_k(remember_e->k);
-    if (itr->h->fn_free_v) itr->h->fn_free_v(remember_e->v);
 
     /* Advance the iterator, correcting the parent */
     remember_parent = itr->parent;
     ret = hashtable_iterator_advance(itr);
     if (itr->parent == remember_e) { itr->parent = remember_parent; }
-    itr->h->fn_free(remember_e);
     return ret;
 }
 
@@ -128,7 +143,7 @@ hashtable_iterator_search(struct hashtable_itr *itr, void *k)
     struct entry *e, *parent;
     unsigned int hashvalue, index;
     struct hashtable *h = itr->h;
-    
+
     hashvalue = hashtable_hash(h,k);
     index = indexFor(h->tablelength,hashvalue);
 
@@ -137,7 +152,7 @@ hashtable_iterator_search(struct hashtable_itr *itr, void *k)
     while (NULL != e)
     {
         /* Check hash value to short circuit heavier comparison */
-        if ((hashvalue == e->h) && (h->fn_eq(k, e->k)))
+        if ((hashvalue == e->h) && (h->eqfn(k, e->k)))
         {
             itr->index = index;
             itr->e = e;
@@ -150,7 +165,6 @@ hashtable_iterator_search(struct hashtable_itr *itr, void *k)
     }
     return 0;
 }
-
 
 /*****************************************************************************/
 int /* returns zero if not found */
@@ -167,7 +181,7 @@ hashtable_iterator_search_next(struct hashtable_itr *itr, void *k)
     while (NULL != e)
     {
         /* Check hash value to short circuit heavier comparison */
-        if ((hashvalue == e->h) && (h->fn_eq(k, e->k)))
+        if ((hashvalue == e->h) && (h->eqfn(k, e->k)))
         {
             itr->parent = parent;
             itr->e = e;
@@ -183,23 +197,23 @@ hashtable_iterator_search_next(struct hashtable_itr *itr, void *k)
 /*
  * Copyright (c) 2002, 2004, Christopher Clark
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * * Redistributions of source code must retain the above copyright
  * notice, this list of conditions and the following disclaimer.
- * 
+ *
  * * Redistributions in binary form must reproduce the above copyright
  * notice, this list of conditions and the following disclaimer in the
  * documentation and/or other materials provided with the distribution.
- * 
+ *
  * * Neither the name of the original author; nor the names of any contributors
  * may be used to endorse or promote products derived from this software
  * without specific prior written permission.
- * 
- * 
+ *
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR

@@ -5,11 +5,14 @@
 #include "hashtable.h"
 
 void *ecp_ht_create(ECPContext *ctx) {
-    return create_hashtable(1000, (unsigned int (*)(void *))ecp_cr_dh_pub_hash_fn, (int (*)(void *, void *))ecp_cr_dh_pub_hash_eq, NULL, NULL, NULL);
+    printf("NEFORE CREATE\n");
+    void *r = hashtable_create(1000, (unsigned int (*)(void *))ecp_cr_dh_pub_hash_fn, (int (*)(void *, void *))ecp_cr_dh_pub_hash_eq);
+    printf("AFTER CREATE\n");
+    return r;
 }
 
 void ecp_ht_destroy(void *h) {
-    hashtable_destroy(h);
+    hashtable_destroy(h, 0);
 }
 
 int ecp_ht_insert(void *h, unsigned char *k, ECPConnection *v) {
