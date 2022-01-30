@@ -1,8 +1,9 @@
-include Makefile.platform
 CFLAGS += $(PIC) -I.
 
-obj = core.o timer.o dir.o dir_srv.o $(obj_rbuf)
-subdirs = crypto platform $(htable) $(vconn)
+obj = core.o timer.o dir.o dir_srv.o
+subdirs = crypto platform
+
+include Makefile.platform
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<
