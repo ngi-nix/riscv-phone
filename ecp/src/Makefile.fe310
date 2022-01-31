@@ -1,6 +1,0 @@
-include $(FE310_HOME)/common.mk
-
-platform = fe310
-subdirs	+= vconn
-
-CFLAGS	+= -DECP_WITH_VCONN=1 -DECP_DEBUG=1 -I$(FE310_HOME)
