@@ -104,6 +104,7 @@ hashtable_iterator_remove(struct hashtable_itr *itr)
     int ret;
 
     e = hashtable_iterator_entry(itr);
+    if (NULL == e) return 0; /* stupidity check */
     ret = hashtable_iterator_remove_static(itr);
     freekey(e->k);
     free(e);

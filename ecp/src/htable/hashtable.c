@@ -217,6 +217,7 @@ hashtable_remove(struct hashtable *h, void *k)
     struct entry *e;
     void *v;
     e = hashtable_remove_static(h,k);
+    if (NULL == e) return NULL;
     v = e->v;
     freekey(e->k);
     free(e);
@@ -240,7 +241,7 @@ hashtable_remove_static(struct hashtable *h, void *k)
         {
             *pE = e->next;
             h->entrycount--;
-            return e->v;
+            return e;
         }
         pE = &(e->next);
         e = e->next;

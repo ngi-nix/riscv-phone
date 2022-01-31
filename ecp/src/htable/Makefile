@@ -1,5 +1,5 @@
-include ../Makefile.platform
-CFLAGS += $(PIC) -I.. -std=gnu89
+include ../platform.mk
+CFLAGS += -I.. -std=gnu89
 
 obj = htable.o hashtable.o hashtable_itr.o
 
