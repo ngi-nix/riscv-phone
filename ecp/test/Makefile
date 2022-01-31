@@ -1,4 +1,4 @@
-include ../src/Makefile.posix
+include ../platform/posix.mk
 CFLAGS += -I../src -I../util -Wno-int-to-void-pointer-cast
 
 dep=../src/build-posix/*.a ../util/libecputil.a

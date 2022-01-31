@@ -1,6 +1,5 @@
-include ../src/Makefile.posix
-CFLAGS=$(CFLAGS_PL) -I../src
-LDFLAGS=$(LDFLAGS_PL)
+include ../platform/posix.mk
+CFLAGS += -I../src
 
 obj=util.o
 dep=../src/build-posix/*.a ./libecputil.a

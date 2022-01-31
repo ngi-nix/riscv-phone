@@ -1,9 +1,10 @@
-CFLAGS += $(PIC) -I.
+include platform.mk
+CFLAGS += -I.
 
 obj = core.o timer.o dir.o dir_srv.o
-subdirs = crypto platform
+subdirs = crypto ../platform/$(platform)
 
-include Makefile.platform
+include ../platform/$(platform)_obj.mk
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<
@@ -12,17 +13,17 @@ include Makefile.platform
 	$(CC) $(CFLAGS) -c $<
 
 all: $(obj)
-	$(AR) rcs libecpcore.a $(obj)
+	$(AR) rcs libecp.a $(obj)
 	for i in $(subdirs); do \
 		(cd $$i && $(MAKE)) || exit; \
 	done
 
 install: all
 	mkdir -p build-$(platform)/
-	install libecpcore.a build-$(platform)/
+	install libecp.a build-$(platform)/
 	install crypto/libecpcr.a build-$(platform)/
-	install platform/libecptm.a build-$(platform)/
-	install platform/libecptr.a build-$(platform)/
+	install ../platform/$(platform)/libecptm.a build-$(platform)/
+	install ../platform/$(platform)/libecptr.a build-$(platform)/
 	if [ -f htable/libecpht.a ]; then \
 		install htable/libecpht.a build-$(platform)/; \
 	fi
