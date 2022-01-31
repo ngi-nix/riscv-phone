@@ -1,7 +1,5 @@
 include ../../common.mk
 
-CFLAGS += -I..
-
 obj = bq25895.o ov2640.o
 
 

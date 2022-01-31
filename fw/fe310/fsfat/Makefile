@@ -1,7 +1,5 @@
 include ../common.mk
-
-CFLAGS += -I. -I..
-
+CFLAGS += -I..
 obj = diskio.o ff.o
 
 

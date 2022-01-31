@@ -1,7 +1,5 @@
 include ../../common.mk
 
-CFLAGS += -I..
-
 obj = app_root.o app_status.o
 
 

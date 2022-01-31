@@ -1,5 +1,7 @@
-CC =     $(RISCV_HOME)/bin/riscv64-unknown-elf-gcc
-AR =     $(RISCV_HOME)/bin/riscv64-unknown-elf-ar
-RANLIB = $(RISCV_HOME)/bin/riscv64-unknown-elf-ranlib
+fe310_dir := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+bsp_dir := $(abspath $(fe310_dir)/bsp)
+eos_dir := $(abspath $(fe310_dir)/eos)
+crypto_dir := $(abspath $(fe310_dir)/../../crypto)
 
-CFLAGS = -march=rv32imac -mabi=ilp32 -mcmodel=medlow -ffunction-sections -fdata-sections --specs=nano.specs -O2
+include $(fe310_dir)/platform.mk
+CFLAGS += -I$(eos_dir)

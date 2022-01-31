@@ -1,6 +1,5 @@
 include ../../../common.mk
-
-CFLAGS += -I.. -I../..
+CFLAGS += -I..
 
 obj = window.o view.o page.o form.o
 

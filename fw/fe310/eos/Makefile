@@ -1,8 +1,5 @@
 include ../common.mk
-
-CRYPTO_DIR = ../../../crypto
-
-CFLAGS += -I. -I../bsp/include -I../bsp/drivers -I$(CRYPTO_DIR)
+CFLAGS += -I. -I$(bsp_dir)/include -I$(bsp_dir)/drivers -I$(crypto_dir)
 
 obj = trap_entry.o eos.o msgq.o event.o interrupt.o timer.o pwr.o i2s.o i2c.o uart.o spi.o spi_dev.o lcd.o sdcard.o sdc_crypto.o cam.o net.o wifi.o cell.o sock.o unicode.o
 

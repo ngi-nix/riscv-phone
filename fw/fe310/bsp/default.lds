@@ -113,7 +113,7 @@ SECTIONS
 		*(.sdata .sdata.* .sdata2.*)
 		*(.gnu.linkonce.s.*)
 	} >itim AT>flash :itim_init
-/*	>ram AT>flash :ram_init */
+/*	} >ram AT>flash :ram_init	*/
 
 	PROVIDE( metal_segment_data_source_start = LOADADDR(.data) );
 	PROVIDE( metal_segment_data_target_start = ADDR(.data) );
@@ -127,12 +127,13 @@ SECTIONS
 		*(.gnu.linkonce.b.*)
 		*(COMMON)
 	} >itim AT>ram :itim
-/*	>ram AT>ram :ram */
+/*	} >ram AT>ram :ram	*/
 
 	PROVIDE( metal_segment_bss_target_start = ADDR(.bss) );
 	PROVIDE( metal_segment_bss_target_end = ADDR(.bss) + SIZEOF(.bss) );
 
 	__heap_size = 0x4000 - __stack_size;
+/*	__heap_size = 0x1000;	*/
 	.heap : {
 		PROVIDE( metal_segment_heap_target_start = . );
 		. += __heap_size;
