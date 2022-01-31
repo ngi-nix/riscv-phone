@@ -23,7 +23,7 @@ libeos.a:
 	$(AR) rcs $@ $(obj_crypto)
 
 clean:
-	for i in $(subdirs); do \
+	for i in $(subdirs) $(crypto_dir); do \
 		(cd $$i && $(MAKE) clean) || exit; \
 	done
 	rm -f *.o *.a
