@@ -308,7 +308,10 @@ ssize_t ecp_rbuf_store(ECPConnection *conn, ecp_seq_t seq, unsigned char *msg, s
             if (rv < 0) return rv;
 
             buf->ack_map |= ack_bit;
-            do_ack = ack_shift(buf);
+            /* reliable transport can prevent seq_ack from reaching seq_max */
+            if (ECP_SEQ_LT(buf->seq_ack, rbuf->seq_max)) {
+                do_ack = ack_shift(buf);
+            }
         } else {
             return ECP_ERR_RBUF_DUP;
         }
