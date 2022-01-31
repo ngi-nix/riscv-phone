@@ -1,5 +1,4 @@
-include ../fe310.mk
-CFLAGS += -I../../src
+include ../common.mk
 
 obj_tr = transport.o
 obj_tm = time.o

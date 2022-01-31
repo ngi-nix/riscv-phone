@@ -1,7 +1,8 @@
-include ../platform/posix.mk
-CFLAGS += -I../src -I../util -Wno-int-to-void-pointer-cast
+src_dir = ../src
+include $(src_dir)/common.mk
+CFLAGS += -I../util -Wno-int-to-void-pointer-cast
 
-dep=../src/build-posix/*.a ../util/libecputil.a
+dep=../build-posix/*.a ../util/libecputil.a
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<

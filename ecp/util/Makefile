@@ -1,8 +1,8 @@
-include ../platform/posix.mk
-CFLAGS += -I../src
+src_dir = ../src
+include $(src_dir)/common.mk
 
 obj=util.o
-dep=../src/build-posix/*.a ./libecputil.a
+dep=../build-posix/*.a ./libecputil.a
 
 
 %.o: %.c %.h

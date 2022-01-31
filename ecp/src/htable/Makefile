@@ -1,5 +1,5 @@
-include ../platform.mk
-CFLAGS += -I.. -std=gnu89
+include ../common.mk
+CFLAGS += -std=gnu89
 
 obj = htable.o hashtable.o hashtable_itr.o
 

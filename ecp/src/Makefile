@@ -1,10 +1,11 @@
-include platform.mk
-CFLAGS += -I.
+include common.mk
 
 obj = core.o timer.o dir.o dir_srv.o
-subdirs = crypto ../platform/$(platform)
+subdirs = crypto $(platform_dir)
+build_dir = ../build-$(platform)
 
-include ../platform/$(platform)_obj.mk
+include $(platform_dir)/platform_obj.mk
+
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<
@@ -19,16 +20,16 @@ all: $(obj)
 	done
 
 install: all
-	mkdir -p build-$(platform)/
-	install libecp.a build-$(platform)/
-	install crypto/libecpcr.a build-$(platform)/
-	install ../platform/$(platform)/libecptm.a build-$(platform)/
-	install ../platform/$(platform)/libecptr.a build-$(platform)/
+	mkdir -p $(build_dir)
+	install libecp.a $(build_dir)
+	install crypto/libecpcr.a $(build_dir)
+	install $(platform_dir)/libecptm.a $(build_dir)
+	install $(platform_dir)/libecptr.a $(build_dir)
 	if [ -f htable/libecpht.a ]; then \
-		install htable/libecpht.a build-$(platform)/; \
+		install htable/libecpht.a $(build_dir); \
 	fi
 	if [ -f vconn/libecpvconn.a ]; then \
-		install vconn/libecpvconn.a build-$(platform)/; \
+		install vconn/libecpvconn.a $(build_dir); \
 	fi
 
 clean:

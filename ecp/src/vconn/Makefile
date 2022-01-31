@@ -1,5 +1,4 @@
-include ../platform.mk
-CFLAGS += -I..
+include ../common.mk
 
 obj = vconn.o
 

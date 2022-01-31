@@ -5,20 +5,24 @@ if [ -z $1 ]; then
 else
     ARG=$1
 fi
+PLATFORM=posix
 
 cd src
-make clean
-if [ $ARG == "all" ]; then
-    make || exit
-    make install
+if [ "$ARG" != "clean" ]; then
+    make platform=$PLATFORM clean
 fi
+make platform=$PLATFORM $ARG || exit
+if [ "$ARG" ==  "all" ]; then
+    make platform=$PLATFORM install
+fi
+
 cd ../util
-make clean
-if [ $ARG == "all" ]; then
-    make || exit
+if [ "$ARG" != "clean" ]; then
+    make platform=$PLATFORM clean
 fi
+make platform=$PLATFORM $ARG || exit
 cd ../test
-make clean
-if [ $ARG == "all" ]; then
-    make
+if [ "$ARG" != "clean" ]; then
+    make platform=$PLATFORM clean
 fi
+make platform=$PLATFORM $ARG || exit

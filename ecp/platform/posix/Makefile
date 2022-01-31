@@ -1,5 +1,4 @@
-include ../posix.mk
-CFLAGS += -I../../src
+include ../common.mk
 
 obj_tr = transport.o
 obj_tm = time.o
