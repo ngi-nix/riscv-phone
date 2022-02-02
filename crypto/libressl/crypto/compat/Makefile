@@ -1,4 +1,4 @@
-include ssl_common.mk
+include ../../ssl_common.mk
 
 obj = arc4random.o explicit_bzero.o timingsafe_bcmp.o timingsafe_memcmp.o
 

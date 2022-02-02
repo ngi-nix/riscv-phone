@@ -1,4 +1,4 @@
-include ssl_common.mk
+include ../../ssl_common.mk
 
 obj = e_chacha20poly1305.o
 

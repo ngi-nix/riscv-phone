@@ -49,7 +49,7 @@
  *					<appro@fy.chalmers.se>
  */
 
-//#include <openssl/crypto.h>
+#include <openssl/crypto.h>
 #include <openssl/opensslv.h>
 #include <openssl/sha.h>
 

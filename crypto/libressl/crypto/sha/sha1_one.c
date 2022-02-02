@@ -61,7 +61,7 @@
 
 #include <openssl/opensslconf.h>
 
-//#include <openssl/crypto.h>
+#include <openssl/crypto.h>
 #include <openssl/sha.h>
 
 #ifndef OPENSSL_NO_SHA1

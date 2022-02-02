@@ -1,4 +1,4 @@
-include common.mk
+-include common.mk
 
 CFLAGS += -I../../include/compat -I../../include
 # exclude from include/compat/string.h

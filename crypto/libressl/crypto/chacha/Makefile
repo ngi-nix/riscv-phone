@@ -1,4 +1,4 @@
-include ssl_common.mk
+include ../../ssl_common.mk
 
 obj = chacha.o
 

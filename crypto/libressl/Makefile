@@ -1,6 +1,3 @@
-pwd := $(abspath $(dir $(firstword $(MAKEFILE_LIST))))
-MAKEFLAGS += -I$(pwd)
-
 include ssl_obj.mk
 
 all:

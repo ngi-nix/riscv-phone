@@ -84,6 +84,9 @@ _rs_init(u_char *buf, size_t n)
 	if (rs == NULL) {
 		if (_rs_allocate(&rs, &rsx) == -1)
 			_exit(1);
+#if defined(__FE310__)
+		rs->rs_blocks = (RSBLKS - 1);
+#endif
 	}
 
 	chacha_keysetup(&rsx->rs_chacha, buf, KEYSZ * 8, 0);
@@ -109,9 +112,6 @@ _rs_stir(void)
 	memset(rsx->rs_buf, 0, sizeof(rsx->rs_buf));
 
 	rs->rs_count = 1600000;
-#if defined(__FE310__)
-	rs->rs_blocks = RSBLKS;
-#endif
 }
 
 static inline void
@@ -145,7 +145,7 @@ _rs_rekey(u_char *dat, size_t datlen)
 	}
 #if defined(__FE310__)
 	if (dat || (rs->rs_blocks == 0)) {
-		rs->rs_blocks = RSBLKS;
+		rs->rs_blocks = (RSBLKS - 1);
 	} else {
 		rs->rs_blocks--;
 		rs->rs_have = sizeof(rsx->rs_buf);
