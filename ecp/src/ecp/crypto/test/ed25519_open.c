@@ -4,20 +4,10 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include <curve25519.h>
+#include <openssl/curve25519.h>
 
 #define KEY_LEN     32
 #define SIG_LEN     64
-
-static int v_rng(void *buf, size_t bufsize) {
-    int fd;
-    
-    if((fd = open("/dev/urandom", O_RDONLY)) < 0) return -1;
-    size_t nb = read(fd, buf, bufsize);
-    close(fd);
-    if (nb != bufsize) return -1;
-    return 0;
-}
 
 int main(int argc, char *argv[]) {
     unsigned char msg[1024];
@@ -29,7 +19,7 @@ int main(int argc, char *argv[]) {
 
     strcpy((char *)msg, "PERA JE CAR!");
     msg_len = strlen((char *)msg) + 1;
-    
+
     int fd = open("msg.sig", O_RDONLY);
     read(fd, public, KEY_LEN);
     read(fd, signature, SIG_LEN);
