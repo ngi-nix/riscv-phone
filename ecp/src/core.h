@@ -157,8 +157,8 @@ struct ECPSeqItem;
 struct ECPPktMeta;
 struct ECPDirList;
 
-#include "platform/transport.h"
 #include "crypto/crypto.h"
+#include "transport.h"
 #include "timer.h"
 
 #ifdef ECP_WITH_RBUF
