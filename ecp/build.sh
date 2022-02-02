@@ -5,24 +5,30 @@ if [ -z $1 ]; then
 else
     ARG=$1
 fi
+
+
+if [ -z $MAKE ]; then
+    MAKE=make
+fi
+
 PLATFORM=posix
 
 cd src/ecp
 if [ "$ARG" != "clean" ]; then
-    make platform=$PLATFORM clean
+    $MAKE platform=$PLATFORM clean
 fi
-make platform=$PLATFORM $ARG || exit
+$MAKE platform=$PLATFORM $ARG || exit
 if [ "$ARG" ==  "all" ]; then
-    make platform=$PLATFORM install
+    $MAKE platform=$PLATFORM install
 fi
 
 cd ../../util
 if [ "$ARG" != "clean" ]; then
-    make platform=$PLATFORM clean
+    $MAKE platform=$PLATFORM clean
 fi
-make platform=$PLATFORM $ARG || exit
+$MAKE platform=$PLATFORM $ARG || exit
 cd ../test
 if [ "$ARG" != "clean" ]; then
-    make platform=$PLATFORM clean
+    $MAKE platform=$PLATFORM clean
 fi
-make platform=$PLATFORM $ARG || exit
+$MAKE platform=$PLATFORM $ARG || exit
