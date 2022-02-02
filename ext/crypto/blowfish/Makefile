@@ -1,6 +1,6 @@
-include common.mk
+include ../crypto_common.mk
 
-obj = aes.o
+obj = blowfish.o
 
 
 %.o: %.c %.h

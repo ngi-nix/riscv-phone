@@ -1,4 +1,4 @@
-include common.mk
+include ../crypto_common.mk
 
 obj = sha1.o
 
