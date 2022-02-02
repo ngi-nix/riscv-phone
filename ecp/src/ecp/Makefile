@@ -2,7 +2,7 @@ include common.mk
 
 obj = core.o timer.o dir.o dir_srv.o
 subdirs = crypto $(platform_dir)
-build_dir = ../build-$(platform)
+build_dir = ../../build-$(platform)
 
 include $(platform_dir)/platform_obj.mk
 

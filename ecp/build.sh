@@ -7,7 +7,7 @@ else
 fi
 PLATFORM=posix
 
-cd src
+cd src/ecp
 if [ "$ARG" != "clean" ]; then
     make platform=$PLATFORM clean
 fi
@@ -16,7 +16,7 @@ if [ "$ARG" ==  "all" ]; then
     make platform=$PLATFORM install
 fi
 
-cd ../util
+cd ../../util
 if [ "$ARG" != "clean" ]; then
     make platform=$PLATFORM clean
 fi

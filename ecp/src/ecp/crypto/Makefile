@@ -1,5 +1,5 @@
 include ../common.mk
-ssl_dir = ../../../ext/libressl
+ssl_dir = ../../../../ext/libressl
 CFLAGS += -I$(ssl_dir)/include
 MAKEFLAGS += -I$(pwd)/..
 

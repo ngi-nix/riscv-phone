@@ -1,5 +1,5 @@
 src_dir = ../src
-include $(src_dir)/common.mk
+include $(src_dir)/ecp/common.mk
 CFLAGS += -I../util -Wno-int-to-void-pointer-cast
 
 dep=../build-posix/*.a ../util/libecputil.a

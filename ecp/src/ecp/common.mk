@@ -1,9 +1,8 @@
 platform ?= posix
 
 pwd := $(abspath $(dir $(firstword $(MAKEFILE_LIST))))
-ecp_dir := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/..)
-src_dir := $(abspath $(ecp_dir)/src)
-platform_dir = $(abspath $(ecp_dir)/platform/$(platform))
+src_dir := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/..)
+platform_dir = $(abspath $(src_dir)/platform/$(platform))
 
 include $(platform_dir)/platform.mk
-CFLAGS += -I$(src_dir) -I$(platform_dir)
+CFLAGS += -I$(src_dir)/ecp -I$(platform_dir)

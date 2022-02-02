@@ -1,5 +1,5 @@
 src_dir = ../src
-include $(src_dir)/common.mk
+include $(src_dir)/ecp/common.mk
 
 obj=util.o
 dep=../build-posix/*.a ./libecputil.a
