@@ -6,7 +6,6 @@ obj_crypto = $(addprefix $(crypto_dir)/,$(obj_dep))
 
 subdirs = bsp/drivers bsp/gloss bsp/metal eos eos/i2c eos/eve eos/eve/screen eos/eve/widget eos/app fsfat
 
-# $(info INFO $(obj_crypto))
 all: libeos.a
 
 %.o: %.c
