@@ -1,14 +1,12 @@
-include ../Makefile.platform
-CFLAGS += $(PIC) -Iinclude -I.. -D__BEGIN_HIDDEN_DECLS= -D__END_HIDDEN_DECLS=
+include ../common.mk
+ssl_dir = ../../../ext/libressl
+CFLAGS += -I$(ssl_dir)/include
+MAKEFLAGS += -I$(pwd)/..
 
-obj = crypto.o e_chacha20poly1305.o
-obj_dep = compat/explicit_bzero.o compat/timingsafe_memcmp.o compat/timingsafe_bcmp.o \
-	chacha/chacha.o poly1305/poly1305.o \
-	curve25519/curve25519.o curve25519/curve25519-generic.o \
-	sha/sha256.o sha/sha512.o \
-	arc4random/arc4random.o
-
-subdirs = compat curve25519 chacha poly1305 sha arc4random
+include $(ssl_dir)/ssl_obj.mk
+obj = crypto.o
+obj_ssl = $(addprefix $(ssl_dir)/,$(obj_dep))
+subdirs = $(ssl_dir)
 
 
 %.o: %.c
@@ -18,10 +16,10 @@ all: $(obj)
 	for i in $(subdirs); do \
 		(cd $$i && $(MAKE)) || exit; \
 	done
-	$(AR) rcs libecpcr.a $(obj) $(obj_dep)
+	$(AR) rcs libecpcr.a $(obj) $(obj_ssl)
 
 clean:
-	for i in $(subdirs) test; do \
+	for i in $(subdirs); do \
 		(cd $$i && $(MAKE) clean) || exit; \
 	done
 	rm -f *.o *.a
