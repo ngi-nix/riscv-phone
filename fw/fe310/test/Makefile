@@ -1,5 +1,5 @@
 include ../common.mk
-CFLAGS += -I$(bsp_dir)/include -I$(bsp_dir)/drivers -I$(crypto_dir)
+CFLAGS += -I$(bsp_dir)/include -I$(bsp_dir)/drivers -I$(ext_dir)/crypto
 LDFLAGS = $(CFLAGS) -L.. -Wl,--gc-sections -nostartfiles -nostdlib -Wl,--start-group -lc -lm -lgcc -leos -Wl,--end-group -T../bsp/default.lds
 
 DEPS = main.o status.o cell_dev.o cell_pdp.o phone.o modem.o wifi.o cam.o audio.o test.o

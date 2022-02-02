@@ -1,10 +1,11 @@
 include common.mk
+crypto_dir = $(ext_dir)/crypto
 MAKEFLAGS += -I$(fe310_dir)
 
 include $(crypto_dir)/crypto_obj.mk
 obj_crypto = $(addprefix $(crypto_dir)/,$(obj_dep))
 
-subdirs = bsp/drivers bsp/gloss bsp/metal eos eos/i2c eos/eve eos/eve/screen eos/eve/widget eos/app fsfat
+subdirs = bsp/drivers bsp/gloss bsp/metal eos eos/i2c eos/eve eos/eve/screen eos/eve/widget eos/app $(ext_dir)/fsfat
 
 all: libeos.a
 

@@ -1,5 +1,5 @@
 include ../../common.mk
-CFLAGS += -I../include -include sys/cdefs.h
+CFLAGS += -I$(bsp_dir)/include -include sys/cdefs.h
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<

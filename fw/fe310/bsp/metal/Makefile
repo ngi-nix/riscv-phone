@@ -1,5 +1,5 @@
 include ../../common.mk
-CFLAGS += -I../include -I../drivers
+CFLAGS += -I$(bsp_dir)/include -I$(bsp_dir)/drivers
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<
