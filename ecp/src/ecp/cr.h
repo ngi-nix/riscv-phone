@@ -1,13 +1,16 @@
-int ecp_cr_dh_mkpair(ecp_dh_public_t *pub, ecp_dh_private_t *priv, ecp_rng_t rand_buf);
-int ecp_cr_dh_shsec(ecp_aead_key_t *shared, ecp_dh_public_t *pub, ecp_dh_private_t *priv);
-unsigned char *ecp_cr_dh_pub_get_buf(ecp_dh_public_t *p);
-void ecp_cr_dh_pub_to_buf(unsigned char *b, ecp_dh_public_t *p);
-void ecp_cr_dh_pub_from_buf(ecp_dh_public_t *p, unsigned char *b) ;
-int ecp_cr_dh_pub_eq(unsigned char *p1, ecp_dh_public_t *p2) ;
-unsigned int ecp_cr_dh_pub_hash_fn(unsigned char *p);
-int ecp_cr_dh_pub_hash_eq(unsigned char *p1, unsigned char *p2);
-ssize_t ecp_cr_aead_enc(unsigned char *ct, size_t cl, unsigned char *pt, size_t pl, ecp_aead_key_t *k, unsigned char *n);
-ssize_t ecp_cr_aead_dec(unsigned char *pt, size_t pl, unsigned char *ct, size_t cl, ecp_aead_key_t *k, unsigned char *n) ;
-int ecp_cr_dsa_mkpair(ecp_dsa_public_t *pub, ecp_dsa_private_t *priv, ecp_rng_t rand_buf);
-int ecp_cr_dsa_sign(unsigned char *sig, unsigned char *m, size_t ml, ecp_dsa_public_t *p, ecp_dsa_private_t *s) ;
-int ecp_cr_dsa_verify(unsigned char *m, size_t ml, unsigned char *sig, ecp_dsa_public_t *p);
+uint32_t arc4random(void);
+void arc4random_buf(void *_buf, size_t n);
+uint32_t arc4random_uniform(uint32_t upper_bound);
+
+int ecp_ecdh_mkpair(ecp_ecdh_public_t *pub, ecp_ecdh_private_t *priv);
+int ecp_ecdh_shkey(ecp_aead_key_t *shared, ecp_ecdh_public_t *pub, ecp_ecdh_private_t *priv);
+
+unsigned int ecp_ecdh_pub_hash(ecp_ecdh_public_t *p);
+int ecp_ecdh_pub_eq(ecp_ecdh_public_t *p1, ecp_ecdh_public_t *p2);
+
+ssize_t ecp_aead_enc(unsigned char *ct, size_t cl, unsigned char *pt, size_t pl, ecp_aead_key_t *k, ecp_nonce_t *n, unsigned char nt);
+ssize_t ecp_aead_dec(unsigned char *pt, size_t pl, unsigned char *ct, size_t cl, ecp_aead_key_t *k, ecp_nonce_t *n, unsigned char nt);
+
+int ecp_ecdsa_mkpair(ecp_ecdsa_public_t *pub, ecp_ecdsa_private_t *priv);
+int ecp_ecdsa_sign(ecp_ecdsa_signature_t *sig, unsigned char *m, size_t ml, ecp_ecdsa_private_t *k);
+int ecp_ecdsa_verify(unsigned char *m, size_t ml, ecp_ecdsa_signature_t *sig, ecp_ecdsa_public_t *p);

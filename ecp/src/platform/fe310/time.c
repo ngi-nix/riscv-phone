@@ -1,3 +1,5 @@
+#include <stdlib.h>
+
 #include <core.h>
 #include <tr.h>
 
@@ -9,7 +11,7 @@
 extern ECPSocket *_ecp_tr_sock;
 
 static void timer_handler(unsigned char type) {
-    ecp_cts_t next = ecp_timer_exe(_ecp_tr_sock);
+    ecp_sts_t next = ecp_timer_exe(_ecp_tr_sock);
     if (next) {
         eos_timer_set(next, EOS_TIMER_ETYPE_ECP);
     }
@@ -21,15 +23,15 @@ int ecp_tm_init(ECPContext *ctx) {
     return ECP_OK;
 }
 
-ecp_cts_t ecp_tm_abstime_ms(ecp_cts_t msec) {
+ecp_sts_t ecp_tm_abstime_ms(ecp_sts_t msec) {
     return eos_time_get_tick() * 1000 / EOS_TIMER_RTC_FREQ + msec;
 }
 
-void ecp_tm_sleep_ms(ecp_cts_t msec) {
+void ecp_tm_sleep_ms(ecp_sts_t msec) {
     eos_time_sleep(msec);
 }
 
-void ecp_tm_timer_set(ecp_cts_t next) {
+void ecp_tm_timer_set(ecp_sts_t next) {
     uint32_t _next = eos_timer_get(EOS_TIMER_ETYPE_ECP);
     if ((_next == EOS_TIMER_NONE) || (next < _next)) eos_timer_set(next, EOS_TIMER_ETYPE_ECP);
 }

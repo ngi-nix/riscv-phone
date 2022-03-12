@@ -1,7 +1,4 @@
 #include <eos/sock.h>
 
-#define ECP_IPv4_ADDR_SIZE          4
-
-typedef EOSNetAddr ECPNetAddr;
-typedef int ECPNetSock;
-
+typedef EOSNetAddr ecp_tr_addr_t;
+typedef int ecp_tr_sock_t;

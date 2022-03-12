@@ -12,26 +12,15 @@
 static char fn_key[FN_LEN];
 static char fn_node[FN_LEN];
 
-static int v_rng(void *buf, size_t bufsize) {
-    int fd;
-
-    if((fd = open("/dev/urandom", O_RDONLY)) < 0) return -1;
-    size_t nb = read(fd, buf, bufsize);
-    close(fd);
-    if (nb != bufsize) return -1;
-    return 0;
-}
-
 static void usage(char *arg) {
     fprintf(stderr, "Usage: %s <name> [address]\n", arg);
     exit(1);
 }
 
 int main(int argc, char *argv[]) {
-    int rv;
-    ECPContext ctx;
     ECPDHKey key;
     ECPNode node;
+    int rv;
 
     if ((argc < 2) || (argc > 3)) usage(argv[0]);
 
@@ -41,20 +30,16 @@ int main(int argc, char *argv[]) {
     strcat(fn_key, ".priv");
     strcat(fn_node, ".pub");
 
-    rv = ecp_ctx_init(&ctx);
-    if (rv) goto err;
-    ctx.rng = v_rng;
-
-    rv = ecp_dhkey_gen(&ctx, &key);
+    rv = ecp_dhkey_gen(&key);
     if (rv) goto err;
 
     rv = ecp_node_init(&node, &key.public, (argc == 3) ? argv[2] : NULL);
     if (rv) goto err;
 
-    rv = ecp_util_key_save(&ctx, &key, fn_key);
+    rv = ecp_util_key_save(&key, fn_key);
     if (rv) goto err;
 
-    rv = ecp_util_node_save(&ctx, &node, fn_node);
+    rv = ecp_util_node_save(&node, fn_node);
     if (rv) goto err;
 
     return 0;

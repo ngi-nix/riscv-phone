@@ -1,9 +1,5 @@
-+ check for nonce
-+ check for seq
-
 - memzero keys after usage
 - implement socket message queue
 
 rbuf:
 - implement _wait variants of open / send
-- msgq should subtract ECP_MAX_MTYPE_SYS from mtype (make ECPConnMsgQ smaller)

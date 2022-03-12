@@ -1,12 +1,21 @@
+#include <stdlib.h>
+#include <string.h>
+
 #include "core.h"
-#include "tr.h"
 #include "tm.h"
+
+#include "rbuf.h"
+
+#ifdef ECP_WITH_MSGQ
+#include "msgq.h"
+#endif
 
 #define ACK_RATE            8
 #define ACK_MASK_FIRST      ((ecp_ack_t)1 << (ECP_SIZE_ACKB - 1))
 
-static ssize_t msg_store(ECPConnection *conn, ecp_seq_t seq, unsigned char *msg, size_t msg_size, unsigned char mtype) {
-    ECPRBRecv *buf = conn->rbuf.recv;
+static ssize_t msg_store(ECPRBConn *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *pld, size_t pld_size) {
+    ECPConnection *_conn = ecp_rbuf_get_conn(conn);
+    ECPRBRecv *buf = conn->recv;
     ECPRBuffer *rbuf = &buf->rbuf;
     unsigned short idx;
     unsigned char flags;
@@ -16,18 +25,22 @@ static ssize_t msg_store(ECPConnection *conn, ecp_seq_t seq, unsigned char *msg,
     rv = _ecp_rbuf_msg_idx(rbuf, seq, &idx);
     if (rv) return rv;
 
-    if (rbuf->arr.msg[idx].flags) return ECP_ERR_RBUF_DUP;
+    if (rbuf->arr.pld[idx].flags) return ECP_ERR_RBUF_DUP;
 
 #ifdef ECP_WITH_MSGQ
-    if (buf->flags & ECP_RBUF_FLAG_MSGQ) {
+    if (buf->msgq) {
         ecp_seq_t seq_offset;
 
-        pthread_mutex_lock(&buf->msgq.mutex);
+#ifndef ECP_WITH_RTHD
+        pthread_mutex_lock(&buf->mutex);
+#endif
 
-        seq_offset = seq - buf->msgq.seq_start;
+        seq_offset = seq - buf->msgq->seq_start;
         if (seq_offset >= rbuf->arr_size) rv = ECP_ERR_FULL;
 
-        pthread_mutex_unlock(&buf->msgq.mutex);
+#ifndef ECP_WITH_RTHD
+        pthread_mutex_unlock(&buf->mutex);
+#endif
 
         if (rv) return rv;
     }
@@ -36,75 +49,80 @@ static ssize_t msg_store(ECPConnection *conn, ecp_seq_t seq, unsigned char *msg,
     skip = ecp_rbuf_skip(mtype);
     flags = ECP_RBUF_FLAG_IN_RBUF;
     if (skip) flags |= ECP_RBUF_FLAG_SKIP;
-    rbuf->arr.msg[idx].flags = flags;
+    rbuf->arr.pld[idx].flags = flags;
 
-    if (skip) return 0;
+    if ((mtype == ECP_MTYPE_RBNOP) && pld) {
+        return ecp_pld_handle_one(_conn, seq, pld, pld_size, NULL);
+    } else if (skip) {
+        return 0;
+    }
 
-    memcpy(rbuf->arr.msg[idx].buf, msg, msg_size);
-    rbuf->arr.msg[idx].size = msg_size;
+    if (pld && pld_size) memcpy(rbuf->arr.pld[idx].buf, pld, pld_size);
+    rbuf->arr.pld[idx].size = pld_size;
     if (ECP_SEQ_LT(rbuf->seq_max, seq)) rbuf->seq_max = seq;
 
-    return msg_size;
+    return pld_size;
 }
 
-static void msg_flush(ECPConnection *conn, ECP2Buffer *b) {
-    ECPRBRecv *buf = conn->rbuf.recv;
+static void msg_flush(ECPRBConn *conn) {
+    ECPConnection *_conn = ecp_rbuf_get_conn(conn);
+    ECPRBRecv *buf = conn->recv;
     ECPRBuffer *rbuf = &buf->rbuf;
     ecp_seq_t seq;
     unsigned short idx;
     int i;
 
 #ifdef ECP_WITH_MSGQ
-    if (buf->flags & ECP_RBUF_FLAG_MSGQ) pthread_mutex_lock(&buf->msgq.mutex);
+#ifndef ECP_WITH_RTHD
+    if (buf->msgq) pthread_mutex_lock(&buf->mutex);
+#endif
 #endif
 
     seq = rbuf->seq_start;
     idx = rbuf->idx_start;
 
-    unsigned short msg_cnt = rbuf->seq_max - rbuf->seq_start + 1;
-
     while (ECP_SEQ_LTE(seq, rbuf->seq_max)) {
-        if (rbuf->arr.msg[idx].flags & ECP_RBUF_FLAG_IN_RBUF) {
-            if (!(rbuf->arr.msg[idx].flags & ECP_RBUF_FLAG_SKIP)) {
+        if (rbuf->arr.pld[idx].flags & ECP_RBUF_FLAG_IN_RBUF) {
+            if (!(rbuf->arr.pld[idx].flags & ECP_RBUF_FLAG_SKIP)) {
                 ecp_pts_t msg_pts;
                 int rv;
 
-                rv = ecp_msg_get_pts(rbuf->arr.msg[idx].buf, rbuf->arr.msg[idx].size, &msg_pts);
+                rv = ecp_pld_get_pts(rbuf->arr.pld[idx].buf, rbuf->arr.pld[idx].size, &msg_pts);
                 if (!rv && buf->deliver_delay) {
-                    ecp_cts_t now = ecp_tm_abstime_ms(0);
+                    ecp_sts_t now = ecp_tm_abstime_ms(0);
 
                     msg_pts += buf->deliver_delay;
                     if (ECP_PTS_LT(now, msg_pts)) {
-                        if (!(rbuf->arr.msg[idx].flags & ECP_RBUF_FLAG_IN_TIMER)) {
+                        if (!(rbuf->arr.pld[idx].flags & ECP_RBUF_FLAG_IN_TIMER)) {
                             ECPTimerItem ti;
 
-                            rv = ecp_timer_item_init(&ti, conn, ECP_MTYPE_RBTIMER, 0, msg_pts - now);
-                            if (!rv) rv = ecp_timer_push(&ti);
-                            if (!rv) rbuf->arr.msg[idx].flags |= ECP_RBUF_FLAG_IN_TIMER;
+                            ecp_timer_item_init(&ti, _conn, ECP_MTYPE_RBTIMER, NULL, 0, msg_pts - now);
+                            rv = ecp_timer_push(&ti);
+                            if (!rv) rbuf->arr.pld[idx].flags |= ECP_RBUF_FLAG_IN_TIMER;
                         }
                         break;
-                    } else if (rbuf->arr.msg[idx].flags & ECP_RBUF_FLAG_IN_TIMER) {
-                        rbuf->arr.msg[idx].flags &= ~ECP_RBUF_FLAG_IN_TIMER;
+                    } else if (rbuf->arr.pld[idx].flags & ECP_RBUF_FLAG_IN_TIMER) {
+                        rbuf->arr.pld[idx].flags &= ~ECP_RBUF_FLAG_IN_TIMER;
                     }
                 }
 
 #ifdef ECP_WITH_MSGQ
-                if (buf->flags & ECP_RBUF_FLAG_MSGQ) {
+                if (buf->msgq) {
                     unsigned char mtype;
 
-                    rv = ecp_msg_get_type(rbuf->arr.msg[idx].buf, rbuf->arr.msg[idx].size, &mtype);
-                    if (!rv) rv = ecp_conn_msgq_push(conn, seq, mtype & ECP_MTYPE_MASK);
+                    rv = ecp_pld_get_type(rbuf->arr.pld[idx].buf, rbuf->arr.pld[idx].size, &mtype);
+                    if (!rv) rv = ecp_msgq_push(conn, seq, mtype & ECP_MTYPE_MASK);
                     if (rv) break;
 
-                    rbuf->arr.msg[idx].flags |= ECP_RBUF_FLAG_IN_MSGQ;
+                    rbuf->arr.pld[idx].flags |= ECP_RBUF_FLAG_IN_MSGQ;
                 } else
 #endif
-                    ecp_conn_handle_msg(conn, seq, rbuf->arr.msg[idx].buf, rbuf->arr.msg[idx].size, b);
+                    ecp_pld_handle(_conn, seq, rbuf->arr.pld[idx].buf, rbuf->arr.pld[idx].size, NULL);
             } else {
-                rbuf->arr.msg[idx].flags &= ~ECP_RBUF_FLAG_SKIP;
+                rbuf->arr.pld[idx].flags &= ~ECP_RBUF_FLAG_SKIP;
             }
-            rbuf->arr.msg[idx].flags &= ~ECP_RBUF_FLAG_IN_RBUF;
-            // if (rbuf->arr.msg[idx].flags == 0);
+            rbuf->arr.pld[idx].flags &= ~ECP_RBUF_FLAG_IN_RBUF;
+            // if (rbuf->arr.pld[idx].flags == 0);
         } else {
             if (buf->flags & ECP_RBUF_FLAG_RELIABLE) break;
             if (!ECP_SEQ_LT(seq, rbuf->seq_max - buf->hole_max)) break;
@@ -116,45 +134,14 @@ static void msg_flush(ECPConnection *conn, ECP2Buffer *b) {
     rbuf->idx_start = idx;
 
 #ifdef ECP_WITH_MSGQ
-    if (buf->flags & ECP_RBUF_FLAG_MSGQ) pthread_mutex_unlock(&buf->msgq.mutex);
+#ifndef ECP_WITH_RTHD
+    if (buf->msgq) pthread_mutex_unlock(&buf->mutex);
 #endif
-
+#endif
 }
 
-static int ack_send(ECPConnection *conn, ecp_seq_t seq_ack, ecp_seq_t ack_map) {
-    ECPRBRecv *buf = conn->rbuf.recv;
-    ECPBuffer packet;
-    ECPBuffer payload;
-    unsigned char pkt_buf[ECP_SIZE_PKT_BUF(sizeof(ecp_seq_t) + sizeof(ecp_ack_t), ECP_MTYPE_RBACK, conn)];
-    unsigned char pld_buf[ECP_SIZE_PLD_BUF(sizeof(ecp_seq_t) + sizeof(ecp_ack_t), ECP_MTYPE_RBACK, conn)];
-    unsigned char *_buf;
-    ssize_t rv;
-
-    packet.buffer = pkt_buf;
-    packet.size = ECP_SIZE_PKT_BUF(sizeof(ecp_seq_t) + sizeof(ecp_ack_t), ECP_MTYPE_RBACK, conn);
-    payload.buffer = pld_buf;
-    payload.size = ECP_SIZE_PLD_BUF(sizeof(ecp_seq_t) + sizeof(ecp_ack_t), ECP_MTYPE_RBACK, conn);
-
-    ecp_pld_set_type(payload.buffer, payload.size, ECP_MTYPE_RBACK);
-    _buf = ecp_pld_get_buf(payload.buffer, payload.size);
-    _buf[0] = (seq_ack & 0xFF000000) >> 24;
-    _buf[1] = (seq_ack & 0x00FF0000) >> 16;
-    _buf[2] = (seq_ack & 0x0000FF00) >> 8;
-    _buf[3] = (seq_ack & 0x000000FF);
-    _buf[4] = (ack_map & 0xFF000000) >> 24;
-    _buf[5] = (ack_map & 0x00FF0000) >> 16;
-    _buf[6] = (ack_map & 0x0000FF00) >> 8;
-    _buf[7] = (ack_map & 0x000000FF);
-
-    rv = ecp_pld_send(conn, &packet, &payload, ECP_SIZE_PLD(sizeof(ecp_seq_t) + sizeof(ecp_ack_t), ECP_MTYPE_RBACK), 0);
-    if (rv < 0) return rv;
-
-    buf->ack_pkt = 0;
-
-    return ECP_OK;
-}
-
-static int ack_shift(ECPRBRecv *buf) {
+static int ack_shift(ECPRBConn *conn) {
+    ECPRBRecv *buf = conn->recv;
     ECPRBuffer *rbuf = &buf->rbuf;
     unsigned short idx;
     int do_ack = 0;
@@ -168,7 +155,7 @@ static int ack_shift(ECPRBRecv *buf) {
         buf->seq_ack++;
         rv = _ecp_rbuf_msg_idx(rbuf, buf->seq_ack, &idx);
         if (!rv) {
-            in_rbuf = rbuf->arr.msg[idx].flags & ECP_RBUF_FLAG_IN_RBUF;
+            in_rbuf = rbuf->arr.pld[idx].flags & ECP_RBUF_FLAG_IN_RBUF;
         } else {
             in_rbuf = 1;
         }
@@ -190,100 +177,194 @@ static int ack_shift(ECPRBRecv *buf) {
     return do_ack;
 }
 
-ssize_t ecp_rbuf_handle_flush(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size, ECP2Buffer *b) {
-    ECPRBRecv *buf = conn->rbuf.recv;
+static int ack_send(ECPRBConn *conn, ecp_seq_t seq_ack, ecp_seq_t ack_map) {
+    ECPConnection *_conn = ecp_rbuf_get_conn(conn);
+    ECPRBRecv *buf = conn->recv;
+    ECPBuffer packet;
+    ECPBuffer payload;
+    unsigned char pkt_buf[ECP_SIZE_PKT_BUF(sizeof(ecp_seq_t) + sizeof(ecp_ack_t), ECP_MTYPE_RBACK, _conn)];
+    unsigned char pld_buf[ECP_SIZE_PLD_BUF(sizeof(ecp_seq_t) + sizeof(ecp_ack_t), ECP_MTYPE_RBACK, _conn)];
+    unsigned char *_buf;
+    ssize_t rv;
 
-    if (buf == NULL) return ECP_ERR;
-    if (size < 0) return size;
+    packet.buffer = pkt_buf;
+    packet.size = sizeof(pkt_buf);
+    payload.buffer = pld_buf;
+    payload.size = sizeof(pld_buf);
 
-    ecp_tr_release(b->packet, 1);
+    ecp_pld_set_type(payload.buffer, payload.size, ECP_MTYPE_RBACK);
+    _buf = ecp_pld_get_msg(payload.buffer, payload.size);
+    _buf[0] = seq_ack >> 24;
+    _buf[1] = seq_ack >> 16;
+    _buf[2] = seq_ack >> 8;
+    _buf[3] = seq_ack;
+    _buf[4] = ack_map >> 24;
+    _buf[5] = ack_map >> 16;
+    _buf[6] = ack_map >> 8;
+    _buf[7] = ack_map;
+
+    rv = ecp_pld_send(_conn, &packet, &payload, ECP_SIZE_PLD(sizeof(ecp_seq_t) + sizeof(ecp_ack_t), ECP_MTYPE_RBACK), 0);
+    if (rv < 0) return rv;
+
+    buf->ack_pkt = 0;
+
+    return ECP_OK;
+}
+
+ssize_t ecp_rbuf_handle_nop(ECPRBConn *conn, unsigned char *msg, size_t msg_size) {
+    ECPRBRecv *buf = conn->recv;
+    ECPRBuffer *rbuf = &buf->rbuf;
+    ecp_seq_t seq_ack;
+    ecp_ack_t ack_map;
+    ecp_ack_t ack_mask = (ecp_ack_t)1 << (ECP_SIZE_ACKB - 1);
+    size_t rsize = sizeof(ecp_seq_t) + sizeof(ecp_ack_t);
+    int i;
+
+    if (msg_size < rsize) return ECP_ERR_SIZE;
+
+    seq_ack = \
+        ((ecp_seq_t)msg[0] << 24) | \
+        ((ecp_seq_t)msg[1] << 16) | \
+        ((ecp_seq_t)msg[2] << 8)  | \
+        ((ecp_seq_t)msg[3]);
+    ack_map = \
+        ((ecp_ack_t)msg[4] << 24) | \
+        ((ecp_ack_t)msg[5] << 16) | \
+        ((ecp_ack_t)msg[6] << 8)  | \
+        ((ecp_ack_t)msg[7]);
+
+    seq_ack -= (ECP_SIZE_ACKB - 1);
+    for (i=0; i<ECP_SIZE_ACKB; i++) {
+        if (ack_map & ack_mask) {
+            msg_store(conn, seq_ack, ECP_MTYPE_RBNOP, NULL, 0);
+        }
+        seq_ack++;
+        ack_mask = ack_mask >> 1;
+    }
+
+    return rsize;
+}
+
+ssize_t ecp_rbuf_handle_flush(ECPRBConn *conn) {
+    ECPRBRecv *buf = conn->recv;
+
+#ifdef ECP_WITH_RTHD
+    pthread_mutex_lock(&buf->mutex);
+#endif
+
     ack_send(conn, buf->seq_ack, buf->ack_map);
+
+#ifdef ECP_WITH_RTHD
+    pthread_mutex_unlock(&buf->mutex);
+#endif
+
     return 0;
 }
 
-ssize_t ecp_rbuf_handle_timer(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size, ECP2Buffer *b) {
-    ECPRBRecv *buf = conn->rbuf.recv;
+void ecp_rbuf_handle_timer(ECPRBConn *conn) {
+    ECPRBRecv *buf = conn->recv;
 
-    if (buf == NULL) return ECP_ERR;
+#ifdef ECP_WITH_RTHD
+    pthread_mutex_lock(&buf->mutex);
+#endif
 
-    msg_flush(conn, b);
-    return 0;
+    msg_flush(conn);
+
+#ifdef ECP_WITH_RTHD
+    pthread_mutex_unlock(&buf->mutex);
+#endif
 }
 
-int ecp_rbuf_recv_create(ECPConnection *conn, ECPRBRecv *buf, ECPRBMessage *msg, unsigned short msg_size) {
+int ecp_rbrecv_create(ECPRBConn *conn, ECPRBRecv *buf, ECPRBPayload *pld, unsigned short pld_size) {
     ECPRBuffer *rbuf = &buf->rbuf;
     int rv;
 
-    if (msg == NULL) return ECP_ERR;
-
     memset(buf, 0, sizeof(ECPRBRecv));
-    memset(msg, 0, sizeof(ECPRBMessage) * msg_size);
+    memset(pld, 0, sizeof(ECPRBPayload) * pld_size);
 
     buf->ack_map = ECP_ACK_FULL;
     buf->ack_rate = ACK_RATE;
-    rbuf->arr.msg = msg;
-    rbuf->arr_size = msg_size;
+    rbuf->arr.pld = pld;
+    rbuf->arr_size = pld_size;
 
-#ifdef ECP_WITH_MSGQ
-    rv = ecp_conn_msgq_create(&buf->msgq);
-    if (rv) return rv;
+#ifdef ECP_WITH_PTHREAD
+    rv = pthread_mutex_init(&buf->mutex, NULL);
+    if (rv) return ECP_ERR;
 #endif
 
-    conn->rbuf.recv = buf;
+    conn->recv = buf;
     return ECP_OK;
 }
 
-void ecp_rbuf_recv_destroy(ECPConnection *conn) {
-    ECPRBRecv *buf = conn->rbuf.recv;
+void ecp_rbrecv_destroy(ECPRBConn *conn) {
+    ECPRBRecv *buf = conn->recv;
 
-    if (buf == NULL) return;
+#ifdef ECP_WITH_PTHREAD
+    pthread_mutex_destroy(&buf->mutex);
+#endif
 
 #ifdef ECP_WITH_MSGQ
-    ecp_conn_msgq_destroy(&buf->msgq);
+    if (buf->msgq) ecp_msgq_destroy(conn);
 #endif
-    conn->rbuf.recv = NULL;
+
+    conn->recv = NULL;
 }
 
-int ecp_rbuf_recv_start(ECPConnection *conn, ecp_seq_t seq) {
-    ECPRBRecv *buf = conn->rbuf.recv;
+void ecp_rbrecv_start(ECPRBConn *conn, ecp_seq_t seq) {
+    ECPRBRecv *buf = conn->recv;
     ECPRBuffer *rbuf = &buf->rbuf;
-    int rv;
 
-    if (buf == NULL) return ECP_ERR;
-
-    seq--;
-    buf->seq_ack = seq;
-    rv = _ecp_rbuf_start(rbuf, seq);
-    if (rv) return rv;
-
-#ifdef ECP_WITH_MSGQ
-    if (buf->flags & ECP_RBUF_FLAG_MSGQ) {
-        rv = ecp_conn_msgq_start(&buf->msgq, seq);
-        if (rv) return rv;
-    }
+#ifdef ECP_WITH_RTHD
+    pthread_mutex_lock(&buf->mutex);
 #endif
 
-    return ECP_OK;
+    buf->start = 1;
+    buf->seq_ack = seq;
+    _ecp_rbuf_start(rbuf, seq);
+
+#ifdef ECP_WITH_MSGQ
+    if (buf->msgq) ecp_msgq_start(conn, seq);
+#endif
+
+#ifdef ECP_WITH_RTHD
+    pthread_mutex_unlock(&buf->mutex);
+#endif
 }
 
-int ecp_rbuf_set_hole(ECPConnection *conn, unsigned short hole_max) {
-    ECPRBRecv *buf = conn->rbuf.recv;
+int ecp_rbuf_set_hole(ECPRBConn *conn, unsigned short hole_max) {
+    ECPRBRecv *buf = conn->recv;
+
+#ifdef ECP_WITH_RTHD
+    pthread_mutex_lock(&buf->mutex);
+#endif
 
     buf->hole_max = hole_max;
 
+#ifdef ECP_WITH_RTHD
+    pthread_mutex_unlock(&buf->mutex);
+#endif
+
     return ECP_OK;
 }
 
-int ecp_rbuf_set_delay(ECPConnection *conn, ecp_cts_t delay) {
-    ECPRBRecv *buf = conn->rbuf.recv;
+int ecp_rbuf_set_delay(ECPRBConn *conn, ecp_sts_t delay) {
+    ECPRBRecv *buf = conn->recv;
+
+#ifdef ECP_WITH_RTHD
+    pthread_mutex_lock(&buf->mutex);
+#endif
 
     buf->deliver_delay = delay;
 
+#ifdef ECP_WITH_RTHD
+    pthread_mutex_unlock(&buf->mutex);
+#endif
+
     return ECP_OK;
 }
 
-ssize_t ecp_rbuf_store(ECPConnection *conn, ecp_seq_t seq, unsigned char *msg, size_t msg_size, ECP2Buffer *b) {
-    ECPRBRecv *buf = conn->rbuf.recv;
+ssize_t ecp_rbuf_store(ECPRBConn *conn, ecp_seq_t seq, unsigned char *pld, size_t pld_size) {
+    ECPRBRecv *buf = conn->recv;
     ECPRBuffer *rbuf = &buf->rbuf;
     unsigned char mtype;
     unsigned short ack_pkt = 0;
@@ -291,8 +372,17 @@ ssize_t ecp_rbuf_store(ECPConnection *conn, ecp_seq_t seq, unsigned char *msg, s
     int _rv;
     ssize_t rv;
 
-    _rv = ecp_msg_get_type(msg, msg_size, &mtype);
+    _rv = ecp_pld_get_type(pld, pld_size, &mtype);
     if (_rv) return _rv;
+
+#ifdef ECP_WITH_RTHD
+    pthread_mutex_lock(&buf->mutex);
+#endif
+
+    if (!buf->start) {
+        rv = 0;
+        goto rbuf_store_fin;
+    }
 
     if (ECP_SEQ_LT(rbuf->seq_max, seq)) {
         ack_pkt = seq - rbuf->seq_max;
@@ -302,42 +392,51 @@ ssize_t ecp_rbuf_store(ECPConnection *conn, ecp_seq_t seq, unsigned char *msg, s
         if (seq_offset < ECP_SIZE_ACKB) {
             ecp_ack_t ack_bit = ((ecp_ack_t)1 << seq_offset);
 
-            if (ack_bit & buf->ack_map) return ECP_ERR_RBUF_DUP;
+            if (ack_bit & buf->ack_map) {
+                rv = ECP_ERR_RBUF_DUP;
+                goto rbuf_store_fin;
+            }
 
-            rv = msg_store(conn, seq, msg, msg_size, mtype);
-            if (rv < 0) return rv;
+            rv = msg_store(conn, seq, mtype, pld, pld_size);
+            if (rv < 0) goto rbuf_store_fin;
 
             buf->ack_map |= ack_bit;
             /* reliable transport can prevent seq_ack from reaching seq_max */
             if (ECP_SEQ_LT(buf->seq_ack, rbuf->seq_max)) {
-                do_ack = ack_shift(buf);
+                do_ack = ack_shift(conn);
             }
         } else {
-            return ECP_ERR_RBUF_DUP;
+            rv = ECP_ERR_RBUF_DUP;
+            goto rbuf_store_fin;
         }
     } else {
         unsigned short msg_cnt = rbuf->seq_max - rbuf->seq_start + 1;
 
         if ((msg_cnt == 0) && (seq == (ecp_seq_t)(buf->seq_ack + 1))) {
-            if ((buf->flags & ECP_RBUF_FLAG_MSGQ) || buf->deliver_delay) {
-                rv = msg_store(conn, seq, msg, msg_size, mtype);
-                if (rv < 0) return rv;
-            } else {
+            int deliver = 1;
+#ifdef ECP_WITH_MSGQ
+            if (buf->msgq) deliver = 0;
+#endif
+            if (buf->deliver_delay) deliver = 0;
+            if (deliver) {
                 /* receive buffer is empty, so no need for msgq mutex lock */
                 rv = 0;
                 rbuf->seq_max++;
                 rbuf->seq_start++;
                 rbuf->idx_start = ECP_RBUF_IDX_MASK(rbuf->idx_start + 1, rbuf->arr_size);
+            } else {
+                rv = msg_store(conn, seq, mtype, pld, pld_size);
+                if (rv < 0) goto rbuf_store_fin;
             }
             buf->seq_ack++;
         } else {
-            rv = msg_store(conn, seq, msg, msg_size, mtype);
-            if (rv < 0) return rv;
+            rv = msg_store(conn, seq, mtype, pld, pld_size);
+            if (rv < 0) goto rbuf_store_fin;
 
-            do_ack = ack_shift(buf);
+            do_ack = ack_shift(conn);
         }
     }
-    msg_flush(conn, b);
+    msg_flush(conn);
     if (ack_pkt) {
         buf->ack_pkt += ack_pkt;
         if (!do_ack && (buf->ack_pkt > buf->ack_rate)) do_ack = 1;
@@ -358,13 +457,17 @@ ssize_t ecp_rbuf_store(ECPConnection *conn, ecp_seq_t seq, unsigned char *msg, s
             }
         }
         _rv = ack_send(conn, seq_ack, ack_map);
-        if (_rv) return _rv;
+        if (_rv) {
+            rv = _rv;
+            goto rbuf_store_fin;
+        }
     }
 
-    return rv;
-}
+rbuf_store_fin:
 
-ECPFragIter *ecp_rbuf_get_frag_iter(ECPConnection *conn) {
-    if (conn->rbuf.recv) return conn->rbuf.recv->frag_iter;
-    return NULL;
+#ifdef ECP_WITH_RTHD
+    pthread_mutex_unlock(&buf->mutex);
+#endif
+
+    return rv;
 }

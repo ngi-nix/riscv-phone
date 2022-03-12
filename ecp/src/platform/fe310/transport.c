@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 
 #include <core.h>
 #include <tr.h>
@@ -11,7 +12,7 @@ static unsigned char _flags = 0;
 ECPSocket *_ecp_tr_sock = NULL;
 
 static void packet_handler(unsigned char type, unsigned char *buffer, uint16_t len) {
-    ECPNetAddr addr;
+    ecp_tr_addr_t addr;
 
     ECP2Buffer bufs;
     ECPBuffer packet;
@@ -49,13 +50,18 @@ int ecp_tr_init(ECPContext *ctx) {
     return ECP_OK;
 }
 
-int ecp_tr_addr_eq(ECPNetAddr *addr1, ECPNetAddr *addr2) {
+unsigned int ecp_tr_addr_hash(ecp_tr_addr_t *addr) {
+    unsigned int ret = *((unsigned int *)addr->host);
+    return ret ^ ((unsigned int)addr->port << 16);
+}
+
+int ecp_tr_addr_eq(ecp_tr_addr_t *addr1, ecp_tr_addr_t *addr2) {
     if (addr1->port != addr2->port) return 0;
     if (memcmp(addr1->host, addr2->host, sizeof(addr1->host)) != 0) return 0;
     return 1;
 }
 
-int ecp_tr_addr_set(ECPNetAddr *addr, void *addr_s) {
+int ecp_tr_addr_set(ecp_tr_addr_t *addr, void *addr_s) {
     return ECP_ERR;
 }
 
@@ -74,7 +80,7 @@ void ecp_tr_close(ECPSocket *sock) {
     _ecp_tr_sock = NULL;
 }
 
-ssize_t ecp_tr_send(ECPSocket *sock, ECPBuffer *packet, size_t msg_size, ECPNetAddr *addr, unsigned char flags) {
+ssize_t ecp_tr_send(ECPSocket *sock, ECPBuffer *packet, size_t msg_size, ecp_tr_addr_t *addr, unsigned char flags) {
     unsigned char *buf = NULL;
     int rv;
 
@@ -94,7 +100,7 @@ ssize_t ecp_tr_send(ECPSocket *sock, ECPBuffer *packet, size_t msg_size, ECPNetA
     return msg_size;
 }
 
-ssize_t ecp_tr_recv(ECPSocket *sock, ECPBuffer *packet, ECPNetAddr *addr, int timeout) {
+ssize_t ecp_tr_recv(ECPSocket *sock, ECPBuffer *packet, ecp_tr_addr_t *addr, int timeout) {
     return ECP_ERR;
 }
 

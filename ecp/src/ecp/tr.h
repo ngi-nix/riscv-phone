@@ -1,10 +1,11 @@
 int ecp_tr_init(ECPContext *ctx);
-int ecp_tr_addr_eq(ECPNetAddr *addr1, ECPNetAddr *addr2);
-int ecp_tr_addr_set(ECPNetAddr *addr, void *addr_s);
+unsigned int ecp_tr_addr_hash(ecp_tr_addr_t *addr);
+int ecp_tr_addr_eq(ecp_tr_addr_t *addr1, ecp_tr_addr_t *addr2);
+int ecp_tr_addr_set(ecp_tr_addr_t *addr, void *addr_s);
 int ecp_tr_open(ECPSocket *sock, void *addr_s);
 void ecp_tr_close(ECPSocket *sock);
-ssize_t ecp_tr_send(ECPSocket *sock, ECPBuffer *packet, size_t msg_size, ECPNetAddr *addr, unsigned char flags);
-ssize_t ecp_tr_recv(ECPSocket *sock, ECPBuffer *packet, ECPNetAddr *addr, int timeout);
+ssize_t ecp_tr_send(ECPSocket *sock, ECPBuffer *packet, size_t msg_size, ecp_tr_addr_t *addr, unsigned char flags);
+ssize_t ecp_tr_recv(ECPSocket *sock, ECPBuffer *packet, ecp_tr_addr_t *addr, int timeout);
 void ecp_tr_release(ECPBuffer *packet, unsigned char more);
 void ecp_tr_flag_set(unsigned char flags);
 void ecp_tr_flag_clear(unsigned char flags);

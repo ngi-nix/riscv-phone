@@ -1,7 +1,10 @@
-#ifdef ECP_WITH_DIRSRV
+int ecp_dir_init(ECPContext *ctx, ECPDirList *dir_online, ECPDirList *dir_shadow);
+ssize_t ecp_dir_send_list(ECPConnection *conn, unsigned char mtype, ECPDirList *list);
 
-int ecp_dir_init(struct ECPContext *ctx, struct ECPDirList *dir_online, struct ECPDirList *dir_shadow);
-ssize_t ecp_dir_handle_update(struct ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size, struct ECP2Buffer *b);
-ssize_t ecp_dir_handle_req(struct ECPSocket *sock, struct ECPNetAddr *addr, struct ECPConnection *parent, unsigned char *msg, size_t msg_size, struct ECPPktMeta *pkt_meta, struct ECP2Buffer *bufs, struct ECPConnection **_conn);
+ssize_t ecp_dir_send_upd(ECPConnection *conn);
+ssize_t ecp_dir_handle_upd(ECPConnection *conn, unsigned char *msg, size_t msg_size);
 
-#endif  /* ECP_WITH_DIRSRV */
+ssize_t ecp_dir_handle_req(ECPConnection *conn, unsigned char *msg, size_t msg_size);
+
+ssize_t ecp_dir_send_rep(ECPConnection *conn);
+ssize_t ecp_dir_handle_rep(ECPConnection *conn, unsigned char *msg, size_t msg_size);

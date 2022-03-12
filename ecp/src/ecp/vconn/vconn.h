@@ -1,22 +1,25 @@
-#define ECP_CTYPE_VCONN     1
-#define ECP_CTYPE_VLINK     2
+#define ECP_CTYPE_VCONN     (0x01 | ECP_CTYPE_FLAG_SYS)
+#define ECP_CTYPE_VLINK     (0x02 | ECP_CTYPE_FLAG_SYS)
 
-#define ECP_MTYPE_RELAY     0x08
-#define ECP_MTYPE_EXEC      0x09
+#define ECP_MTYPE_NEXT      0x00
+#define ECP_MTYPE_EXEC      0x02
+#define ECP_MTYPE_RELAY     0x01
 
-typedef struct ECPVConnOut {
+/* inbound only */
+typedef struct ECPVConn {
     ECPConnection b;
-    ECPConnection *next;
-} ECPVConnOut;
-
-typedef struct ECPVConnIn {
-    ECPConnection b;
-    unsigned char key_next[ECP_MAX_NODE_KEY][ECP_ECDH_SIZE_KEY];
+    ECPDHPub key_next[ECP_MAX_NODE_KEY];
     unsigned char key_next_curr;
-    unsigned char key_out[ECP_ECDH_SIZE_KEY];
-} ECPVConnIn;
+} ECPVConn;
 
-ssize_t ecp_vconn_handle_exec(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, ssize_t size, ECP2Buffer *b);
-int ecp_vconn_ctx_init(ECPContext *ctx);
-int ecp_vconn_create_parent(ECPConnection *conn, ECPNode *conn_node, ECPVConnOut vconn[], ECPNode vconn_node[], int size);
-int ecp_vconn_open(ECPConnection *conn, ECPNode *conn_node, ECPVConnOut vconn[], ECPNode vconn_node[], int size);
+ssize_t ecp_vconn_send_open_req(ECPConnection *conn, unsigned char *cookie);
+ssize_t ecp_vconn_pack_parent(ECPConnection *conn, ECPBuffer *packet, ECPBuffer *payload, size_t pkt_size, ecp_tr_addr_t *addr);
+int ecp_vconn_handle_open(ECPConnection *conn, ECP2Buffer *b);
+void ecp_vconn_handle_close(ECPConnection *conn);
+ssize_t ecp_vconn_handle_msg(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, size_t msg_size, ECP2Buffer *b);
+
+int ecp_vconn_create_inb(ECPVConn *conn, ECPSocket *sock);
+void ecp_vconn_destroy_inb(ECPVConn *conn);
+
+int ecp_vconn_create(ECPConnection vconn[], ecp_ecdh_public_t keys[], size_t vconn_size, ECPConnection *conn);
+int ecp_vconn_open(ECPConnection *conn, ECPNode *node);

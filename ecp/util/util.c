@@ -7,13 +7,15 @@
 #include "cr.h"
 #include "util.h"
 
-int ecp_util_key_save(ECPContext *ctx, ECPDHKey *key, char *filename) {
+int ecp_util_key_save(ECPDHKey *key, char *filename) {
     int fd;
     ssize_t rv;
 
+    if (!key->valid) return ECP_ERR;
+
     if ((fd = open(filename, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR)) < 0) return ECP_ERR;
-    rv = write(fd, ecp_cr_dh_pub_get_buf(&key->public), ECP_ECDH_SIZE_KEY);
-    if (rv != ECP_ECDH_SIZE_KEY) {
+    rv = write(fd, &key->public, sizeof(key->public));
+    if (rv != sizeof(key->public)) {
         close(fd);
         return ECP_ERR;
     }
@@ -26,14 +28,13 @@ int ecp_util_key_save(ECPContext *ctx, ECPDHKey *key, char *filename) {
     return ECP_OK;
 }
 
-int ecp_util_key_load(ECPContext *ctx, ECPDHKey *key, char *filename) {
+int ecp_util_key_load(ECPDHKey *key, char *filename) {
     int fd;
     ssize_t rv;
-    unsigned char buf[ECP_ECDH_SIZE_KEY];
 
     if ((fd = open(filename, O_RDONLY)) < 0) return ECP_ERR;
-    rv = read(fd, buf, ECP_ECDH_SIZE_KEY);
-    if (rv != ECP_ECDH_SIZE_KEY) {
+    rv = read(fd, &key->public, sizeof(key->public));
+    if (rv != sizeof(key->public)) {
         close(fd);
         return ECP_ERR;
     }
@@ -44,19 +45,19 @@ int ecp_util_key_load(ECPContext *ctx, ECPDHKey *key, char *filename) {
     }
     close(fd);
 
-    ecp_cr_dh_pub_from_buf(&key->public, buf);
-
     key->valid = 1;
     return ECP_OK;
 }
 
-int ecp_util_node_save(ECPContext *ctx, ECPNode *node, char *filename) {
+int ecp_util_node_save(ECPNode *node, char *filename) {
     int fd;
     ssize_t rv;
 
+    if (!node->key_perma.valid) return ECP_ERR;
+
     if ((fd = open(filename, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR)) < 0) return ECP_ERR;
-    rv = write(fd, ecp_cr_dh_pub_get_buf(&node->public), ECP_ECDH_SIZE_KEY);
-    if (rv != ECP_ECDH_SIZE_KEY) {
+    rv = write(fd, &node->key_perma.public, sizeof(node->key_perma.public));
+    if (rv != sizeof(node->key_perma.public)) {
         close(fd);
         return ECP_ERR;
     }
@@ -69,14 +70,13 @@ int ecp_util_node_save(ECPContext *ctx, ECPNode *node, char *filename) {
     return ECP_OK;
 }
 
-int ecp_util_node_load(ECPContext *ctx, ECPNode *node, char *filename) {
+int ecp_util_node_load(ECPNode *node, char *filename) {
     int fd;
     ssize_t rv;
-    unsigned char buf[ECP_ECDH_SIZE_KEY];
 
     if ((fd = open(filename, O_RDONLY)) < 0) return ECP_ERR;
-    rv = read(fd, buf, ECP_ECDH_SIZE_KEY);
-    if (rv != ECP_ECDH_SIZE_KEY) {
+    rv = read(fd, &node->key_perma.public, sizeof(node->key_perma.public));
+    if (rv != sizeof(node->key_perma.public)) {
         close(fd);
         return ECP_ERR;
     }
@@ -87,7 +87,6 @@ int ecp_util_node_load(ECPContext *ctx, ECPNode *node, char *filename) {
     }
     close(fd);
 
-    ecp_cr_dh_pub_from_buf(&node->public, buf);
-
+    node->key_perma.valid = 1;
     return ECP_OK;
 }
