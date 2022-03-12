@@ -13,7 +13,7 @@
 #endif
 
 #ifdef ECP_WITH_DIR
-#include "dir.h"
+#include "dir/dir.h"
 #endif
 
 #include "cr.h"

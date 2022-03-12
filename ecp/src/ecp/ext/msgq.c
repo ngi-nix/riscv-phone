@@ -2,7 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "core.h"
+#include <core.h>
+
 #include "rbuf.h"
 #include "msgq.h"
 

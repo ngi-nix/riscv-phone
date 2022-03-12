@@ -1,6 +1,7 @@
 #include <stdlib.h>
 
-#include "core.h"
+#include <core.h>
+
 #include "rbuf.h"
 
 ECPRBConn *ecp_rbuf_get_rbconn(ECPConnection *conn) {

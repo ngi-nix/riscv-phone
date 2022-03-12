@@ -1,6 +1,6 @@
 include common.mk
 
-obj = core.o timer.o dir.o dir_srv.o
+obj = core.o timer.o
 subdirs = crypto $(platform_dir)
 build_dir = ../../build-$(platform)
 
@@ -30,6 +30,12 @@ install: all
 	fi
 	if [ -f vconn/libecpvconn.a ]; then \
 		install vconn/libecpvconn.a $(build_dir); \
+	fi
+	if [ -f dir/libecpext.a ]; then \
+		install vconn/libecpext.a $(build_dir); \
+	fi
+	if [ -f dir/libecpdir.a ]; then \
+		install vconn/libecpdir.a $(build_dir); \
 	fi
 
 clean:

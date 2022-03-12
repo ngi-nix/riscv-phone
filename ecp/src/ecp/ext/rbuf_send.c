@@ -1,7 +1,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "core.h"
+#include <core.h>
+
 #include "rbuf.h"
 
 #define NACK_RATE_UNIT      10000

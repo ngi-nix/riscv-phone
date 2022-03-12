@@ -1,7 +1,7 @@
 #include <stdlib.h>
 
-#include "core.h"
-#include "cr.h"
+#include <core.h>
+#include <cr.h>
 
 #include "dir.h"
 #include "dir_srv.h"
