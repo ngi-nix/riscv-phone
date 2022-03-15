@@ -31,11 +31,11 @@ install: all
 	if [ -f vconn/libecpvconn.a ]; then \
 		install vconn/libecpvconn.a $(build_dir); \
 	fi
-	if [ -f dir/libecpext.a ]; then \
-		install vconn/libecpext.a $(build_dir); \
+	if [ -f ext/libecpext.a ]; then \
+		install ext/libecpext.a $(build_dir); \
 	fi
 	if [ -f dir/libecpdir.a ]; then \
-		install vconn/libecpdir.a $(build_dir); \
+		install dir/libecpdir.a $(build_dir); \
 	fi
 
 clean:

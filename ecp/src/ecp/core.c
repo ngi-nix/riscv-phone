@@ -389,6 +389,16 @@ void ecp_sock_get_nonce(ECPSocket *sock, ecp_nonce_t *nonce) {
 #endif
 }
 
+int ecp_cookie_gen(ECPSocket *sock, unsigned char *cookie, unsigned char *public_buf) {
+    memcpy(cookie, public_buf, ECP_SIZE_COOKIE);
+    return ECP_OK;
+}
+
+int ecp_cookie_verify(ECPSocket *sock, unsigned char *cookie, unsigned char *public_buf) {
+    if (memcmp(cookie, public_buf, ECP_SIZE_COOKIE) == 0) return ECP_OK;
+    return ECP_ERR_COOKIE;
+}
+
 ECPConnection *ecp_sock_keys_search(ECPSocket *sock, ecp_ecdh_public_t *public) {
     ECPConnection *conn;
 
@@ -828,8 +838,8 @@ void ecp_conn_remove_addr(ECPConnection *conn) {
     conn_table_remove_addr(conn);
 
 #ifdef ECP_WITH_PTHREAD
+    pthread_mutex_unlock(&conn->mutex);
     pthread_mutex_unlock(&sock->conn_table.mutex);
-    pthread_mutex_lock(&conn->mutex);
 #endif
 
 }
@@ -1037,11 +1047,14 @@ int ecp_conn_dhkey_set_pub(ECPConnection *conn, unsigned char idx, ecp_ecdh_publ
     if (ecp_conn_is_inb(conn)) pthread_mutex_lock(&sock->conn_table.mutex);
     pthread_mutex_lock(&conn->mutex);
 #endif
+
     rv = conn_dhkey_set_pub(conn, idx, public);
+
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_unlock(&conn->mutex);
     if (ecp_conn_is_inb(conn)) pthread_mutex_unlock(&sock->conn_table.mutex);
 #endif
+
     if (rv == ECP_ERR_ECDH_KEY_DUP) rv = ECP_OK;
 
     return rv;
@@ -1694,14 +1707,7 @@ ssize_t ecp_unpack(ECPSocket *sock, ECPConnection *parent, ecp_tr_addr_t *addr, 
         is_inb = ecp_conn_is_inb(conn);
         is_open = ecp_conn_is_open(conn);
 
-        if (is_open) {
-            nonce_buf = packet+ECP_SIZE_PROTO+1+ECP_SIZE_ECDH_PUB;
-            packet += ECP_SIZE_PKT_HDR;
-            pkt_size -= ECP_SIZE_PKT_HDR;
-
-            nonce_conn = conn->nonce_in;
-            nonce_map = conn->nonce_map;
-        } else if (!is_inb && (idx == ECP_ECDH_IDX_INV)) {
+        if (!is_open && !is_inb && (idx == ECP_ECDH_IDX_INV)) {
             nonce_buf = packet+ECP_SIZE_PROTO+1;
             packet += ECP_SIZE_PROTO+1+ECP_SIZE_NONCE;
             pkt_size -= ECP_SIZE_PROTO+1+ECP_SIZE_NONCE;
@@ -1709,9 +1715,17 @@ ssize_t ecp_unpack(ECPSocket *sock, ECPConnection *parent, ecp_tr_addr_t *addr, 
             s_idx = ECP_ECDH_IDX_PERMA;
             c_idx = conn->key_curr;
         } else {
-            _rv = ECP_ERR;
+            public_buf = packet+ECP_SIZE_PROTO+1;
+            nonce_buf = public_buf+ECP_SIZE_ECDH_PUB;
+            packet += ECP_SIZE_PKT_HDR;
+            pkt_size -= ECP_SIZE_PKT_HDR;
+
+            if (is_open) {
+                nonce_conn = conn->nonce_in;
+                nonce_map = conn->nonce_map;
+            }
         }
-        if (!_rv) _rv = conn_shkey_get(conn, s_idx, c_idx, &shkey);
+        _rv = conn_shkey_get(conn, s_idx, c_idx, &shkey);
         if (!_rv) conn->refcount++;
 
 #ifdef ECP_WITH_PTHREAD
@@ -1884,22 +1898,26 @@ ssize_t ecp_unpack(ECPSocket *sock, ECPConnection *parent, ecp_tr_addr_t *addr, 
         pld_size -= rv;
     }
 
-    if (conn && is_open) {
+    if (conn) {
+        if (is_open) {
 #ifdef ECP_WITH_PTHREAD
-        pthread_mutex_lock(&conn->mutex);
+            pthread_mutex_lock(&conn->mutex);
 #endif
 
-        conn->nonce_in = nonce_in;
-        conn->nonce_map = nonce_map;
-        if (is_inb && addr) conn->remote.addr = *addr;
+            conn->nonce_in = nonce_in;
+            conn->nonce_map = nonce_map;
+            if (is_inb && addr) conn->remote.addr = *addr;
 
 #ifdef ECP_WITH_PTHREAD
-        pthread_mutex_unlock(&conn->mutex);
+            pthread_mutex_unlock(&conn->mutex);
 #endif
 
-        *_conn = conn;
-        *_payload = payload;
-        *_seq = (ecp_seq_t)nonce_pkt;
+            *_conn = conn;
+            *_payload = payload;
+            *_seq = (ecp_seq_t)nonce_pkt;
+        } else {
+            ecp_conn_refcount_dec(conn);
+        }
     }
 
     return _pkt_size - pld_size;
@@ -2023,7 +2041,7 @@ static ssize_t _pack(ECPBuffer *packet, ECPPktMeta *pkt_meta, ECPBuffer *payload
     pkt_buf += 3;
 
     if (pkt_meta->public) {
-        memcpy(pkt_buf, &pkt_meta->public, ECP_SIZE_ECDH_PUB);
+        memcpy(pkt_buf, pkt_meta->public, ECP_SIZE_ECDH_PUB);
         pkt_buf += ECP_SIZE_ECDH_PUB;
     }
     if (pkt_meta->cookie) {
