@@ -20,9 +20,10 @@
 #define ECP_ERR_MTYPE               -9
 #define ECP_ERR_CTYPE               -10
 #define ECP_ERR_HANDLER             -11
+#define ECP_ERR_COOKIE              -12
 
-#define ECP_ERR_NET_ADDR            -12
-#define ECP_ERR_MAX_PARENT          -13
+#define ECP_ERR_NET_ADDR            -13
+#define ECP_ERR_MAX_PARENT          -14
 
 #define ECP_ERR_ECDH_KEY_DUP        -21
 #define ECP_ERR_ECDH_IDX            -22
@@ -242,8 +243,7 @@ typedef struct ECPContext {
     ecp_conn_free_t conn_free;
     ECPConnHandler *handler[ECP_MAX_CTYPE];
 #ifdef ECP_WITH_DIRSRV
-    struct ECPDirList *dir_online;
-    struct ECPDirList *dir_shadow;
+    struct ECPDirSrv *dir_srv;
 #endif
 } ECPContext;
 
@@ -317,6 +317,9 @@ int ecp_sock_dhkey_new(ECPSocket *sock);
 int ecp_sock_dhkey_get(ECPSocket *sock, unsigned char idx, ECPDHKey *key);
 int ecp_sock_dhkey_get_pub(ECPSocket *sock, unsigned char *idx, ecp_ecdh_public_t *public);
 void ecp_sock_get_nonce(ECPSocket *sock, ecp_nonce_t *nonce);
+
+int ecp_cookie_gen(ECPSocket *sock, unsigned char *cookie, unsigned char *public_buf);
+int ecp_cookie_verify(ECPSocket *sock, unsigned char *cookie, unsigned char *public_buf);
 
 ECPConnection *ecp_sock_keys_search(ECPSocket *sock, ecp_ecdh_public_t *public);
 int ecp_sock_keys_insert(ECPSocket *sock, ecp_ecdh_public_t *public, ECPConnection *conn);
