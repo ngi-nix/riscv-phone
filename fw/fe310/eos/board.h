@@ -30,14 +30,14 @@
 #define I2S_PIN_SD_IN           13
 #define I2S_PIN_SD_OUT          12
 
-#define I2S_IRQ_WS_ID           (INT_PWM2_BASE + 0)
-#define I2S_IRQ_SD_ID           (INT_PWM2_BASE + 3)
+#define I2S_IRQ_WS_ID           (INT_PWM1_BASE + 0)
+#define I2S_IRQ_SD_ID           (INT_PWM1_BASE + 3)
 
 #define I2S_CTRL_ADDR_CK        PWM0_CTRL_ADDR
 #define I2S_CTRL_ADDR_WS_MIC    PWM1_CTRL_ADDR
 #define I2S_CTRL_ADDR_WS_SPK    PWM2_CTRL_ADDR
 
-#define I2S_IDLE_CYCLES         8
+#define I2S_IDLE_CYCLES         1
 
 #define CTP_PIN_INT             1
 #define CTP_PIN_RST             19
@@ -46,5 +46,5 @@
 
 #define EVE_GPIO_CAM            0
 #define EVE_GPIO_LCD_EN         1
-#define EVE_GPIO_GAIN_SEL       2
+#define EVE_GPIO_GAIN           2
 #define EVE_GPIO_HAPT           3

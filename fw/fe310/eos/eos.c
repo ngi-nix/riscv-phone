@@ -28,12 +28,12 @@ void eos_init(void) {
     int touch_calibrate = 0;
     int rv;
 
-    printf("INIT:%d\n", wakeup_cause);
-
     eos_evtq_init(wakeup_cause);
     eos_intr_init(wakeup_cause);
     eos_timer_init(wakeup_cause);
     eos_uart_init(wakeup_cause);
+
+    printf("INIT:%d\n", wakeup_cause);
 
     rv = eos_pwr_init(wakeup_cause);
     if (rv) printf("PWR INIT ERR:%d\n", rv);

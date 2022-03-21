@@ -28,6 +28,8 @@
 EOSABuf _eos_i2s_mic_buf;
 EOSABuf _eos_i2s_spk_buf;
 uint32_t _eos_i2s_fmt = 0;
+uint32_t _eos_i2s_mode = 0;
+uint32_t _eos_i2s_sample = 0;
 uint32_t _eos_i2s_mic_wm = 0;
 uint32_t _eos_i2s_spk_wm = 0;
 uint32_t _eos_i2s_mic_evt_enable = 0;
@@ -102,12 +104,14 @@ static void i2s_handle_evt(unsigned char type, unsigned char *buffer, uint16_t l
             _eos_i2s_mic_evt_enable = 1;
             set_csr(mstatus, MSTATUS_MIE);
             break;
+
         case EOS_I2S_ETYPE_SPK:
             if (i2s_spk_handler) i2s_spk_handler(type);
             clear_csr(mstatus, MSTATUS_MIE);
             _eos_i2s_spk_evt_enable = 1;
             set_csr(mstatus, MSTATUS_MIE);
             break;
+
         default:
             eos_evtq_bad_handler(type, buffer, len);
             break;
@@ -125,12 +129,10 @@ static void _spk_vol_set(uint8_t vol) {
     if (spk_cmp <= 0) {
         I2S_REG_WS_SPK(PWM_CMP1) = i2s_clk_period * (32 + spk_cmp);
         I2S_REG_WS_SPK(PWM_CMP2) = i2s_clk_period * (64 + spk_cmp);
-        I2S_REG_WS_SPK(PWM_CMP3) = i2s_clk_period * 33;
         GPIO_REG(GPIO_OUTPUT_XOR) &= ~(1 << I2S_PIN_WS_SPK);
     } else {
         I2S_REG_WS_SPK(PWM_CMP1) = i2s_clk_period * spk_cmp;
         I2S_REG_WS_SPK(PWM_CMP2) = i2s_clk_period * (32 + spk_cmp);
-        I2S_REG_WS_SPK(PWM_CMP3) = i2s_clk_period * (33 + spk_cmp);
         GPIO_REG(GPIO_OUTPUT_XOR) |= (1 << I2S_PIN_WS_SPK);
     }
 }
@@ -139,6 +141,10 @@ extern void _eos_i2s_start_pwm(void);
 
 int eos_i2s_init(uint8_t wakeup_cause) {
     eos_evtq_set_handler(EOS_EVT_I2S, i2s_handle_evt);
+
+    I2S_REG_CK(PWM_CFG)         = 0;
+    I2S_REG_WS_MIC(PWM_CFG)     = 0;
+    I2S_REG_WS_SPK(PWM_CFG)     = 0;
 
     eos_i2s_init_mux();
 
@@ -202,10 +208,10 @@ void eos_i2s_start(uint32_t sample_rate, unsigned char fmt) {
     _eos_i2s_mic_evt_enable = 1;
     _eos_i2s_spk_evt_enable = 1;
 
+    eos_intr_set_priority(I2S_IRQ_SD_ID, IRQ_PRIORITY_I2S_SD);
     eos_intr_set_priority(I2S_IRQ_WS_ID, IRQ_PRIORITY_I2S_WS);
-    eos_intr_set_priority(I2S_IRQ_SD_ID, 0);
-    eos_intr_enable(I2S_IRQ_WS_ID);
     eos_intr_enable(I2S_IRQ_SD_ID);
+    eos_intr_enable(I2S_IRQ_WS_ID);
 
     _eos_i2s_start_pwm();
     /*
@@ -214,9 +220,13 @@ void eos_i2s_start(uint32_t sample_rate, unsigned char fmt) {
     I2S_REG_WS_SPK(PWM_CFG)     = PWM_CFG_ENALWAYS | PWM_CFG_ZEROCMP | PWM_CFG_CMP1GANG;
     */
 
-    GPIO_REG(GPIO_OUTPUT_VAL)   |= (1 << I2S_PIN_CK_SR);
-    GPIO_REG(GPIO_IOF_SEL)      |= I2S_PIN_PWM;
-    GPIO_REG(GPIO_IOF_EN)       |= I2S_PIN_PWM;
+    GPIO_REG(GPIO_OUTPUT_VAL)   |=  (1 << I2S_PIN_WS_MIC);
+    GPIO_REG(GPIO_INPUT_EN)     &= ~(1 << I2S_PIN_WS_MIC);
+    GPIO_REG(GPIO_OUTPUT_EN)    |=  (1 << I2S_PIN_WS_MIC);
+
+    GPIO_REG(GPIO_OUTPUT_VAL)   |=  (1 << I2S_PIN_CK_SR);
+    GPIO_REG(GPIO_IOF_SEL)      |=  I2S_PIN_PWM;
+    GPIO_REG(GPIO_IOF_EN)       |=  I2S_PIN_PWM;
 }
 
 void eos_i2s_stop(void) {
@@ -229,8 +239,7 @@ void eos_i2s_stop(void) {
 
     _eos_i2s_mic_evt_enable = 0;
     _eos_i2s_spk_evt_enable = 0;
-    eos_intr_set_priority(I2S_IRQ_WS_ID, 0);
-    eos_intr_set_priority(I2S_IRQ_SD_ID, 0);
+
     eos_intr_disable(I2S_IRQ_WS_ID);
     eos_intr_disable(I2S_IRQ_SD_ID);
 
@@ -239,10 +248,13 @@ void eos_i2s_stop(void) {
 
     GPIO_REG(GPIO_OUTPUT_XOR)   &= ~(1 << I2S_PIN_WS_SPK);
     GPIO_REG(GPIO_IOF_EN)       &= ~I2S_PIN_PWM;
+
+    eos_i2s_mic_set_wm(0);
+    eos_i2s_spk_set_wm(0);
 }
 
 int eos_i2s_running(void) {
-    return !!(GPIO_REG(GPIO_IOF_EN) & I2S_PIN_PWM);
+    return !!(GPIO_REG(GPIO_IOF_EN) & (1 << I2S_PIN_CK));
 }
 
 void eos_i2s_mic_init(uint8_t *mic_arr, uint16_t mic_arr_size) {
@@ -291,16 +303,22 @@ uint16_t eos_i2s_mic_read(uint8_t *sample, uint16_t ssize) {
 }
 
 int eos_i2s_mic_pop8(uint8_t *sample) {
+    int ret;
+
     clear_csr(mstatus, MSTATUS_MIE);
-    int ret = _abuf_pop8(&_eos_i2s_mic_buf, sample);
+    ret = _abuf_pop8(&_eos_i2s_mic_buf, sample);
     set_csr(mstatus, MSTATUS_MIE);
+
     return ret;
 }
 
 int eos_i2s_mic_pop16(uint16_t *sample) {
+    int ret;
+
     clear_csr(mstatus, MSTATUS_MIE);
-    int ret = _abuf_pop16(&_eos_i2s_mic_buf, sample);
+    ret = _abuf_pop16(&_eos_i2s_mic_buf, sample);
     set_csr(mstatus, MSTATUS_MIE);
+
     return ret;
 }
 
@@ -364,16 +382,22 @@ uint16_t eos_i2s_spk_write(uint8_t *sample, uint16_t ssize) {
 }
 
 int eos_i2s_spk_push8(uint8_t sample) {
+    int ret;
+
     clear_csr(mstatus, MSTATUS_MIE);
-    int ret = _abuf_push8(&_eos_i2s_spk_buf, sample);
+    ret = _abuf_push8(&_eos_i2s_spk_buf, sample);
     set_csr(mstatus, MSTATUS_MIE);
+
     return ret;
 }
 
 int eos_i2s_spk_push16(uint16_t sample) {
+    int ret;
+
     clear_csr(mstatus, MSTATUS_MIE);
-    int ret = _abuf_push16(&_eos_i2s_spk_buf, sample);
+    ret = _abuf_push16(&_eos_i2s_spk_buf, sample);
     set_csr(mstatus, MSTATUS_MIE);
+
     return ret;
 }
 

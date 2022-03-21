@@ -458,27 +458,27 @@ void eve_brightness(uint8_t b) {
 
 int eve_gpio_get(int gpio) {
     uint16_t reg = eve_read16(REG_GPIOX);
+
     return !!(reg & (1 << gpio));
 }
 
 void eve_gpio_set(int gpio, int val) {
     uint16_t reg = eve_read16(REG_GPIOX);
     uint16_t reg_val = (1 << gpio);
-    if (val) {
-        reg |= reg_val;
-    } else {
-        reg &= ~reg_val;
-    }
+
+    reg = val ? reg | reg_val : reg & ~reg_val;
     eve_write16(REG_GPIOX, reg);
 }
 
 uint8_t eve_gpio_get_dir(void) {
     uint16_t reg = eve_read16(REG_GPIOX_DIR);
+
     return reg & 0x000f;
 }
 
 void eve_gpio_set_dir(uint8_t dir) {
     uint16_t reg = eve_read16(REG_GPIOX_DIR);
+
     reg &= 0xfff0;
     reg |= dir & 0x0f;
     eve_write16(REG_GPIOX_DIR, reg);
