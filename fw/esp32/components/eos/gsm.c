@@ -7,8 +7,8 @@
 #define DIVC(x,y)                   ((x) / (y) + ((x) % (y) != 0))
 
 uint8_t pdu_getc(char *pdu) {
-
     int ch;
+
     sscanf(pdu, "%2X", &ch);
     return ch;
 }

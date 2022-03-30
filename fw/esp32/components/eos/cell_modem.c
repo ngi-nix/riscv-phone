@@ -302,8 +302,7 @@ static void modem_event_task(void *pvParameters) {
                 default:
                     break;
             }
-
-            /* Obsolete!!!
+            /* Obsolete
             uint64_t t_start = esp_timer_get_time();
             if (xQueueReceive(modem_queue, &level, 200 / portTICK_RATE_MS) && (level == 1)) {
                 uint64_t t_end = esp_timer_get_time();
@@ -312,7 +311,6 @@ static void modem_event_task(void *pvParameters) {
                 ESP_LOGI(TAG, "RING");
             }
             */
-
         }
     }
     vTaskDelete(NULL);
@@ -530,8 +528,9 @@ static int ppp_resume(void) {
 static int ppp_setup(void) {
     int r;
     char cmd[64];
-    int cmd_len = snprintf(cmd, sizeof(cmd), "AT+CGDCONT=1,\"IP\",\"%s\"\r", ppp_apn);
+    int cmd_len;
 
+    cmd_len = snprintf(cmd, sizeof(cmd), "AT+CGDCONT=1,\"IP\",\"%s\"\r", ppp_apn);
     if ((cmd_len < 0) || (cmd_len >= sizeof(cmd))) return EOS_ERR;
 
     modem_set_mode(EOS_CELL_UART_MODE_NONE);

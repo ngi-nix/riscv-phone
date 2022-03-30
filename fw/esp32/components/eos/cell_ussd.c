@@ -14,16 +14,14 @@ static const char *TAG = "EOS USSD";
 static char cmd[256];
 static int cmd_len;
 
-void eos_cell_ussd_handler(unsigned char mtype, unsigned char *buffer, uint16_t size) {
+void eos_cell_ussd_handler(unsigned char mtype, unsigned char *buffer, uint16_t buf_len) {
     int rv;
 
-    buffer += 1;
-    size -= 1;
     switch (mtype) {
         case EOS_CELL_MTYPE_USSD_REQUEST:
-            if (size == 0) return;
+            if (buf_len > EOS_CELL_MAX_USSD_STR) return;
 
-            buffer[size] = '\0';
+            buffer[buf_len] = '\0';
             cmd_len = snprintf(cmd, sizeof(cmd), "AT+CUSD=1,\"%s\",15\r", buffer);
             if ((cmd_len < 0) || (cmd_len >= sizeof(cmd))) return;
 
@@ -89,7 +87,7 @@ static void ussd_reply_handler(char *urc, regmatch_t m[]) {
     } while (1);
 
     if (rv) {
-        ESP_LOGE(TAG, "USSD error");
+        ESP_LOGE(TAG, "error");
         eos_net_free(buf);
     } else {
         eos_net_send(EOS_NET_MTYPE_CELL, buf, len);

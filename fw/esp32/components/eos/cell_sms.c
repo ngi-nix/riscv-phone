@@ -44,10 +44,10 @@ static int sms_decode(unsigned char *buf, uint16_t *_len) {
     uint16_t len = 0;
     uint8_t smsc_info, smsc_info_len;
 
-    if (pdu_len < 2) return GSM_ERR_SIZE;
+    if (pdu_len < 2) return EOS_ERR;
     smsc_info = pdu_getc(pdu);
     smsc_info_len = 2 * (smsc_info + 1);
-    if (pdu_len < smsc_info_len) return GSM_ERR_SIZE;
+    if (pdu_len < smsc_info_len) return EOS_ERR;
 
     if (smsc_info > 1) {
         pdu_putc((smsc_info - 1) * 2, pdu);
@@ -125,21 +125,20 @@ static int sms_decode(unsigned char *buf, uint16_t *_len) {
     return EOS_OK;
 }
 
-static int sms_encode(unsigned char *buffer, uint16_t size) {
+static int sms_encode(unsigned char *buffer, uint16_t len) {
     utf32_t ch;
     int i, rv;
     char *addr;
     uint8_t addr_type;
     int addr_len;
 
-    if (size == 0) return EOS_ERR;
-
+    if (len < 2) return EOS_ERR;
     flags = buffer[0] << 8;
     flags |= buffer[1];
     buffer += 2;
-    size -= 2;
+    len -= 2;
 
-    if (size < 2) return EOS_ERR;
+    if (len < 2) return EOS_ERR;
     switch(buffer[0]) {
         case EOS_CELL_SMS_ADDRTYPE_INTL:
             addr_type = GSM_EXT | GSM_TON_INTERNATIONAL | GSM_NPI_TELEPHONE;
@@ -149,18 +148,19 @@ static int sms_encode(unsigned char *buffer, uint16_t size) {
             addr_type = GSM_EXT | GSM_TON_UNKNOWN | GSM_NPI_TELEPHONE;
             break;
 
-        default: return EOS_ERR;
+        default:
+            return EOS_ERR;
     }
     addr_len = buffer[1];
     addr = (char *)buffer + 2;
 
-    if (size < 2 + addr_len) return EOS_ERR;
+    if (len < 2 + addr_len) return EOS_ERR;
     buffer += 2 + addr_len;
-    size -= 2 + addr_len;
+    len -= 2 + addr_len;
 
     i = 0;
     msg_len = 0;
-    while (i < size) {
+    while (i < len) {
         rv = utf8_dec(buffer + i, &ch);
         if (rv < 0) return EOS_ERR;
         if (ch >= 0xffff) return EOS_ERR;
@@ -181,19 +181,20 @@ static int sms_encode(unsigned char *buffer, uint16_t size) {
     return EOS_OK;
 }
 
-void eos_cell_sms_handler(unsigned char mtype, unsigned char *buffer, uint16_t size) {
+void eos_cell_sms_handler(unsigned char mtype, unsigned char *buffer, uint16_t buf_len) {
     int rv;
     char b[4];
 
-    buffer += 1;
-    size -= 1;
     switch (mtype) {
         case EOS_CELL_MTYPE_SMS_LIST:
-            if (size == 0) return;
-            snprintf(cmd, sizeof(cmd), "AT+CMGL=%d\r", buffer[0]);
+            if (buf_len < 1) return;
+
+            rv = snprintf(cmd, sizeof(cmd), "AT+CMGL=%d\r", buffer[0]);
+            if ((rv < 0) || (rv >= sizeof(cmd))) return;
 
             rv = eos_modem_take(1000);
             if (rv) return;
+
             at_cmd(cmd);
             do {
                 unsigned char *buf;
@@ -216,26 +217,28 @@ void eos_cell_sms_handler(unsigned char mtype, unsigned char *buffer, uint16_t s
                     eos_net_send(EOS_NET_MTYPE_CELL, buf, len + 1);
                 }
             } while (1);
-            eos_modem_give();
 
+            eos_modem_give();
             break;
 
         case EOS_CELL_MTYPE_SMS_SEND:
-            rv = sms_encode(buffer, size);
+            rv = sms_encode(buffer, buf_len);
             if (rv) return;
 
-            snprintf(cmd, sizeof(cmd), "AT+CMGS=%d\r", pdu_len / 2);
+            rv = snprintf(cmd, sizeof(cmd), "AT+CMGS=%d\r", pdu_len / 2);
+            if ((rv < 0) || (rv >= sizeof(cmd))) return;
 
             rv = eos_modem_take(1000);
             if (rv) return;
+
             at_cmd(cmd);
             // wait for: '> ' (0d 0a 3e 20)
             eos_modem_read(b, 4, 1000);
             at_cmd(pdu);
             rv = at_expect("^\\+CMGS: [0-9]+", "^ERROR", 5000);
             if (rv == 1) rv = at_expect("^OK", "^ERROR", 1000);
-            eos_modem_give();
 
+            eos_modem_give();
             break;
     }
 }
@@ -245,7 +248,9 @@ static void sms_received_handler(char *urc, regmatch_t m[]) {
 
     sscanf(urc + m[1].rm_so, "%d", &ref);
 
-    snprintf(cmd, sizeof(cmd), "AT+CMGR=%d\r", ref);
+    rv = snprintf(cmd, sizeof(cmd), "AT+CMGR=%d\r", ref);
+    if ((rv < 0) || (rv >= sizeof(cmd))) return;
+
     at_cmd(cmd);
 
     rv = at_expect("^\\+CMGR: [0-9],.*,[0-9]+$", "^ERROR", 1000);
@@ -255,6 +260,7 @@ static void sms_received_handler(char *urc, regmatch_t m[]) {
 
         rv = eos_modem_readln(pdu, sizeof(pdu), 1000);
         if (rv) return;
+
         pdu_len = strlen(pdu);
 
         rv = at_expect("^OK", NULL, 1000);

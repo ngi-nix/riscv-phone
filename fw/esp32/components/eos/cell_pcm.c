@@ -91,12 +91,15 @@ static void i2s_event_task(void *pvParameters) {
                         xSemaphoreGive(mutex);
                     }
                     break;
+
                 case I2S_EVENT_DMA_ERROR:
                     ESP_LOGE(TAG, "*** I2S DMA ERROR ***");
                     break;
+
                 case I2S_EVENT_MAX:
                     hold_cnt = PCM_HOLD_CNT_RX;
                     break;
+
                 default:
                     break;
             }

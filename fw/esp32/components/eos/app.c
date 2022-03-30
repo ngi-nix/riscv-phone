@@ -56,7 +56,6 @@ static void _post_trans_cb(spi_slave_transaction_t *trans) {
 
 static void app_xchg_task(void *pvParameters) {
     unsigned char mtype = 0;
-    unsigned char mtype_flags = 0;
     unsigned char *buffer;
     uint16_t len;
     unsigned char *buf_send = heap_caps_malloc(SPI_SIZE_BUF, MALLOC_CAP_DMA);
@@ -133,7 +132,6 @@ static void app_xchg_task(void *pvParameters) {
             spi_tr.length = SPI_SIZE_BUF * 8;
         }
         mtype = buf_recv[0] & ~EOS_APP_MTYPE_FLAG_MASK;
-        mtype_flags = buf_recv[0] & EOS_APP_MTYPE_FLAG_MASK;
         len  = (uint16_t)buf_recv[1] << 8;
         len |= (uint16_t)buf_recv[2] & 0xFF;
         buffer = buf_recv + 3;

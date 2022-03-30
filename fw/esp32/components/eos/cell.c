@@ -25,11 +25,15 @@ static unsigned char *cell_bufq_array[CELL_SIZE_QUEUE];
 static SemaphoreHandle_t mutex;
 static QueueHandle_t cell_queue;
 
-static void _cell_handler(unsigned char _mtype, unsigned char *buffer, uint16_t size) {
+static void _cell_handler(unsigned char _mtype, unsigned char *buffer, uint16_t buf_len) {
     uint8_t mtype;
 
-    if (size < 1) return;
+    if (buf_len < 1) return;
+
     mtype = buffer[0];
+    buffer++;
+    buf_len--;
+
     switch (mtype & EOS_CELL_MTYPE_MASK) {
         case EOS_CELL_MTYPE_DEV:
             switch (mtype & ~EOS_CELL_MTYPE_MASK) {
@@ -38,7 +42,7 @@ static void _cell_handler(unsigned char _mtype, unsigned char *buffer, uint16_t 
                     break;
 
                 case EOS_CELL_MTYPE_UART_DATA:
-                    if (eos_modem_get_mode() == EOS_CELL_UART_MODE_RELAY) eos_modem_write(buffer+1, size-1);
+                    if (eos_modem_get_mode() == EOS_CELL_UART_MODE_RELAY) eos_modem_write(buffer, buf_len);
                     break;
 
                 case EOS_CELL_MTYPE_UART_TAKE:
@@ -53,19 +57,19 @@ static void _cell_handler(unsigned char _mtype, unsigned char *buffer, uint16_t 
             break;
 
         case EOS_CELL_MTYPE_VOICE:
-            eos_cell_voice_handler(mtype & ~EOS_CELL_MTYPE_MASK, buffer, size);
+            eos_cell_voice_handler(mtype & ~EOS_CELL_MTYPE_MASK, buffer, buf_len);
             break;
 
         case EOS_CELL_MTYPE_SMS:
-            eos_cell_sms_handler(mtype & ~EOS_CELL_MTYPE_MASK, buffer, size);
+            eos_cell_sms_handler(mtype & ~EOS_CELL_MTYPE_MASK, buffer, buf_len);
             break;
 
         case EOS_CELL_MTYPE_USSD:
-            eos_cell_ussd_handler(mtype & ~EOS_CELL_MTYPE_MASK, buffer, size);
+            eos_cell_ussd_handler(mtype & ~EOS_CELL_MTYPE_MASK, buffer, buf_len);
             break;
 
         case EOS_CELL_MTYPE_PDP:
-            eos_cell_pdp_handler(mtype & ~EOS_CELL_MTYPE_MASK, buffer, size);
+            eos_cell_pdp_handler(mtype & ~EOS_CELL_MTYPE_MASK, buffer, buf_len);
             break;
     }
 }
@@ -119,4 +123,3 @@ void eos_cell_init(void) {
 
     eos_net_set_handler(EOS_NET_MTYPE_CELL, cell_handler);
 }
-

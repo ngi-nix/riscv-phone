@@ -54,6 +54,9 @@
 
 #define EOS_CELL_UART_SIZE_BUF          1024
 
+#define EOS_CELL_MAX_USSD_STR           256
+#define EOS_CELL_MAX_DIAL_STR           256
+
 void eos_cell_init(void);
 
 void eos_modem_init(void);
@@ -81,10 +84,10 @@ int eos_cell_pcm_push(unsigned char *data, size_t size);
 void eos_cell_pcm_start(void);
 void eos_cell_pcm_stop(void);
 
-void eos_cell_voice_handler(unsigned char mtype, unsigned char *buffer, uint16_t size);
-void eos_cell_sms_handler(unsigned char mtype, unsigned char *buffer, uint16_t size);
-void eos_cell_ussd_handler(unsigned char mtype, unsigned char *buffer, uint16_t size);
-void eos_cell_pdp_handler(unsigned char mtype, unsigned char *buffer, uint16_t size);
+void eos_cell_voice_handler(unsigned char mtype, unsigned char *buffer, uint16_t buf_len);
+void eos_cell_sms_handler(unsigned char mtype, unsigned char *buffer, uint16_t buf_len);
+void eos_cell_ussd_handler(unsigned char mtype, unsigned char *buffer, uint16_t buf_len);
+void eos_cell_pdp_handler(unsigned char mtype, unsigned char *buffer, uint16_t buf_len);
 
 void eos_cell_voice_init(void);
 void eos_cell_sms_init(void);

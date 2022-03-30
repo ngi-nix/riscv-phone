@@ -10,40 +10,38 @@
 #include "at_cmd.h"
 #include "cell.h"
 
-static const char *TAG = "EOS VOICE";
-
 static char cmd[256];
 static int cmd_len;
 
-void eos_cell_voice_handler(unsigned char mtype, unsigned char *buffer, uint16_t size) {
+void eos_cell_voice_handler(unsigned char mtype, unsigned char *buffer, uint16_t buf_len) {
     int rv;
 
-    buffer += 1;
-    size -= 1;
     switch (mtype) {
         case EOS_CELL_MTYPE_VOICE_DIAL:
-            if (size == 0) return;
+            if (buf_len > EOS_CELL_MAX_DIAL_STR) return;
 
-            buffer[size] = '\0';
+            buffer[buf_len] = '\0';
             cmd_len = snprintf(cmd, sizeof(cmd), "ATD%s;\r", buffer);
             if ((cmd_len < 0) || (cmd_len >= sizeof(cmd))) return;
 
             rv = eos_modem_take(1000);
             if (rv) return;
+
             at_cmd(cmd);
             rv = at_expect("^OK", "^ERROR", 1000);
-            eos_modem_give();
 
+            eos_modem_give();
             eos_cell_pcm_start();
             break;
 
         case EOS_CELL_MTYPE_VOICE_ANSWER:
             rv = eos_modem_take(1000);
             if (rv) return;
+
             at_cmd("ATA\r");
             rv = at_expect("^OK", "^ERROR", 1000);
-            eos_modem_give();
 
+            eos_modem_give();
             eos_cell_pcm_start();
             break;
 
@@ -52,14 +50,15 @@ void eos_cell_voice_handler(unsigned char mtype, unsigned char *buffer, uint16_t
 
             rv = eos_modem_take(1000);
             if (rv) return;
+
             at_cmd("AT+CHUP\r");
             rv = at_expect("^OK", "^ERROR", 1000);
-            eos_modem_give();
 
+            eos_modem_give();
             break;
 
         case EOS_CELL_MTYPE_VOICE_PCM:
-            eos_cell_pcm_push(buffer+1, size-1);
+            eos_cell_pcm_push(buffer, buf_len);
             break;
     }
 }

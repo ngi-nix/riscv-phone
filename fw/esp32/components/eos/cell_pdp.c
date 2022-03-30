@@ -6,16 +6,33 @@
 #include "eos.h"
 #include "cell.h"
 
-void eos_cell_pdp_handler(unsigned char mtype, unsigned char *buffer, uint16_t size) {
-    char *apn, *user, *pass;
+void eos_cell_pdp_handler(unsigned char mtype, unsigned char *buffer, uint16_t buf_len) {
+    char *apn, *user, *pass, *_buf;
+    uint16_t _buf_len;
 
-    buffer += 1;
-    size -= 1;
     switch (mtype) {
         case EOS_CELL_MTYPE_PDP_CONFIG:
-            apn = (char *)buffer;
-            user = apn + strlen(apn) + 1;
-            pass = user + strlen(user) + 1;
+            _buf = (char *)buffer;
+            _buf_len = 0;
+
+            apn = _buf;
+            _buf_len = strnlen(_buf, buf_len);
+            if (_buf_len == buf_len) break;
+            _buf += _buf_len + 1;
+            buf_len -= _buf_len + 1;
+
+            user = _buf;
+            _buf_len = strnlen(_buf, buf_len);
+            if (_buf_len == buf_len) break;
+            _buf += _buf_len + 1;
+            buf_len -= _buf_len + 1;
+
+            pass = _buf;
+            _buf_len = strnlen(_buf, buf_len);
+            if (_buf_len == buf_len) break;
+            _buf += _buf_len + 1;
+            buf_len -= _buf_len + 1;
+
             eos_ppp_set_apn(apn);
             eos_ppp_set_auth(user, pass);
             break;

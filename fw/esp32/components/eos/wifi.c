@@ -73,9 +73,10 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
                 rbuf[0] = EOS_WIFI_MTYPE_SCAN;
                 p = rbuf + 1;
                 for (i=0; i<scan_n; i++) {
-                    len = strnlen((char *)scan_r[i].ssid, 33);
-                    if (len > 32) continue;
+                    len = strnlen((char *)scan_r[i].ssid, sizeof(scan_r[i].ssid));
+                    if (len == sizeof(scan_r[i].ssid)) continue;
                     if (p - rbuf + len + 1 > EOS_NET_MTU) break;
+
                     strcpy((char *)p, (char *)scan_r[i].ssid);
                     p += len + 1;
                 }
@@ -168,27 +169,42 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
     if (ret != ESP_OK) ESP_LOGE(TAG, "EVT HANDLER ERR:%d EVT:%d", ret, event_id);
 }
 
-static void wifi_handler(unsigned char _mtype, unsigned char *buffer, uint16_t size) {
+static void wifi_handler(unsigned char _mtype, unsigned char *buffer, uint16_t buf_len) {
     uint8_t mtype;
     int rv;
-    char *ssid, *pass;
+    char *ssid, *pass, *_buf;
+    uint16_t _buf_len;
 
-    if (size < 1) return;
+    if (buf_len < 1) return;
+
+    rv = EOS_OK;
 
     mtype = buffer[0];
-    rv = EOS_OK;
-    buffer += 1;
-    size -= 1;
+    buffer++;
+    buf_len--;
 
     switch (mtype) {
         case EOS_WIFI_MTYPE_SCAN:
             rv = eos_wifi_scan();
             break;
 
-        case EOS_WIFI_MTYPE_CONFIG:
-            ssid = (char *)buffer;
-            pass = ssid + strlen(ssid) + 1;
-            rv = eos_wifi_set_config(ssid, pass);
+        case EOS_WIFI_MTYPE_AUTH:
+            _buf = (char *)buffer;
+            _buf_len = 0;
+
+            ssid = _buf;
+            _buf_len = strnlen(_buf, buf_len);
+            if (_buf_len == buf_len) break;
+            _buf += _buf_len + 1;
+            buf_len -= _buf_len + 1;
+
+            pass = _buf;
+            _buf_len = strnlen(_buf, buf_len);
+            if (_buf_len == buf_len) break;
+            _buf += _buf_len + 1;
+            buf_len -= _buf_len + 1;
+
+            rv = eos_wifi_auth(ssid, pass);
             break;
 
         case EOS_WIFI_MTYPE_CONNECT:
@@ -269,7 +285,7 @@ int eos_wifi_scan(void) {
     return rv;
 }
 
-int eos_wifi_set_config(char *ssid, char *pass) {
+int eos_wifi_auth(char *ssid, char *pass) {
     int rv = EOS_OK;
 
     xSemaphoreTake(mutex, portMAX_DELAY);
