@@ -19,7 +19,7 @@
 
 #include <eve/widget/widgets.h>
 
-#include <app/app_root.h>
+#include "app/app_root.h"
 
 #include "modem.h"
 
@@ -50,7 +50,7 @@ static void key_down(void *p, int c) {
         buf[1] = c;
     }
 
-    eos_net_send(EOS_NET_MTYPE_CELL, buf, i, 0);
+    eos_net_send_async(EOS_NET_MTYPE_CELL, buf, i, 0);
     eve_text_scroll0(text);
 }
 
@@ -71,7 +71,7 @@ static void handle_uart(unsigned char type) {
         i++;
         if (i == EOS_NET_MTU) break;
     }
-    eos_net_send(EOS_NET_MTYPE_CELL, buf, i, 0);
+    eos_net_send_async(EOS_NET_MTYPE_CELL, buf, i, 0);
     eos_uart_rxwm_set(0);
 }
 
@@ -139,7 +139,7 @@ void app_modem(EVEWindow *window, EVEViewStack *stack) {
 
     buf = eos_net_alloc();
     buf[0] = EOS_CELL_MTYPE_DEV | EOS_CELL_MTYPE_UART_TAKE;
-    eos_net_send(EOS_NET_MTYPE_CELL, buf, 1, 0);
+    eos_net_send_async(EOS_NET_MTYPE_CELL, buf, 1, 0);
     eos_uart_rxwm_set(0);
 }
 
@@ -152,7 +152,7 @@ void app_modem_close(EVEView *view) {
     EVEViewStack *stack = param->stack;
 
     buf[0] = EOS_CELL_MTYPE_DEV | EOS_CELL_MTYPE_RESET;
-    eos_net_send(EOS_NET_MTYPE_CELL, buf, 1, 0);
+    eos_net_send_async(EOS_NET_MTYPE_CELL, buf, 1, 0);
     eos_uart_rxwm_clear();
     eos_uart_set_handler(EOS_UART_ETYPE_RX, NULL);
     eos_cell_set_handler(EOS_CELL_MTYPE_DEV, param->cell_dev_handler);

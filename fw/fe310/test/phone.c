@@ -18,9 +18,9 @@
 
 #include <eve/widget/widgets.h>
 
-#include <app/app_root.h>
+#include "app/app_root.h"
+#include "app/app_status.h"
 
-#include "status.h"
 #include "phone.h"
 
 #define ABUF_SIZE       128
@@ -41,8 +41,8 @@ static void handle_mic(unsigned char type) {
     unsigned char *buf = eos_net_alloc();
 
     buf[0] = EOS_CELL_MTYPE_VOICE_PCM;
-    size = eos_i2s_mic_read(buf+1, MIC_WM);
-    eos_net_send(EOS_NET_MTYPE_CELL, buf, size+1, 0);
+    size = eos_i2s_mic_read(buf + 1, MIC_WM);
+    eos_net_send_async(EOS_NET_MTYPE_CELL, buf, size + 1, 0);
 }
 
 static void cell_voice_handler(unsigned char type, unsigned char *buffer, uint16_t len) {
@@ -62,7 +62,11 @@ static void cell_voice_handler(unsigned char type, unsigned char *buffer, uint16
         case EOS_CELL_MTYPE_VOICE_BEGIN:
             printf("VOICE BEGIN\n");
             voice_state = VOICE_STATE_CIP;
-            eos_i2s_start(8000, EOS_I2S_FMT_PCM16);
+            eos_i2s_mic_init(mic_arr, ABUF_SIZE);
+            eos_i2s_mic_set_wm(MIC_WM);
+            eos_i2s_mic_set_handler(handle_mic);
+            eos_i2s_spk_init(spk_arr, ABUF_SIZE);
+            eos_i2s_start(8000);
             break;
 
         case EOS_CELL_MTYPE_VOICE_END:
@@ -100,7 +104,7 @@ void app_phone_action(EVEForm *form) {
 
     buf[0] = EOS_CELL_MTYPE_VOICE | EOS_CELL_MTYPE_VOICE_DIAL;
     strcpy(buf + 1, w->str);
-    eos_net_send(EOS_NET_MTYPE_CELL, buf, 1 + strlen(w->str), 0);
+    eos_net_send_async(EOS_NET_MTYPE_CELL, buf, 1 + strlen(w->str), 0);
 
     voice_state = VOICE_STATE_DIAL;
     sprintf(msg, "DIAL:%s", w->str);
@@ -109,11 +113,6 @@ void app_phone_action(EVEForm *form) {
 
 void app_phone_init(void) {
     eos_cell_set_handler(EOS_CELL_MTYPE_VOICE, cell_voice_handler);
-
-    eos_i2s_mic_init(mic_arr, ABUF_SIZE);
-    eos_i2s_mic_set_wm(MIC_WM);
-    eos_i2s_mic_set_handler(handle_mic);
-    eos_i2s_spk_init(spk_arr, ABUF_SIZE);
     eos_net_acquire_for_evt(EOS_EVT_I2S | EOS_I2S_ETYPE_MIC, 1);
 }
 

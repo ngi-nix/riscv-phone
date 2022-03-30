@@ -17,9 +17,9 @@
 
 #include <eve/widget/widgets.h>
 
-#include <app/app_root.h>
+#include "app/app_root.h"
+#include "app/app_status.h"
 
-#include "status.h"
 #include "cell_pdp.h"
 
 static void cell_pdp_connect(char *apn, char *user, char *pass) {
@@ -34,17 +34,16 @@ static void cell_pdp_connect(char *apn, char *user, char *pass) {
     p += strlen(user) + 1;
     strcpy(p, pass);
     p += strlen(pass) + 1;
-    eos_net_send(EOS_NET_MTYPE_CELL, buffer, p - buffer, 1);
+    eos_net_send(EOS_NET_MTYPE_CELL, buffer, p - buffer);
 
-    buffer = eos_net_alloc();
     buffer[0] = EOS_CELL_MTYPE_PDP | EOS_CELL_MTYPE_PDP_CONNECT;
-    eos_net_send(EOS_NET_MTYPE_CELL, buffer, 1, 0);
+    eos_net_send_async(EOS_NET_MTYPE_CELL, buffer, 1, 0);
 }
 
 static void cell_pdp_disconnect(void) {
     unsigned char *buffer = eos_net_alloc();
     buffer[0] = EOS_CELL_MTYPE_PDP | EOS_CELL_MTYPE_PDP_DISCONNECT;
-    eos_net_send(EOS_NET_MTYPE_CELL, buffer, 1, 0);
+    eos_net_send_async(EOS_NET_MTYPE_CELL, buffer, 1, 0);
 }
 
 static void cell_pdp_handler(unsigned char type, unsigned char *buffer, uint16_t size) {

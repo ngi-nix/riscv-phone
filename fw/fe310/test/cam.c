@@ -5,6 +5,7 @@
 
 #include <eos.h>
 #include <cam.h>
+#include <board.h>
 
 #include <i2c.h>
 #include <i2c/ov2640.h>
@@ -19,9 +20,7 @@
 
 #include <eve/widget/widgets.h>
 
-#include <app/app_root.h>
-
-#include <board.h>
+#include "app/app_root.h"
 
 #include "cam.h"
 

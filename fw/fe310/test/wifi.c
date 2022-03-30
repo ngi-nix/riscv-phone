@@ -17,41 +17,12 @@
 
 #include <eve/widget/widgets.h>
 
-#include <app/app_root.h>
+#include "app/app_root.h"
+#include "app/app_status.h"
 
-#include "status.h"
 #include "wifi.h"
 
-static void wifi_scan(void) {
-    unsigned char *buffer = eos_net_alloc();
-    buffer[0] = EOS_WIFI_MTYPE_SCAN;
-    eos_net_send(EOS_NET_MTYPE_WIFI, buffer, 1, 0);
-}
-
-static void wifi_connect(const char *ssid, const char *pass) {
-    unsigned char *buffer, *p;
-
-    buffer = eos_net_alloc();
-    buffer[0] = EOS_WIFI_MTYPE_CONFIG;
-    p = buffer + 1;
-    strcpy(p, ssid);
-    p += strlen(ssid) + 1;
-    strcpy(p, pass);
-    p += strlen(pass) + 1;
-    eos_net_send(EOS_NET_MTYPE_WIFI, buffer, p - buffer, 1);
-
-    buffer = eos_net_alloc();
-    buffer[0] = EOS_WIFI_MTYPE_CONNECT;
-    eos_net_send(EOS_NET_MTYPE_WIFI, buffer, 1, 0);
-}
-
-static void wifi_disconnect(void) {
-    unsigned char *buffer = eos_net_alloc();
-    buffer[0] = EOS_WIFI_MTYPE_DISCONNECT;
-    eos_net_send(EOS_NET_MTYPE_WIFI, buffer, 1, 0);
-}
-
-void wifi_scan_handler(unsigned char type, unsigned char *buffer, uint16_t size) {
+static void wifi_scan_handler(unsigned char type, unsigned char *buffer, uint16_t size) {
     EVEWindowRoot *root = app_root();
     EVEWindow *window = eve_window_search(&root->w, "main");
     EVEForm *form = (EVEForm *)window->view;
@@ -97,7 +68,7 @@ void app_wifi(EVEWindow *window, EVEViewStack *stack) {
     };
 
     EVEForm *form = eve_form_create(window, stack, spec, 3, NULL, app_wifi_action, app_wifi_close);
-    wifi_scan();
+    eos_wifi_scan(NULL);
 }
 
 void app_wifi_action(EVEForm *form) {
@@ -105,7 +76,10 @@ void app_wifi_action(EVEForm *form) {
     EVEStrWidget *str = (EVEStrWidget *)eve_page_widget(&form->p, 2);
     char *ssid = eve_selectw_option_get_select(sel);
 
-    if (ssid) wifi_connect(ssid, str->str);
+    if (ssid) {
+        eos_wifi_auth(ssid, str->str, NULL);
+        eos_wifi_connect(NULL);
+    }
 }
 
 void app_wifi_close(EVEForm *form) {

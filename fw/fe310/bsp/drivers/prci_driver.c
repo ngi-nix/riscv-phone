@@ -51,16 +51,16 @@ uint32_t PRCI_measure_mcycle_freq(uint32_t mtime_ticks, uint32_t mtime_freq)
 
 unsigned long PRCI_get_cpu_freq()
 {
-    static uint32_t cpu_freq;
+  static uint32_t cpu_freq;
 
-    if (!cpu_freq) {
-        // warm up I$
-        PRCI_measure_mcycle_freq(3000, RTC_FREQ);
-        // measure for real
-        cpu_freq = PRCI_measure_mcycle_freq(3000, RTC_FREQ);
-    }
+  if (!cpu_freq) {
+    // warm up I$
+    PRCI_measure_mcycle_freq(3000, RTC_FREQ);
+    // measure for real
+    cpu_freq = PRCI_measure_mcycle_freq(3000, RTC_FREQ);
+  }
 
-    return cpu_freq;
+  return cpu_freq;
 }
 
 void PRCI_use_hfrosc(int div, int trim)

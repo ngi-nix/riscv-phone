@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include <eos.h>
+
 #include <i2c.h>
 #include <i2c/bq25895.h>
 #include <eve/eve.h>
@@ -16,13 +17,9 @@
 
 #include <eve/widget/widgets.h>
 
-#include <app/app_root.h>
-
-#include <board.h>
+#include "app/app_root.h"
 
 #include "test.h"
-
-#include <stdio.h>
 
 static int reg_read(uint8_t reg, uint8_t *data) {
     return eos_i2c_read8(BQ25895_ADDR, reg, data, 1);

@@ -17,17 +17,19 @@
 
 #include <eve/widget/widgets.h>
 
-#include <app/app_root.h>
+#include "app_root.h"
+#include "app_status.h"
 
-#include "phone.h"
-#include "status.h"
+#include "../phone.h"
 
 static char status_msg[128];
 
-static int status_touch(EVEView *view, EVETouch *touch, uint16_t evt, uint8_t tag0) {
-    unsigned char state = app_phone_state_get();
-    int8_t touch_idx = eve_touch_get_idx(touch);
+int app_status_touch(EVEView *view, EVETouch *touch, uint16_t evt, uint8_t tag0) {
+    unsigned char state = 0;
+    int8_t touch_idx;
 
+    // state = app_phone_state_get();
+    touch_idx = eve_touch_get_idx(touch);
     if (touch_idx != 0) return 0;
 
     evt = eve_touch_evt(touch, evt, tag0, view->tag, 2);
@@ -36,14 +38,14 @@ static int status_touch(EVEView *view, EVETouch *touch, uint16_t evt, uint8_t ta
             unsigned char *buf = eos_net_alloc();
 
             buf[0] = EOS_CELL_MTYPE_VOICE | EOS_CELL_MTYPE_VOICE_ANSWER;
-            eos_net_send(EOS_NET_MTYPE_CELL, buf, 1, 0);
+            eos_net_send_async(EOS_NET_MTYPE_CELL, buf, 1, 0);
             status_msg[0] = '\0';
         }
         if ((state != VOICE_STATE_IDLE) && (touch->eevt & EVE_TOUCH_EETYPE_TRACK_RIGHT)) {
             unsigned char *buf = eos_net_alloc();
 
             buf[0] = EOS_CELL_MTYPE_VOICE | EOS_CELL_MTYPE_VOICE_HANGUP;
-            eos_net_send(EOS_NET_MTYPE_CELL, buf, 1, 0);
+            eos_net_send_async(EOS_NET_MTYPE_CELL, buf, 1, 0);
             status_msg[0] = '\0';
         }
         return 1;
@@ -51,7 +53,7 @@ static int status_touch(EVEView *view, EVETouch *touch, uint16_t evt, uint8_t ta
     return 0;
 }
 
-static uint8_t status_draw(EVEView *view, uint8_t tag0) {
+uint8_t app_status_draw(EVEView *view, uint8_t tag0) {
     uint8_t tag_opt = EVE_TOUCH_OPT_TRACK | EVE_TOUCH_OPT_TRACK_XY;
 
     tag0 = eve_view_clear(view, tag0, tag_opt);
@@ -71,11 +73,4 @@ void app_status_msg_set(char *msg, int refresh) {
     strcpy(status_msg, msg);
 
     if (refresh) app_root_refresh();
-}
-
-void app_status_init(void) {
-    EVEWindowRoot *root = app_root();
-    EVEWindow *status = eve_window_search(&root->w, "status");
-    status->view->touch = status_touch;
-    status->view->draw = status_draw;
 }

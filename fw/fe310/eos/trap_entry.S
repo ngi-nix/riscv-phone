@@ -25,6 +25,18 @@
 #define INT_PWM1_BASE     44
 #define INT_PWM2_BASE     48
 
+#define I2S_MIC_BUF     (0*4)
+#define I2S_SPK_BUF     (1*4)
+#define I2S_FMT         (2*4)
+#define I2S_MODE        (3*4)
+#define I2S_MIC_WM      (4*4)
+#define I2S_SPK_WM      (5*4)
+#define I2S_MIC_EVT     (6*4)
+#define I2S_SPK_EVT     (7*4)
+#define I2S_MIC_CMP2    (8*4)
+#define I2S_MIC_CMP3    (9*4)
+#define I2S_SAMPLE      (10*4)
+
 #include "board.h"
 #include "irq_def.h"
 #include "evt_def.h"
@@ -37,7 +49,7 @@
 
 .global eos_trap_entry
 eos_trap_entry:
-  addi sp, sp, -10*REGBYTES
+  addi sp, sp, -12*REGBYTES
   STORE x8, 0*REGBYTES(sp)
   STORE x9, 1*REGBYTES(sp)
   STORE x18, 2*REGBYTES(sp)
@@ -46,8 +58,10 @@ eos_trap_entry:
   STORE x21, 5*REGBYTES(sp)
   STORE x22, 6*REGBYTES(sp)
   STORE x23, 7*REGBYTES(sp)
-  STORE x24, 8*REGBYTES(sp)
-  STORE x25, 9*REGBYTES(sp)
+  STORE x24, 8*REGBYTES(sp)     # format:   0 - PCM16;  1 - ALAW
+  STORE x25, 9*REGBYTES(sp)     # mode:     0 - stereo; 1 - mono
+  STORE x26, 10*REGBYTES(sp)    # channel:  0 - left;   1 - right
+  STORE x27, 11*REGBYTES(sp)    # _eos_event_q addr
 
   csrr x8, mcause
   li x18, MCAUSE_EXT
@@ -86,51 +100,57 @@ evtq_push:
   jalr x0, x21
 
 i2s_handle_sd:
-  li x9, I2S_CTRL_ADDR_WS_MIC
-  lw x18, PWM_COUNT(x9)
-  lw x19, PWM_CMP1(x9)
-  lw x20, PWM_CMP2(x9)
-  lw x21, PWM_CMP3(x9)
+  li x8, I2S_CTRL_ADDR_WS_SPK
+  lw x18, PWM_COUNT(x8)
+  lw x19, PWM_CMP3(x8)
 
   # exit if too early
-  bltu x18, x21, i2s_sd_exit
+  bltu x18, x19, i2s_sd_exit
 
-  # move CMPs for next channel and store parity to x25
-  li x25, 0
-  bltu x20, x19, 0f
-  li x25, 1
-  neg x19, x19
-  li x22, PLIC_PRIORITY
-  sw x0, 4*I2S_IRQ_SD_ID(x22)
+  la x27, _eos_i2s_drvr
+
+  # move CMPs for next channel and store channel bit to x26
+  lw x20, I2S_MIC_CMP2(x27)
+  lw x21, I2S_MIC_CMP3(x27) # 16-bit period
+
+  add x23, x19, x20
+  add x24, x23, x21
+  slli x20, x21, 1      # 32-bit period
+  slli x21, x20, 1      # 64-bit period
+  bltu x24, x21, 0f
+  neg x21, x21
+  add x23, x23, x21
+  add x24, x24, x21
 0:
-  add x20, x20, x19
-  add x21, x21, x19
-  sw x20, PWM_CMP2(x9)
-  sw x21, PWM_CMP3(x9)
+  li x26, 0
+  bltu x23, x20, 0f
+  li x26, 1
+0:
+  bltu x19, x20, 0f
+  neg x20, x20
+  li x18, PLIC_PRIORITY
+  sw x0, 4*I2S_IRQ_SD_ID(x18)
+0:
+  add x19, x19, x20
 
-  la x9, _eos_i2s_fmt
-  lw x24, 0(x9)
+  li x9, I2S_CTRL_ADDR_WS_MIC
+  sw x19, PWM_CMP3(x8)
+  sw x23, PWM_CMP2(x9)
+  sw x24, PWM_CMP3(x9)
+
+  lw x24, I2S_FMT(x27)
+  lw x25, I2S_MODE(x27)
 
 i2s_abuf_pop:
-  la x9, _eos_i2s_mode
-  lw x22, 0(x9)
-  and x22, x22, x25
-  beqz x22, 0f
+  and x8, x25, x26
+  beqz x8, 0f
 
-  la x9, _eos_i2s_sample
-  lw x8, 0(x9)
+  lw x8, I2S_SAMPLE(x27)
   j i2s_sd_xchg
-
 0:
-  mv x8, x0
-
-  # check for pop from spk buf
-  la x9, _eos_i2s_spk_wm
-  lw x22, 0(x9)
-  beqz x22, i2s_sd_xchg
-
   # pop from spk buf -> x8
-  la x9, _eos_i2s_spk_buf
+  lw x9, I2S_SPK_BUF(x27)
+  beqz x9, i2s_sd_xchg
   lhu x18, I2S_ABUF_OFF_IDXR(x9)
   lhu x19, I2S_ABUF_OFF_IDXW(x9)
   lhu x20, I2S_ABUF_OFF_SIZE(x9)
@@ -160,12 +180,12 @@ i2s_abuf_pop:
   and x18, x18, x21
 
   # check for push to event queue
-  bgtu x18, x22, i2s_decode
+  lw x9, I2S_SPK_WM(x27)
+  bgtu x18, x9, i2s_decode
 
-  la x9, _eos_i2s_spk_evt_enable
-  lw x18, 0(x9)
-  beqz x18, i2s_decode
-  sw x0, 0(x9)
+  lw x9, I2S_SPK_EVT(x27)
+  beqz x9, i2s_decode
+  sw x0, I2S_SPK_EVT(x27)
 
   # push to event queue
   jal x22, evtq_push
@@ -212,8 +232,8 @@ i2s_decode:
   beqz x9, 3f
   mul x8, x8, x9
 3:
-  la x9, _eos_i2s_sample
-  sw x8, 0(x9)
+  beqz x25, i2s_sd_xchg
+  sw x8, I2S_SAMPLE(x27)
 
 i2s_sd_xchg:
   # read/write shift reg: x8 -> sr -> x8
@@ -318,16 +338,12 @@ i2s_encode:
   andi x8, x8, 0xff
 
 i2s_abuf_push:
-  # check parity
-  # bnez x25, i2s_sd_exit
-
-  # check for push to mic buf
-  la x9, _eos_i2s_mic_wm
-  lw x22, 0(x9)
-  beqz x22, i2s_sd_exit
+  # check channel
+  # bnez x26, i2s_sd_exit
 
   # push to mic buf
-  la x9, _eos_i2s_mic_buf
+  lw x9, I2S_MIC_BUF(x27)
+  beqz x9, i2s_sd_exit
   lhu x18, I2S_ABUF_OFF_IDXR(x9)
   lhu x19, I2S_ABUF_OFF_IDXW(x9)
   lhu x20, I2S_ABUF_OFF_SIZE(x9)
@@ -357,12 +373,12 @@ i2s_abuf_push:
 
 2:
   # check for push to event queue
-  bltu x18, x22, i2s_sd_exit
+  lw x9, I2S_MIC_WM(x27)
+  bltu x18, x9, i2s_sd_exit
 
-  la x9, _eos_i2s_mic_evt_enable
-  lw x18, 0(x9)
-  beqz x18, i2s_sd_exit
-  sw x0, 0(x9)
+  lw x9, I2S_MIC_EVT(x27)
+  beqz x9, i2s_sd_exit
+  sw x0, I2S_MIC_EVT(x27)
 
   # push to event queue
   jal x22, evtq_push
@@ -427,16 +443,6 @@ _eos_i2s_start_pwm:
 
   ret
 
-.global _eos_flash_set
-_eos_flash_set:
-  li a3, SPI0_CTRL_ADDR
-  sw x0, SPI_REG_FCTRL(a3)
-  sw a0, SPI_REG_SCKDIV(a3)
-  sw a1, SPI_REG_FFMT(a3)
-  li a0, 1
-  sw a0, SPI_REG_FCTRL(a3)
-  ret
-
 trap_exit_data:
   # Remain in M-mode after mret
   li x18, MSTATUS_MPP
@@ -452,7 +458,9 @@ trap_exit_data:
   LOAD x23, 7*REGBYTES(sp)
   LOAD x24, 8*REGBYTES(sp)
   LOAD x25, 9*REGBYTES(sp)
-  addi sp, sp, 10*REGBYTES
+  LOAD x26, 10*REGBYTES(sp)
+  LOAD x27, 11*REGBYTES(sp)
+  addi sp, sp, 12*REGBYTES
 
   mret
 
@@ -465,7 +473,7 @@ handle_intr:
   .align 4
 
 trap_entry_text:
-  addi sp, sp, -22*REGBYTES
+  addi sp, sp, -20*REGBYTES
 
   STORE x1, 0*REGBYTES(sp)
   STORE x2, 1*REGBYTES(sp)
@@ -482,12 +490,10 @@ trap_entry_text:
   STORE x15, 12*REGBYTES(sp)
   STORE x16, 13*REGBYTES(sp)
   STORE x17, 14*REGBYTES(sp)
-  STORE x26, 15*REGBYTES(sp)
-  STORE x27, 16*REGBYTES(sp)
-  STORE x28, 17*REGBYTES(sp)
-  STORE x29, 18*REGBYTES(sp)
-  STORE x30, 19*REGBYTES(sp)
-  STORE x31, 20*REGBYTES(sp)
+  STORE x28, 15*REGBYTES(sp)
+  STORE x29, 16*REGBYTES(sp)
+  STORE x30, 17*REGBYTES(sp)
+  STORE x31, 18*REGBYTES(sp)
 
   li x18, MCAUSE_TIMER
   beq x8, x18, handle_timer
@@ -526,23 +532,23 @@ trap_exit_text:
   LOAD x15, 12*REGBYTES(sp)
   LOAD x16, 13*REGBYTES(sp)
   LOAD x17, 14*REGBYTES(sp)
-  LOAD x26, 15*REGBYTES(sp)
-  LOAD x27, 16*REGBYTES(sp)
-  LOAD x28, 17*REGBYTES(sp)
-  LOAD x29, 18*REGBYTES(sp)
-  LOAD x30, 19*REGBYTES(sp)
-  LOAD x31, 20*REGBYTES(sp)
+  LOAD x28, 15*REGBYTES(sp)
+  LOAD x29, 16*REGBYTES(sp)
+  LOAD x30, 17*REGBYTES(sp)
+  LOAD x31, 18*REGBYTES(sp)
 
-  LOAD x8, 22*REGBYTES(sp)
-  LOAD x9, 23*REGBYTES(sp)
-  LOAD x18, 24*REGBYTES(sp)
-  LOAD x19, 25*REGBYTES(sp)
-  LOAD x20, 26*REGBYTES(sp)
-  LOAD x21, 27*REGBYTES(sp)
-  LOAD x22, 28*REGBYTES(sp)
-  LOAD x23, 29*REGBYTES(sp)
-  LOAD x24, 30*REGBYTES(sp)
-  LOAD x25, 31*REGBYTES(sp)
+  LOAD x8, 20*REGBYTES(sp)
+  LOAD x9, 21*REGBYTES(sp)
+  LOAD x18, 22*REGBYTES(sp)
+  LOAD x19, 23*REGBYTES(sp)
+  LOAD x20, 24*REGBYTES(sp)
+  LOAD x21, 25*REGBYTES(sp)
+  LOAD x22, 26*REGBYTES(sp)
+  LOAD x23, 27*REGBYTES(sp)
+  LOAD x24, 28*REGBYTES(sp)
+  LOAD x25, 29*REGBYTES(sp)
+  LOAD x26, 30*REGBYTES(sp)
+  LOAD x27, 31*REGBYTES(sp)
 
   addi sp, sp, 32*REGBYTES
   mret

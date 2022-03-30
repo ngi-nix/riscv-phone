@@ -30,8 +30,8 @@
 #define I2S_PIN_SD_IN           13
 #define I2S_PIN_SD_OUT          12
 
-#define I2S_IRQ_WS_ID           (INT_PWM1_BASE + 0)
-#define I2S_IRQ_SD_ID           (INT_PWM1_BASE + 3)
+#define I2S_IRQ_WS_ID           (INT_PWM2_BASE + 0)
+#define I2S_IRQ_SD_ID           (INT_PWM2_BASE + 3)
 
 #define I2S_CTRL_ADDR_CK        PWM0_CTRL_ADDR
 #define I2S_CTRL_ADDR_WS_MIC    PWM1_CTRL_ADDR

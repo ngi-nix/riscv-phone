@@ -1,20 +1,24 @@
 include ../common.mk
-CFLAGS += -I$(bsp_dir)/include -I$(bsp_dir)/drivers -I$(ext_dir)/crypto
-LDFLAGS = $(CFLAGS) -L.. -Wl,--gc-sections -nostartfiles -nostdlib -Wl,--start-group -lc -lm -lgcc -leos -Wl,--end-group -T../bsp/default.lds
+CFLAGS += -I$(bsp_dir)/include -I$(bsp_dir)/drivers -I$(ext_dir)/crypto -I$(ext_dir)/fsfat -I$(ecp_dir)/src -I$(ecp_dir)/src/platform/fe310 -I..
+LDFLAGS = app/*.o $(CFLAGS) -L.. -L$(ecp_dir)/build-fe310 -Wl,--gc-sections -nostartfiles -nostdlib -Wl,--start-group -lc -lm -lgcc -leos -lecp -lecpcr -lecptr -lecptm -lecpdir -lecpvconn -Wl,--end-group -T../bsp/default.lds
 
-DEPS = main.o status.o cell_dev.o cell_pdp.o phone.o modem.o wifi.o cam.o audio.o test.o
-# DEPS = main.o status.o cell_dev.o cell_pdp.o phone.o modem.o wifi.o cam.o fs.o test.o
+DEPS = main.o mem.o cell_dev.o cell_pdp.o phone.o modem.o wifi.o cam.o fs.o ecp.o ecp_init.o audio.o test.o
 TARGET = phone
 
+
 all: $(TARGET)
+
+app_:
+	(cd app && $(MAKE)) || exit;
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<
 
-$(TARGET): $(DEPS)
+$(TARGET): app_ $(DEPS)
 	$(CC) $(DEPS) $(LDFLAGS) -o $@
 
 clean:
+	(cd app && $(MAKE) clean) || exit;
 	rm -f *.o *.a $(TARGET)
 
 upload: $(TARGET)

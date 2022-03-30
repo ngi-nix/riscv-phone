@@ -17,23 +17,24 @@
 
 #include <eve/widget/widgets.h>
 
-#include <app/app_root.h>
-
 #include <prci_driver.h>
 
-#include "status.h"
+#include "app/app_root.h"
+
 #include "cell_dev.h"
 #include "cell_pdp.h"
 #include "phone.h"
 #include "modem.h"
 #include "wifi.h"
 #include "cam.h"
-// #include "fs.h"
+#include "fs.h"
 #include "audio.h"
+#include "ecp.h"
 #include "test.h"
 
 void app_home_page(EVEWindow *window, EVEViewStack *stack) {
     EVEWidgetSpec spec[] = {
+        /*
         {
             .widget.type = EVE_WIDGET_TYPE_PAGE,
             .widget.g.w = APP_SCREEN_W,
@@ -64,7 +65,6 @@ void app_home_page(EVEWindow *window, EVEViewStack *stack) {
             .widget.spec.page.title = "Camera",
             .widget.spec.page.constructor = app_cam
         },
-        /*
         {
             .widget.type = EVE_WIDGET_TYPE_PAGE,
             .widget.g.w = APP_SCREEN_W,
@@ -80,8 +80,10 @@ void app_home_page(EVEWindow *window, EVEViewStack *stack) {
         },
     };
 
-    EVEForm *form = eve_form_create(window, stack, spec, 6, NULL, NULL, NULL);
+    EVEForm *form = eve_form_create(window, stack, spec, 1, NULL, NULL, NULL);
 }
+
+void print_mem(void);
 
 int main() {
     eos_init();
@@ -89,12 +91,13 @@ int main() {
     printf("\nREADY.\n");
 
     app_root_init(app_home_page, 0x20);
-    app_status_init();
-    app_phone_init();
-    app_wifi_init();
-    app_cell_dev_init();
-    app_cell_pdp_init();
+    // app_phone_init();
+    // app_wifi_init();
+    // app_cell_dev_init();
+    // app_cell_pdp_init();
     // app_fs_init();
-    audio_start();
+    // audio_start();
+    app_ecp_init();
+
     eos_evtq_loop();
 }

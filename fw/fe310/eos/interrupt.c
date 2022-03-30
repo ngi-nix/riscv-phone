@@ -20,7 +20,7 @@ uintptr_t eos_intr_handle(uintptr_t int_num) {
     if ((int_num >=1) && (int_num <= PLIC_NUM_INTERRUPTS) && (ext_interrupt_handler[int_num-1])) {
         ext_interrupt_handler[int_num-1]();
     } else {
-        printf("error:%d\n", int_num);
+        printf("INTR ERROR:%d\n", int_num);
         exit(int_num);
     }
     return int_num;

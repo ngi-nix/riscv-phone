@@ -140,7 +140,7 @@ void eos_evtq_loop(void) {
 }
 
 void eos_evtq_bad_handler(unsigned char type, unsigned char *buffer, uint16_t len) {
-    printf("evt bad handler:0x%x\n", type);
+    printf("EVT BAD HANDLER:0x%x\n", type);
 }
 
 void eos_evtq_set_handler(unsigned char type, eos_evt_handler_t handler) {

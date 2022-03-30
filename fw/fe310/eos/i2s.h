@@ -13,9 +13,11 @@ typedef void (*eos_i2s_handler_t) (unsigned char);
 
 int eos_i2s_init(uint8_t wakeup_cause);
 void eos_i2s_init_mux(void);
-void eos_i2s_start(uint32_t sample_rate, unsigned char fmt);
+void eos_i2s_start(uint32_t sample_rate);
 void eos_i2s_stop(void);
 int eos_i2s_running(void);
+void eos_i2s_set_fmt(unsigned char fmt);
+void eos_i2s_set_mode(unsigned char mode);
 void eos_i2s_mic_init(uint8_t *mic_arr, uint16_t mic_arr_size);
 void eos_i2s_mic_set_handler(eos_i2s_handler_t wm_handler);
 void eos_i2s_mic_set_wm(uint16_t wm);
