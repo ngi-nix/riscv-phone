@@ -1,18 +1,12 @@
 #include <stdlib.h>
-#include <fcntl.h>
 #include <unistd.h>
+#include <stdio.h>
 
-#include "core.h"
-#include "vconn/vconn.h"
+#include <core.h>
+#include <vconn/vconn.h>
 
-static int v_rng(void *buf, size_t bufsize) {
-    int fd;
-
-    if((fd = open("/dev/urandom", O_RDONLY)) < 0) return -1;
-    size_t nb = read(fd, buf, bufsize);
-    close(fd);
-    if (nb != bufsize) return -1;
-    return 0;
+void handle_err(ECPConnection *conn, unsigned char mtype, int err) {
+    printf("ERR: CTYPE:0x%x MTYPE:0x%x ERR:%d\n", conn->type, mtype, err);
 }
 
 static ECPConnection *conn_alloc(ECPSocket *sock, unsigned char type) {
@@ -21,40 +15,37 @@ static ECPConnection *conn_alloc(ECPSocket *sock, unsigned char type) {
 
     switch (type) {
         case ECP_CTYPE_VCONN:
-            conn = malloc(sizeof(ECPVConnIn));
+            conn = malloc(sizeof(ECPVConn));
+            if (conn) rv = ecp_vconn_create_inb((ECPVConn *)conn, sock);
             break;
+
+        case ECP_CTYPE_VLINK:
+            conn = malloc(sizeof(ECPConnection));
+            if (conn) rv = ecp_vlink_create_inb(conn, sock);
+            break;
+
         default:
             conn = malloc(sizeof(ECPConnection));
+            if (conn) rv = ecp_conn_create_inb(conn, sock, type);
             break;
     }
-    if (conn == NULL) return NULL;
 
-    rv = ecp_conn_init(conn, sock, type);
+    if (conn == NULL) return NULL;
     if (rv) {
-        printf("free1\n");
         free(conn);
         return NULL;
     }
+
     return conn;
 }
 
 static void conn_free(ECPConnection *conn) {
-    printf("free2\n");
     free(conn);
 }
 
 int ecp_init(ECPContext *ctx) {
     int rv;
 
-    rv = ecp_ctx_init(ctx);
-    if (rv) return rv;
-
-    rv = ecp_vconn_ctx_init(ctx);
-    if (rv) return rv;
-
-    ctx->rng = v_rng;
-    ctx->conn_alloc = conn_alloc;
-    ctx->conn_free = conn_free;
-
-    return ECP_OK;
+    rv = ecp_ctx_init(ctx, handle_err, NULL, conn_alloc, conn_free);
+    return rv;
 }

@@ -4,7 +4,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "core.h"
+#include <core.h>
+
 #include "util.h"
 
 #define FN_LEN  256
@@ -18,11 +19,15 @@ static void usage(char *arg) {
 }
 
 int main(int argc, char *argv[]) {
+    char *addr;
     ECPDHKey key;
     ECPNode node;
     int rv;
 
     if ((argc < 2) || (argc > 3)) usage(argv[0]);
+
+    addr = NULL;
+    if (argc == 3) addr = argv[2];
 
     if (strlen(argv[1]) > FN_LEN - 6) usage(argv[0]);
     strcpy(fn_node, argv[1]);
@@ -33,14 +38,19 @@ int main(int argc, char *argv[]) {
     rv = ecp_dhkey_gen(&key);
     if (rv) goto err;
 
-    rv = ecp_node_init(&node, &key.public, (argc == 3) ? argv[2] : NULL);
+    rv = ecp_node_init(&node, &key.public, addr);
     if (rv) goto err;
 
-    rv = ecp_util_key_save(&key, fn_key);
+    rv = ecp_util_save_key(&key.public, &key.private, fn_key);
     if (rv) goto err;
 
-    rv = ecp_util_node_save(&node, fn_node);
-    if (rv) goto err;
+    if (addr) {
+        rv = ecp_util_save_node(&node, fn_node);
+        if (rv) goto err;
+    } else {
+        rv = ecp_util_save_pub(&key.public, fn_node);
+        if (rv) goto err;
+    }
 
     return 0;
 

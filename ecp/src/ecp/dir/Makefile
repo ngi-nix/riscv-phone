@@ -1,6 +1,10 @@
 include ../common.mk
 
-obj = dir.o dir_srv.o
+obj = dir.o
+
+ifeq ($(with_dirsrv),yes)
+obj += dir_srv.o
+endif
 
 
 %.o: %.c

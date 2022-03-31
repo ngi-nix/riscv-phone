@@ -1,26 +1,23 @@
-#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdio.h>
 
 #include <core.h>
 
 ECPContext ctx_s;
 ECPSocket sock_s;
-ECPDHKey key_perma_s;
 ECPConnHandler handler_s;
 
 ECPContext ctx_c;
 ECPSocket sock_c;
-ECPDHKey key_perma_c;
 ECPConnHandler handler_c;
 
-ECPNode node;
 ECPConnection conn;
 
 #define CTYPE_TEST  0
 #define MTYPE_MSG   0
 
-int handle_open_c(ECPConnection *conn, ECP2Buffer *b) {
+static int handle_open_c(ECPConnection *conn, ECP2Buffer *b) {
     char *_msg = "PERA JE CAR!";
     ssize_t rv;
 
@@ -30,12 +27,12 @@ int handle_open_c(ECPConnection *conn, ECP2Buffer *b) {
     return ECP_OK;
 }
 
-ssize_t handle_msg_c(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, size_t msg_size, ECP2Buffer *b) {
+static ssize_t handle_msg_c(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, size_t msg_size, ECP2Buffer *b) {
     printf("MSG C:%s size:%ld\n", msg, msg_size);
     return msg_size;
 }
 
-ssize_t handle_msg_s(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, size_t msg_size, ECP2Buffer *b) {
+static ssize_t handle_msg_s(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, size_t msg_size, ECP2Buffer *b) {
     char *_msg = "VAISTINU JE CAR!";
     ssize_t rv;
 
@@ -46,6 +43,9 @@ ssize_t handle_msg_s(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, un
 }
 
 int main(int argc, char *argv[]) {
+    ECPDHKey key_perma_c;
+    ECPDHKey key_perma_s;
+    ECPNode node;
     int rv;
 
     /* server */

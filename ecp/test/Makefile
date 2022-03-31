@@ -7,10 +7,22 @@ dep=../build-posix/*.a ../util/libecputil.a
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<
 
-all: basic # dir server echo frag stress vcs vc_server vc_client vc_client_t
+all: basic client server vcs vc_server vc_client # dir echo frag stress vc_client_t
 
 basic: basic.o init.o $(dep)
 	$(CC) -o $@ $< init.o $(dep) $(LDFLAGS)
+
+vcs: vcs.o init_vconn.o $(dep)
+	$(CC) -o $@ $< init_vconn.o $(dep) $(LDFLAGS)
+
+vc_server: vc_server.o init_vconn.o $(dep)
+	$(CC) -o $@ $< init_vconn.o $(dep) $(LDFLAGS)
+
+vc_server2: vc_server2.o init_vconn.o $(dep)
+	$(CC) -o $@ $< init_vconn.o $(dep) $(LDFLAGS)
+
+vc_client: vc_client.o init_vconn.o $(dep)
+	$(CC) -o $@ $< init_vconn.o $(dep) $(LDFLAGS)
 
 dir: dir.o init.o $(dep)
 	$(CC) -DWITH_DIR_SERVER -o $@ $< init.o $(dep) $(LDFLAGS)
@@ -29,15 +41,6 @@ frag: frag.o init.o $(dep)
 
 stress: stress.o init.o $(dep)
 	$(CC) -o $@ $< init.o $(dep) $(LDFLAGS)
-
-vcs: vcs.o init_vconn.o $(dep)
-	$(CC) -o $@ $< init_vconn.o $(dep) $(LDFLAGS)
-
-vc_server: vc_server.o init_vconn.o $(dep)
-	$(CC) -o $@ $< init_vconn.o $(dep) $(LDFLAGS)
-
-vc_client: vc_client.o init_vconn.o $(dep)
-	$(CC) -o $@ $< init_vconn.o $(dep) $(LDFLAGS)
 
 vc_client_t: vc_client_t.o init_vconn.o $(dep)
 	$(CC) -o $@ $< init_vconn.o $(dep) $(LDFLAGS)

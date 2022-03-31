@@ -9,7 +9,7 @@
 #include <core.h>
 #include <tr.h>
 
-#define ADDR_S_MAX  32
+#define MAX_ADDR_STR    32
 
 int ecp_tr_init(ECPContext *ctx) {
     return ECP_OK;
@@ -28,13 +28,13 @@ int ecp_tr_addr_eq(ecp_tr_addr_t *addr1, ecp_tr_addr_t *addr2) {
 
 int ecp_tr_addr_set(ecp_tr_addr_t *addr, void *addr_s) {
     int rv;
-    char addr_c[ADDR_S_MAX];
+    char addr_c[MAX_ADDR_STR];
     char *colon = NULL;
     char *endptr = NULL;
 	uint16_t hport;
 
     memset(addr_c, 0, sizeof(addr_c));
-    strncpy(addr_c, addr_s, ADDR_S_MAX-1);
+    strncpy(addr_c, addr_s, sizeof(addr_c)-1);
     colon = strchr(addr_c, ':');
     if (colon == NULL) return -1;
     *colon = '\0';
@@ -51,12 +51,14 @@ int ecp_tr_addr_set(ecp_tr_addr_t *addr, void *addr_s) {
 
 int ecp_tr_open(ECPSocket *sock, void *addr_s) {
     struct sockaddr_in _myaddr;
+    int rv;
 
     memset((char *)&_myaddr, 0, sizeof(_myaddr));
     _myaddr.sin_family = AF_INET;
     if (addr_s) {
         ecp_tr_addr_t addr;
-        int rv = ecp_tr_addr_set(&addr, addr_s);
+
+        rv = ecp_tr_addr_set(&addr, addr_s);
         if (rv) return rv;
 
         memcpy((void *)&_myaddr.sin_addr, addr.host, sizeof(addr.host));
@@ -69,11 +71,12 @@ int ecp_tr_open(ECPSocket *sock, void *addr_s) {
     sock->sock = socket(PF_INET, SOCK_DGRAM, 0);
     if (sock->sock < 0) return sock->sock;
 
-    int rv = bind(sock->sock, (struct sockaddr *)&_myaddr, sizeof(_myaddr));
+    rv = bind(sock->sock, (struct sockaddr *)&_myaddr, sizeof(_myaddr));
     if (rv < 0) {
         close(sock->sock);
         return rv;
     }
+
     return ECP_OK;
 }
 
@@ -81,14 +84,14 @@ void ecp_tr_close(ECPSocket *sock) {
     close(sock->sock);
 }
 
-ssize_t ecp_tr_send(ECPSocket *sock, ECPBuffer *packet, size_t msg_size, ecp_tr_addr_t *addr, unsigned char flags) {
+ssize_t ecp_tr_send(ECPSocket *sock, ECPBuffer *packet, size_t pkt_size, ecp_tr_addr_t *addr, unsigned char flags) {
     struct sockaddr_in servaddr;
 
     memset((void *)&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
     servaddr.sin_port = addr->port;
     memcpy((void *)&servaddr.sin_addr, addr->host, sizeof(addr->host));
-    return sendto(sock->sock, packet->buffer, msg_size, 0, (struct sockaddr *)&servaddr, sizeof(servaddr));
+    return sendto(sock->sock, packet->buffer, pkt_size, 0, (struct sockaddr *)&servaddr, sizeof(servaddr));
 }
 
 ssize_t ecp_tr_recv(ECPSocket *sock, ECPBuffer *packet, ecp_tr_addr_t *addr, int timeout) {
@@ -97,8 +100,9 @@ ssize_t ecp_tr_recv(ECPSocket *sock, ECPBuffer *packet, ecp_tr_addr_t *addr, int
     struct pollfd fds[] = {
         {sock->sock, POLLIN, 0}
     };
+    int rv;
 
-    int rv = poll(fds, 1, timeout);
+    rv = poll(fds, 1, timeout);
     memset((void *)&servaddr, 0, sizeof(servaddr));
     if (rv == 1) {
         ssize_t recvlen = recvfrom(sock->sock, packet->buffer, packet->size, 0, (struct sockaddr *)&servaddr, &addrlen);
@@ -111,9 +115,8 @@ ssize_t ecp_tr_recv(ECPSocket *sock, ECPBuffer *packet, ecp_tr_addr_t *addr, int
         }
         return recvlen;
     }
+
     return ECP_ERR_TIMEOUT;
 }
 
 void ecp_tr_release(ECPBuffer *packet, unsigned char more) {}
-void ecp_tr_flag_set(unsigned char flags) {}
-void ecp_tr_flag_clear(unsigned char flags) {}

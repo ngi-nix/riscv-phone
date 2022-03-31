@@ -1,10 +1,8 @@
 include common.mk
 
-obj = core.o timer.o
-subdirs = crypto $(platform_dir)
+obj += core.o timer.o
+subdirs += crypto $(platform_dir)
 build_dir = ../../build-$(platform)
-
-include $(platform_dir)/platform_obj.mk
 
 
 %.o: %.c
@@ -21,6 +19,7 @@ all: $(obj)
 
 install: all
 	mkdir -p $(build_dir)
+	rm -f $(build_dir)/*.a
 	install libecp.a $(build_dir)
 	install crypto/libecpcr.a $(build_dir)
 	install $(platform_dir)/libecptm.a $(build_dir)

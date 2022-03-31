@@ -12,14 +12,22 @@ typedef struct ECPVConn {
     unsigned char key_next_curr;
 } ECPVConn;
 
-ssize_t ecp_vconn_send_open_req(ECPConnection *conn, unsigned char *cookie);
-ssize_t ecp_vconn_pack_parent(ECPConnection *conn, ECPBuffer *packet, ECPBuffer *payload, size_t pkt_size, ecp_tr_addr_t *addr);
+ssize_t ecp_vconn_pack_parent(ECPConnection *conn, ECPBuffer *payload, ECPBuffer *packet, size_t pkt_size, ecp_tr_addr_t *addr);
+
+int ecp_vconn_create(ECPConnection vconn[], ecp_ecdh_public_t keys[], size_t vconn_size, ECPConnection *conn);
+#ifdef ECP_WITH_HTABLE
+int ecp_vconn_create_inb(ECPVConn *conn, ECPSocket *sock);
+void ecp_vconn_destroy(ECPConnection *conn);
+#endif
+int ecp_vconn_open(ECPConnection *conn, ECPNode *node);
+
+int ecp_vlink_create(ECPConnection *conn, ECPSocket *sock);
+#ifdef ECP_WITH_HTABLE
+int ecp_vlink_create_inb(ECPConnection *conn, ECPSocket *sock);
+void ecp_vlink_destroy(ECPConnection *conn);
+#endif
+
 int ecp_vconn_handle_open(ECPConnection *conn, ECP2Buffer *b);
 void ecp_vconn_handle_close(ECPConnection *conn);
 ssize_t ecp_vconn_handle_msg(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, size_t msg_size, ECP2Buffer *b);
-
-int ecp_vconn_create_inb(ECPVConn *conn, ECPSocket *sock);
-void ecp_vconn_destroy_inb(ECPVConn *conn);
-
-int ecp_vconn_create(ECPConnection vconn[], ecp_ecdh_public_t keys[], size_t vconn_size, ECPConnection *conn);
-int ecp_vconn_open(ECPConnection *conn, ECPNode *node);
+ssize_t ecp_vconn_send_open_req(ECPConnection *conn, unsigned char *cookie);
