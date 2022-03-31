@@ -96,8 +96,6 @@ int main() {
     // app_cell_dev_init();
     // app_cell_pdp_init();
     // app_fs_init();
-    // audio_start();
-    app_ecp_init();
 
     eos_evtq_loop();
 }
