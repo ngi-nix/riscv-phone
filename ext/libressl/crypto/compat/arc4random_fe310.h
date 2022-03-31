@@ -20,8 +20,10 @@ _rs_allocate(struct _rs **rsp, struct _rsx **rsxp)
 	return arc4random_alloc((void **)rsp, sizeof(**rsp), (void **)rsxp, sizeof(**rsxp));
 }
 
-void arc4random_close(void)
+void arc4random_close(void **rsp, void **rsxp)
 {
+	*rsp = rs;
+	*rsxp = rsx;
 	rs = NULL;
 	rsx = NULL;
 }
