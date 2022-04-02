@@ -117,8 +117,6 @@ ssize_t ecp_msgq_pop(ECPRBConn *conn, unsigned char mtype, unsigned char *msg, s
     msg_size = pld_size - hdr_size;
 
     rbuf->arr.pld[idx].flags &= ~ECP_RBUF_FLAG_IN_MSGQ;
-    // if (rbuf->arr.pld[idx].flags == 0);
-
     msgq->idx_r[mtype]++;
     if (msgq->seq_start == seq) {
         int i;

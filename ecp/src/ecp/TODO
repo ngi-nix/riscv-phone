@@ -1,5 +1,1 @@
 - memzero keys after usage
-- implement socket message queue
-
-rbuf:
-- implement _wait variants of open / send

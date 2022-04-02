@@ -43,7 +43,6 @@ static void cc_flush(ECPRBConn *conn, unsigned char flags) {
         }
         if (!(buf->flags & ECP_RBUF_FLAG_RELIABLE)) {
             rbuf->arr.pkt[idx].flags = 0;
-            // if (rbuf->arr.pkt[idx].flags == 0);
         }
         buf->seq_cc++;
         idx = ECP_RBUF_IDX_MASK(idx + 1, rbuf->arr_size);
@@ -210,7 +209,6 @@ ssize_t ecp_rbuf_handle_ack(ECPRBConn *conn, unsigned char *msg, size_t msg_size
         idx = rbuf->idx_start;
         for (i=0; i<msg_cnt; i++) {
             rbuf->arr.pkt[idx].flags = 0;
-            // if (rbuf->arr.pkt[idx].flags == 0);
             idx = ECP_RBUF_IDX_MASK(idx + 1, rbuf->arr_size);
         }
         rbuf->seq_start = seq_start;

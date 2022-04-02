@@ -24,6 +24,7 @@
 
 #define ECP_ERR_NET_ADDR            -13
 #define ECP_ERR_MAX_PARENT          -14
+#define ECP_ERR_NEXT                -15
 
 #define ECP_ERR_ECDH_KEY_DUP        -21
 #define ECP_ERR_ECDH_IDX            -22

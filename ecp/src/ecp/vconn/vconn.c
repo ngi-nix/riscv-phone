@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include <core.h>
+#include <tr.h>
 
 #ifdef ECP_WITH_HTABLE
 #include <ht.h>
@@ -65,7 +66,7 @@ static int insert_key_next(ECPConnection *conn, unsigned char c_idx, ecp_ecdh_pu
     return rv;
 }
 
-static ssize_t handle_next(ECPConnection *conn, unsigned char *msg, size_t msg_size, ECP2Buffer *b) {
+static ssize_t handle_next(ECPConnection *conn, unsigned char *msg, size_t msg_size, ECP2Buffer *bufs) {
     ECPSocket *sock = conn->sock;
 
     if (msg_size < ECP_SIZE_ECDH_PUB) return ECP_ERR_SIZE;
@@ -82,17 +83,16 @@ static ssize_t handle_next(ECPConnection *conn, unsigned char *msg, size_t msg_s
     pthread_mutex_unlock(&sock->conn_table.mutex);
 #endif
 
-    if (conn->next == NULL) return ECP_ERR;
+    if (conn->next == NULL) return ECP_ERR_NEXT;
 
     return ECP_SIZE_ECDH_PUB;
 }
 
-static ssize_t handle_relay(ECPConnection *conn, unsigned char *msg, size_t msg_size, ECP2Buffer *b) {
+static ssize_t handle_relay(ECPConnection *conn, unsigned char *msg, size_t msg_size, ECP2Buffer *bufs) {
     ECPSocket *sock = conn->sock;
     ECPConnection *conn_next;
     ECPBuffer payload;
     unsigned char idx, _idx;
-    unsigned char s_idx, c_idx;
     size_t _msg_size = msg_size;
     ssize_t rv;
     int _rv;
@@ -147,13 +147,13 @@ static ssize_t handle_relay(ECPConnection *conn, unsigned char *msg, size_t msg_
 
     }
 
-    if (conn_next == NULL) return ECP_ERR;
+    if (conn_next == NULL) return ECP_ERR_NEXT;
 
     payload.buffer = msg - ECP_SIZE_MTYPE;
-    payload.size = b->payload->size - (payload.buffer - b->payload->buffer);
+    payload.size = bufs->payload->size - (payload.buffer - bufs->payload->buffer);
 
     ecp_pld_set_type(payload.buffer, payload.size, ECP_MTYPE_EXEC);
-    rv = ecp_pld_send(conn_next, b->packet, &payload, ECP_SIZE_MTYPE + _msg_size, ECP_SEND_FLAG_REPLY);
+    rv = ecp_pld_send(conn_next, bufs->packet, &payload, ECP_SIZE_MTYPE + _msg_size, ECP_SEND_FLAG_REPLY);
 
     if (conn->type == ECP_CTYPE_VLINK) {
         ecp_conn_refcount_dec(conn_next);
@@ -165,16 +165,16 @@ static ssize_t handle_relay(ECPConnection *conn, unsigned char *msg, size_t msg_
 
 #endif  /* ECP_WITH_HTABLE */
 
-static ssize_t handle_exec(ECPConnection *conn, unsigned char *msg, size_t msg_size, ECP2Buffer *b) {
+static ssize_t handle_exec(ECPConnection *conn, unsigned char *msg, size_t msg_size, ECP2Buffer *bufs) {
     ECPBuffer *packet;
 
-    if (b == NULL) return ECP_ERR;
+    if (bufs == NULL) return ECP_ERR;
 
-    packet = b->packet;
+    packet = bufs->packet;
     if (packet->size < msg_size) return ECP_ERR_SIZE;
 
     memcpy(packet->buffer, msg, msg_size);
-    return ecp_pkt_handle(conn->sock, conn, NULL, b, msg_size);
+    return ecp_pkt_handle(conn->sock, conn, NULL, bufs, msg_size);
 }
 
 ssize_t ecp_vconn_pack_parent(ECPConnection *conn, ECPBuffer *payload, ECPBuffer *packet, size_t pkt_size, ecp_tr_addr_t *addr) {
@@ -305,10 +305,11 @@ int ecp_vconn_open(ECPConnection *conn, ECPNode *node) {
     return rv;
 }
 
-static int vconn_handle_open(ECPConnection *conn) {
+static int vconn_handle_open(ECPConnection *conn, ECP2Buffer *bufs) {
     int rv = ECP_OK;
 
     if (ecp_conn_is_outb(conn) && conn->next) {
+        ecp_tr_release(bufs->packet, 1);
         rv = ecp_conn_open(conn->next, NULL);
         if (rv) ecp_err_handle(conn->next, ECP_MTYPE_INIT_REQ, rv);
     }
@@ -394,12 +395,12 @@ static int vlink_handle_open(ECPConnection *conn) {
 
 #endif  /* ECP_WITH_HTABLE */
 
-int ecp_vconn_handle_open(ECPConnection *conn, ECP2Buffer *b) {
+int ecp_vconn_handle_open(ECPConnection *conn, ECP2Buffer *bufs) {
     int rv;
 
     switch (conn->type) {
         case ECP_CTYPE_VCONN:
-            rv = vconn_handle_open(conn);
+            rv = vconn_handle_open(conn, bufs);
             break;
 
         case ECP_CTYPE_VLINK:
@@ -432,22 +433,22 @@ void ecp_vconn_handle_close(ECPConnection *conn) {
     }
 }
 
-ssize_t ecp_vconn_handle_msg(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, size_t msg_size, ECP2Buffer *b) {
+ssize_t ecp_vconn_handle_msg(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, size_t msg_size, ECP2Buffer *bufs) {
     ssize_t rv;
 
     switch (mtype) {
 #ifdef ECP_WITH_HTABLE
         case ECP_MTYPE_NEXT:
-            rv = handle_next(conn, msg, msg_size, b);
+            rv = handle_next(conn, msg, msg_size, bufs);
             break;
 
         case ECP_MTYPE_RELAY:
-            rv = handle_relay(conn, msg, msg_size, b);
+            rv = handle_relay(conn, msg, msg_size, bufs);
             break;
 #endif
 
         case ECP_MTYPE_EXEC:
-            rv = handle_exec(conn, msg, msg_size, b);
+            rv = handle_exec(conn, msg, msg_size, bufs);
             break;
 
         default:
@@ -471,7 +472,7 @@ ssize_t ecp_vconn_send_open_req(ECPConnection *conn, unsigned char *cookie) {
         ssize_t rv;
         int _rv;
 
-        if (conn->next == NULL) return ECP_ERR;
+        if (conn->next == NULL) return ECP_ERR_NEXT;
 
         _rv = ecp_conn_dhkey_get_remote(conn->next, ECP_ECDH_IDX_PERMA, &key_next);
         if (_rv) return _rv;

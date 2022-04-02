@@ -168,8 +168,6 @@ ssize_t ecp_dir_handle_msg(ECPConnection *conn, ecp_seq_t seq, unsigned char mty
     }
 }
 
-// iterator for client
-
 static ssize_t _dir_send_req(ECPConnection *conn, ECPTimerItem *ti) {
     ECPBuffer packet;
     ECPBuffer payload;

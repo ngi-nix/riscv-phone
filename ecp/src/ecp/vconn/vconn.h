@@ -27,7 +27,7 @@ int ecp_vlink_create_inb(ECPConnection *conn, ECPSocket *sock);
 void ecp_vlink_destroy(ECPConnection *conn);
 #endif
 
-int ecp_vconn_handle_open(ECPConnection *conn, ECP2Buffer *b);
+int ecp_vconn_handle_open(ECPConnection *conn, ECP2Buffer *bufs);
 void ecp_vconn_handle_close(ECPConnection *conn);
-ssize_t ecp_vconn_handle_msg(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, size_t msg_size, ECP2Buffer *b);
+ssize_t ecp_vconn_handle_msg(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, unsigned char *msg, size_t msg_size, ECP2Buffer *bufs);
 ssize_t ecp_vconn_send_open_req(ECPConnection *conn, unsigned char *cookie);

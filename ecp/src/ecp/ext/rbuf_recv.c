@@ -122,7 +122,6 @@ static void msg_flush(ECPRBConn *conn) {
                 rbuf->arr.pld[idx].flags &= ~ECP_RBUF_FLAG_SKIP;
             }
             rbuf->arr.pld[idx].flags &= ~ECP_RBUF_FLAG_IN_RBUF;
-            // if (rbuf->arr.pld[idx].flags == 0);
         } else {
             if (buf->flags & ECP_RBUF_FLAG_RELIABLE) break;
             if (!ECP_SEQ_LT(seq, rbuf->seq_max - buf->hole_max)) break;

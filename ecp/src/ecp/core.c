@@ -251,27 +251,24 @@ static ECPConnection *conn_table_search(ECPSocket *sock, unsigned char c_idx, ec
         return NULL;
     }
 #else
-    ECPConnection *conn;
+    ECPConnection *conn = NULL;
     int i;
 
     if (c_public) {
-        if (ecp_conn_is_outb(conn)) {
-            if (c_idx >= ECP_MAX_CONN_KEY) return NULL;
+        for (i=0; i<sock->conn_table.size; i++) {
+            conn = sock->conn_table.arr[i];
+            if (ecp_conn_is_outb(conn)) {
+                if (c_idx >= ECP_MAX_CONN_KEY) continue;
 
-            for (i=0; i<sock->conn_table.size; i++) {
-                conn = sock->conn_table.arr[i];
                 if (conn->key[c_idx].valid && ecp_ecdh_pub_eq(c_public, &conn->key[c_idx].public)) {
                     return conn;
                 }
-            }
-        } else {
-            unsigned char _c_idx;
+            } else {
+                unsigned char _c_idx;
 
-            if (c_idx & ~ECP_ECDH_IDX_MASK) return NULL;
+                if (c_idx & ~ECP_ECDH_IDX_MASK) continue;
 
-            _c_idx = c_idx % ECP_MAX_NODE_KEY;
-            for (i=0; i<sock->conn_table.size; i++) {
-                conn = sock->conn_table.arr[i];
+                _c_idx = c_idx % ECP_MAX_NODE_KEY;
                 if (conn->rkey[_c_idx].valid && ecp_ecdh_pub_eq(c_public, &conn->rkey[_c_idx].public)) {
                     return conn;
                 }
@@ -2080,7 +2077,7 @@ static ssize_t _pack(ECPBuffer *packet, ECPPktMeta *pkt_meta, ECPBuffer *payload
     pkt_buf = packet->buffer;
     pkt_size = packet->size;
 
-    // ECP_SIZE_PROTO
+    /* PROTO */
     pkt_buf[0] = 0;
     pkt_buf[1] = 0;
     pkt_buf[ECP_SIZE_PROTO] = (pkt_meta->s_idx << 4) | pkt_meta->c_idx;
