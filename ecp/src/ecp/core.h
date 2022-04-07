@@ -272,6 +272,7 @@ typedef struct ECPSocket {
     ECPDHKey key_perma;
     ECPDHKey key[ECP_MAX_SOCK_KEY];
     unsigned char key_curr;
+    ecp_bc_ctx_t minkey;
     ECPConnTable conn_table;
     ECPTimer timer;
 #ifdef ECP_WITH_PTHREAD
@@ -321,6 +322,7 @@ int ecp_sock_create(ECPSocket *sock, ECPContext *ctx, ECPDHKey *key);
 void ecp_sock_destroy(ECPSocket *sock);
 int ecp_sock_open(ECPSocket *sock, void *myaddr);
 void ecp_sock_close(ECPSocket *sock);
+int ecp_sock_minkey_new(ECPSocket *sock);
 int ecp_sock_dhkey_new(ECPSocket *sock);
 int ecp_sock_dhkey_get(ECPSocket *sock, unsigned char idx, ECPDHKey *key);
 int ecp_sock_dhkey_get_pub(ECPSocket *sock, unsigned char *idx, ecp_ecdh_public_t *public);

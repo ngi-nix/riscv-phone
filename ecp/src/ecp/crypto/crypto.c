@@ -103,3 +103,26 @@ int ecp_ecdsa_verify(unsigned char *m, size_t ml, ecp_ecdsa_signature_t *sig, ec
     if (rv == 1) return ECP_OK;
     return ECP_ERR_VERIFY;
 }
+
+int ecp_bc_key_gen(ecp_bc_ctx_t *key) {
+    unsigned char _key[ECP_SIZE_BC_KEY];
+    int rv;
+
+    arc4random_buf(_key, sizeof(_key));
+
+    rv = AES_set_encrypt_key(_key, ECP_SIZE_BC_KEY * 8, &key->ctx_enc);
+    if (rv < 0) return ECP_ERR;
+
+    rv = AES_set_decrypt_key(_key, ECP_SIZE_BC_KEY * 8, &key->ctx_dec);
+    if (rv < 0) return ECP_ERR;
+
+    return ECP_OK;
+}
+
+void ecp_bc_encrypt_block(unsigned char *in, unsigned char *out, ecp_bc_ctx_t *key) {
+    AES_encrypt(in, out, &key->ctx_enc);
+}
+
+void ecp_bc_decrypt_block(unsigned char *in, unsigned char *out, ecp_bc_ctx_t *key) {
+    AES_decrypt(in, out, &key->ctx_dec);
+}

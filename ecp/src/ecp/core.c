@@ -288,12 +288,18 @@ static ECPConnection *conn_table_search(ECPSocket *sock, unsigned char c_idx, ec
 }
 
 int ecp_sock_init(ECPSocket *sock, ECPContext *ctx, ECPDHKey *key) {
+    int rv;
+
     memset(sock, 0, sizeof(ECPSocket));
     sock->ctx = ctx;
     sock->key_curr = 0;
     if (key) sock->key_perma = *key;
 
-    return ecp_dhkey_gen(&sock->key[sock->key_curr]);
+    rv = ecp_dhkey_gen(&sock->key[sock->key_curr]);
+    if (rv) return rv;
+
+    rv = ecp_bc_key_gen(&sock->minkey);
+    return rv;
 }
 
 int ecp_sock_create(ECPSocket *sock, ECPContext *ctx, ECPDHKey *key) {
@@ -340,6 +346,22 @@ int ecp_sock_open(ECPSocket *sock, void *myaddr) {
 void ecp_sock_close(ECPSocket *sock) {
     ecp_sock_destroy(sock);
     ecp_tr_close(sock);
+}
+
+int ecp_sock_minkey_new(ECPSocket *sock) {
+    int rv;
+
+#ifdef ECP_WITH_PTHREAD
+    pthread_mutex_lock(&sock->mutex);
+#endif
+
+    rv = ecp_bc_key_gen(&sock->minkey);
+
+#ifdef ECP_WITH_PTHREAD
+    pthread_mutex_unlock(&sock->mutex);
+#endif
+
+    return rv;
 }
 
 int ecp_sock_dhkey_new(ECPSocket *sock) {
@@ -432,12 +454,45 @@ void ecp_sock_get_nonce(ECPSocket *sock, ecp_nonce_t *nonce) {
 }
 
 int ecp_cookie_gen(ECPSocket *sock, unsigned char *cookie, unsigned char *public_buf) {
-    memcpy(cookie, public_buf, ECP_SIZE_COOKIE);
+    ecp_bc_ctx_t bc_ctx;
+    int i;
+
+#ifdef ECP_WITH_PTHREAD
+    pthread_mutex_lock(&sock->mutex);
+#endif
+
+    bc_ctx = sock->minkey;
+
+#ifdef ECP_WITH_PTHREAD
+    pthread_mutex_unlock(&sock->mutex);
+#endif
+
+    for (i=0; i<ECP_SIZE_ECDH_PUB/ECP_SIZE_BC_BLOCK; i++) {
+        ecp_bc_encrypt_block(public_buf + i*ECP_SIZE_BC_BLOCK, cookie + i*ECP_SIZE_BC_BLOCK, &bc_ctx);
+    }
+
     return ECP_OK;
 }
 
 int ecp_cookie_verify(ECPSocket *sock, unsigned char *cookie, unsigned char *public_buf) {
-    if (memcmp(cookie, public_buf, ECP_SIZE_COOKIE) == 0) return ECP_OK;
+    ecp_bc_ctx_t bc_ctx;
+    int i;
+
+#ifdef ECP_WITH_PTHREAD
+    pthread_mutex_lock(&sock->mutex);
+#endif
+
+    bc_ctx = sock->minkey;
+
+#ifdef ECP_WITH_PTHREAD
+    pthread_mutex_unlock(&sock->mutex);
+#endif
+
+    for (i=0; i<ECP_SIZE_ECDH_PUB/ECP_SIZE_BC_BLOCK; i++) {
+        ecp_bc_decrypt_block(cookie + i*ECP_SIZE_BC_BLOCK, cookie + i*ECP_SIZE_BC_BLOCK, &bc_ctx);
+    }
+
+    if (memcmp(cookie, public_buf, ECP_SIZE_ECDH_PUB) == 0) return ECP_OK;
     return ECP_ERR_COOKIE;
 }
 

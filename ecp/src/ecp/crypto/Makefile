@@ -1,6 +1,4 @@
 include ../common.mk
-ssl_dir = ../../../../ext/libressl
-CFLAGS += -I$(ssl_dir)/include
 MAKEFLAGS += -I$(pwd)/..
 
 include $(ssl_dir)/ssl_obj.mk

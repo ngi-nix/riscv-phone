@@ -2,11 +2,12 @@ platform ?= posix
 
 pwd := $(abspath $(dir $(firstword $(MAKEFILE_LIST))))
 src_dir := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/..)
+ssl_dir = $(abspath $(src_dir)/../../ext/libressl)
 platform_dir = $(abspath $(src_dir)/platform/$(platform))
 
 include $(platform_dir)/platform.mk
 include $(platform_dir)/features.mk
-CFLAGS += -I$(src_dir)/ecp -I$(platform_dir)
+CFLAGS += -I$(src_dir)/ecp -I$(ssl_dir)/include -I$(platform_dir)
 
 ifeq ($(with_dirsrv),yes)
 with_dir = yes

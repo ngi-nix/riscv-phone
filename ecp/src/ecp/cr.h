@@ -14,3 +14,7 @@ ssize_t ecp_aead_dec(unsigned char *pt, size_t pl, unsigned char *ct, size_t cl,
 int ecp_ecdsa_mkpair(ecp_ecdsa_public_t *pub, ecp_ecdsa_private_t *priv);
 int ecp_ecdsa_sign(ecp_ecdsa_signature_t *sig, unsigned char *m, size_t ml, ecp_ecdsa_private_t *k);
 int ecp_ecdsa_verify(unsigned char *m, size_t ml, ecp_ecdsa_signature_t *sig, ecp_ecdsa_public_t *p);
+
+int ecp_bc_key_gen(ecp_bc_ctx_t *key);
+void ecp_bc_encrypt_block(unsigned char *in, unsigned char *out, ecp_bc_ctx_t *key);
+void ecp_bc_decrypt_block(unsigned char *in, unsigned char *out, ecp_bc_ctx_t *key);
