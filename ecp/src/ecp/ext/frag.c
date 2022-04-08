@@ -83,8 +83,8 @@ ssize_t ecp_pld_defrag(ECPConnection *conn, ecp_seq_t seq, unsigned char mtype, 
     int rv;
 
     _conn = ecp_rbuf_get_rbconn(conn);
-    if (conn) iter = ecp_frag_iter_get(_conn);
-    if (iter == NULL) ECP_ERR_ITER;
+    if (_conn) iter = ecp_frag_iter_get(_conn);
+    if (iter == NULL) ECP_ERR;
 
     rv = ecp_pld_get_frag(payload, pld_size, &frag_cnt, &frag_tot, &frag_size);
     if (rv) return ECP_ERR;
