@@ -8,7 +8,7 @@
 /*****************************************************************************/
 /* hashtable_iterator    - iterator constructor */
 
-int
+void
 hashtable_iterator(struct hashtable_itr *itr, struct hashtable *h)
 {
     unsigned int i, tablelength;
@@ -17,7 +17,7 @@ hashtable_iterator(struct hashtable_itr *itr, struct hashtable *h)
     itr->parent = NULL;
     tablelength = h->tablelength;
     itr->index = tablelength;
-    if (0 == h->entrycount) return -1;
+    if (0 == h->entrycount) return;
 
     for (i = 0; i < tablelength; i++)
     {
@@ -28,7 +28,6 @@ hashtable_iterator(struct hashtable_itr *itr, struct hashtable *h)
             break;
         }
     }
-    return -1;
 }
 
 /*****************************************************************************/
@@ -38,15 +37,21 @@ hashtable_iterator(struct hashtable_itr *itr, struct hashtable *h)
 
 void *
 hashtable_iterator_key(struct hashtable_itr *i)
-{ return i->e->k; }
+{
+    return i->e ? i->e->k : NULL;
+}
 
 void *
 hashtable_iterator_value(struct hashtable_itr *i)
-{ return i->e->v; }
+{
+    return i->e ? i->e->v : NULL;
+}
 
 struct entry *
 hashtable_iterator_entry(struct hashtable_itr *i)
-{ return i->e; }
+{
+    return i->e;
+}
 
 /*****************************************************************************/
 /* advance - advance the iterator to the next element
@@ -158,7 +163,6 @@ hashtable_iterator_search(struct hashtable_itr *itr, void *k)
             itr->index = index;
             itr->e = e;
             itr->parent = parent;
-            itr->h = h;
             return -1;
         }
         parent = e;
@@ -184,8 +188,8 @@ hashtable_iterator_search_next(struct hashtable_itr *itr, void *k)
         /* Check hash value to short circuit heavier comparison */
         if ((hashvalue == e->h) && (h->eqfn(k, e->k)))
         {
-            itr->parent = parent;
             itr->e = e;
+            itr->parent = parent;
             return -1;
         }
         parent = e;

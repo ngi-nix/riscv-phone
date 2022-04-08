@@ -37,8 +37,6 @@ int ecp_dhkey_gen(ECPDHKey *key) {
 int ecp_ctx_init(ECPContext *ctx, ecp_err_handler_t handle_err, ecp_dir_handler_t handle_dir, ecp_conn_alloc_t conn_alloc, ecp_conn_free_t conn_free) {
     int rv;
 
-    if (ctx == NULL) return ECP_ERR;
-
     memset(ctx, 0, sizeof(ECPContext));
     ctx->handle_err = handle_err;
     ctx->handle_dir = handle_dir;
@@ -47,6 +45,7 @@ int ecp_ctx_init(ECPContext *ctx, ecp_err_handler_t handle_err, ecp_dir_handler_
 
     rv = ecp_tr_init(ctx);
     if (rv) return rv;
+
     rv = ecp_tm_init(ctx);
     if (rv) return rv;
 
@@ -101,36 +100,57 @@ static int conn_table_create(ECPConnTable *conn_table) {
 
     memset(conn_table, 0, sizeof(ECPConnTable));
 
-#ifdef ECP_WITH_HTABLE
-    conn_table->keys = ecp_ht_create_keys();
-    if (conn_table->keys == NULL) return ECP_ERR_ALLOC;
-    conn_table->addrs = ecp_ht_create_addrs();
-    if (conn_table->addrs == NULL) {
-        ecp_ht_destroy(conn_table->keys);
-        return ECP_ERR_ALLOC;
-    }
-#endif
-
 #ifdef ECP_WITH_PTHREAD
     rv = pthread_mutex_init(&conn_table->mutex, NULL);
     if (rv) {
-#ifdef ECP_WITH_HTABLE
-        ecp_ht_destroy(conn_table->addrs);
-        ecp_ht_destroy(conn_table->keys);
-#endif
+        return ECP_ERR;
+    }
+
+    rv = pthread_mutex_init(&conn_table->mutex_inb, NULL);
+    if (rv) {
+        pthread_mutex_destroy(&conn_table->mutex);
         return ECP_ERR;
     }
 #endif
 
-    return ECP_OK;
+    rv = ECP_OK;
+
+#ifdef ECP_WITH_HTABLE
+    conn_table->keys = ecp_ht_create_keys();
+    if (conn_table->keys == NULL) rv = ECP_ERR_ALLOC;
+
+    if (!rv) {
+        conn_table->keys_inb = ecp_ht_create_keys();
+        if (conn_table->keys_inb == NULL) rv = ECP_ERR_ALLOC;
+    }
+
+    if (!rv) {
+        conn_table->addrs = ecp_ht_create_addrs();
+        if (conn_table->addrs == NULL) rv = ECP_ERR_ALLOC;
+    }
+
+    if (rv) {
+#ifdef ECP_WITH_PTHREAD
+        pthread_mutex_destroy(&conn_table->mutex_inb);
+        pthread_mutex_destroy(&conn_table->mutex);
+#endif
+        if (conn_table->addrs) ecp_ht_destroy(conn_table->addrs);
+        if (conn_table->keys_inb) ecp_ht_destroy(conn_table->keys_inb);
+        if (conn_table->keys) ecp_ht_destroy(conn_table->keys);
+    }
+#endif
+
+    return rv;
 }
 
 static void conn_table_destroy(ECPConnTable *conn_table) {
 #ifdef ECP_WITH_PTHREAD
+    pthread_mutex_destroy(&conn_table->mutex_inb);
     pthread_mutex_destroy(&conn_table->mutex);
 #endif
 #ifdef ECP_WITH_HTABLE
     ecp_ht_destroy(conn_table->addrs);
+    ecp_ht_destroy(conn_table->keys_inb);
     ecp_ht_destroy(conn_table->keys);
 #endif
 }
@@ -189,6 +209,21 @@ static int conn_table_insert(ECPConnection *conn) {
 #endif
 
     return ECP_OK;
+}
+
+static int conn_table_insert_inb(ECPConnection *conn) {
+    ECPSocket *sock = conn->sock;
+    int rv = ECP_OK;
+
+#ifdef ECP_WITH_HTABLE
+    unsigned char idx;
+
+    idx = conn->rkey_curr % ECP_MAX_NODE_KEY;
+
+    rv = ecp_ht_insert(sock->conn_table.keys_inb, &conn->rkey[idx].public, conn);
+#endif
+
+    return rv;
 }
 
 static void conn_table_remove(ECPConnection *conn) {
@@ -287,6 +322,112 @@ static ECPConnection *conn_table_search(ECPSocket *sock, unsigned char c_idx, ec
 #endif
 }
 
+static void conn_table_expire_inb(ECPSocket *sock, ecp_sts_t to) {
+    ECPConnection *conn;
+    ECPConnection *to_remove[ECP_MAX_EXP];
+    int i, remove_cnt;
+    ecp_sts_t access_ts, now = ecp_tm_abstime_ms(0);
+
+#ifdef ECP_WITH_HTABLE
+    struct hashtable_itr itr;
+    void *remove_next;
+    int rv = ECP_OK;
+
+    remove_next = NULL;
+    do {
+        remove_cnt = 0;
+
+#ifdef ECP_WITH_PTHREAD
+        pthread_mutex_lock(&sock->conn_table.mutex_inb);
+#endif
+
+        ecp_ht_itr_create(&itr, sock->conn_table.keys_inb);
+        if (remove_next) {
+            ecp_ht_itr_search(&itr, remove_next);
+            remove_next = NULL;
+        }
+        do {
+            conn = ecp_ht_itr_value(&itr);
+            if (conn) {
+#ifdef ECP_WITH_PTHREAD
+                pthread_mutex_lock(&conn->mutex);
+#endif
+
+                access_ts = conn->access_ts;
+
+#ifdef ECP_WITH_PTHREAD
+                pthread_mutex_unlock(&conn->mutex);
+#endif
+
+                if (now - access_ts > to) {
+                    to_remove[remove_cnt] = conn;
+                    remove_cnt++;
+                    rv = ecp_ht_itr_remove(&itr);
+                    if (remove_cnt == ECP_MAX_EXP) {
+                        if (!rv) remove_next = ecp_ht_itr_key(&itr);
+                        break;
+                    }
+                } else {
+                    rv = ecp_ht_itr_advance(&itr);
+                }
+            } else {
+                rv = ECP_ITR_END;
+            }
+        } while (rv == ECP_OK);
+
+#ifdef ECP_WITH_PTHREAD
+        pthread_mutex_unlock(&sock->conn_table.mutex_inb);
+#endif
+
+        for (i=0; i<remove_cnt; i++) {
+            _ecp_conn_close(to_remove[i]);
+        }
+
+    } while (remove_next);
+
+#else   /* ECP_WITH_HTABLE */
+
+    do {
+        remove_cnt = 0;
+
+#ifdef ECP_WITH_PTHREAD
+        pthread_mutex_lock(&sock->conn_table.mutex);
+#endif
+
+        for (i=0; i<sock->conn_table.size; i++) {
+            conn = sock->conn_table.arr[i];
+            if (ecp_conn_is_inb(conn)) {
+#ifdef ECP_WITH_PTHREAD
+                pthread_mutex_lock(&conn->mutex);
+#endif
+
+                access_ts = conn->access_ts;
+
+#ifdef ECP_WITH_PTHREAD
+                pthread_mutex_unlock(&conn->mutex);
+#endif
+
+                if (now - access_ts > to)) {
+                    to_remove[remove_cnt] = conn;
+                    remove_cnt++;
+                    if (remove_cnt == ECP_MAX_EXP) break;
+                }
+            }
+        }
+
+#ifdef ECP_WITH_PTHREAD
+        pthread_mutex_unlock(&sock->conn_table.mutex);
+#endif
+
+        for (i=0; i<remove_cnt; i++) {
+            _ecp_conn_close(to_remove[i]);
+        }
+
+    } while (remove_cnt < ECP_MAX_EXP);
+
+#endif  /* ECP_WITH_HTABLE */
+}
+
 int ecp_sock_init(ECPSocket *sock, ECPContext *ctx, ECPDHKey *key) {
     int rv;
 
@@ -299,7 +440,9 @@ int ecp_sock_init(ECPSocket *sock, ECPContext *ctx, ECPDHKey *key) {
     if (rv) return rv;
 
     rv = ecp_bc_key_gen(&sock->minkey);
-    return rv;
+    if (rv) return rv;
+
+    return ECP_OK;
 }
 
 int ecp_sock_create(ECPSocket *sock, ECPContext *ctx, ECPDHKey *key) {
@@ -451,6 +594,15 @@ void ecp_sock_get_nonce(ECPSocket *sock, ecp_nonce_t *nonce) {
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_unlock(&sock->mutex);
 #endif
+}
+
+int ecp_sock_expire_inb(ECPSocket *sock, ecp_sts_t to) {
+    int rv;
+
+    rv = ecp_sock_minkey_new(sock);
+    if (!rv) conn_table_expire_inb(sock, to);
+
+    return rv;
 }
 
 int ecp_cookie_gen(ECPSocket *sock, unsigned char *cookie, unsigned char *public_buf) {
@@ -864,6 +1016,25 @@ int ecp_conn_insert(ECPConnection *conn) {
     return rv;
 }
 
+int ecp_conn_insert_inb(ECPConnection *conn) {
+    ECPSocket *sock = conn->sock;
+    int rv;
+
+#ifdef ECP_WITH_PTHREAD
+    pthread_mutex_lock(&sock->conn_table.mutex_inb);
+    pthread_mutex_lock(&conn->mutex);
+#endif
+
+    rv = conn_table_insert_inb(conn);
+
+#ifdef ECP_WITH_PTHREAD
+    pthread_mutex_unlock(&conn->mutex);
+    pthread_mutex_unlock(&sock->conn_table.mutex_inb);
+#endif
+
+    return rv;
+}
+
 void ecp_conn_remove(ECPConnection *conn, unsigned short *refcount) {
     ECPSocket *sock = conn->sock;
 
@@ -942,8 +1113,7 @@ int ecp_conn_reset(ECPConnection *conn) {
     return ECP_OK;
 }
 
-void _ecp_conn_close(ECPConnection *conn) {
-
+static void conn_close(ECPConnection *conn) {
     if (ecp_conn_is_open(conn)) {
         ecp_close_handler_t handler;
 
@@ -955,15 +1125,20 @@ void _ecp_conn_close(ECPConnection *conn) {
     if (ecp_conn_is_inb(conn)) ecp_conn_free(conn);
 }
 
-int ecp_conn_close(ECPConnection *conn) {
+int _ecp_conn_close(ECPConnection *conn) {
     unsigned short refcount = 0;
 
     ecp_timer_remove(conn);
     ecp_conn_remove(conn, &refcount);
     if (refcount) return ECP_ERR_BUSY;
 
-    _ecp_conn_close(conn);
+    conn_close(conn);
     return ECP_OK;
+}
+
+int ecp_conn_close(ECPConnection *conn) {
+    if (ecp_conn_is_inb(conn)) return ECP_ERR;
+    return _ecp_conn_close(conn);
 }
 
 void ecp_conn_refcount_inc(ECPConnection *conn) {
@@ -994,7 +1169,7 @@ void ecp_conn_refcount_dec(ECPConnection *conn) {
     pthread_mutex_unlock(&conn->mutex);
 #endif
 
-    if (!is_reg && (refcount == 0)) _ecp_conn_close(conn);
+    if (!is_reg && (refcount == 0)) conn_close(conn);
 }
 
 int ecp_conn_dhkey_new(ECPConnection *conn) {
@@ -1578,7 +1753,7 @@ ssize_t ecp_handle_open(ECPConnection *conn, unsigned char mtype, unsigned char 
         pthread_mutex_unlock(&conn->mutex);
 #endif
 
-        if (ecp_conn_is_inb(conn)) ecp_conn_close(conn);
+        if (ecp_conn_is_inb(conn)) _ecp_conn_close(conn);
         return rv;
     }
 
@@ -1589,8 +1764,13 @@ ssize_t ecp_handle_open(ECPConnection *conn, unsigned char mtype, unsigned char 
 
         _rv = ecp_send_open_rep(conn);
         if (_rv < 0) {
-            ecp_conn_close(conn);
+            _ecp_conn_close(conn);
             return _rv;
+        }
+        rv = ecp_conn_insert_inb(conn);
+        if (rv) {
+            _ecp_conn_close(conn);
+            return rv;
         }
     } else if (ecp_conn_is_root(conn)) {
         ecp_conn_remove_addr(conn);
@@ -2004,7 +2184,10 @@ ssize_t ecp_unpack(ECPSocket *sock, ECPConnection *parent, ecp_tr_addr_t *addr, 
 
             conn->nonce_in = nonce_in;
             conn->nonce_map = nonce_map;
-            if (is_inb && addr) conn->remote.addr = *addr;
+            if (is_inb) {
+                conn->access_ts = ecp_tm_abstime_ms(0);
+                if (addr) conn->remote.addr = *addr;
+            }
 
 #ifdef ECP_WITH_PTHREAD
             pthread_mutex_unlock(&conn->mutex);

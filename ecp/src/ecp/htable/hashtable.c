@@ -78,11 +78,15 @@ hashtable_prime_size(unsigned int minsize)
 
 void *
 hashtable_entry_key(struct entry *e)
-{ return e->k; }
+{
+    return e->k;
+}
 
 void *
 hashtable_entry_value(struct entry *e)
-{ return e->v; }
+{
+    return e->v;
+}
 
 /*****************************************************************************/
 unsigned int

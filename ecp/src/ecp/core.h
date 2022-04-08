@@ -8,23 +8,23 @@
 
 #define ECP_OK                      0
 #define ECP_PASS                    1
+#define ECP_ITR_END                 2
 
 #define ECP_ERR                     -1
 #define ECP_ERR_TIMEOUT             -2
 #define ECP_ERR_ALLOC               -3
 #define ECP_ERR_SIZE                -4
-#define ECP_ERR_ITER                -5
-#define ECP_ERR_BUSY                -6
-#define ECP_ERR_EMPTY               -7
-#define ECP_ERR_FULL                -8
-#define ECP_ERR_MTYPE               -9
-#define ECP_ERR_CTYPE               -10
-#define ECP_ERR_HANDLER             -11
-#define ECP_ERR_COOKIE              -12
+#define ECP_ERR_BUSY                -5
+#define ECP_ERR_EMPTY               -6
+#define ECP_ERR_FULL                -7
+#define ECP_ERR_MTYPE               -8
+#define ECP_ERR_CTYPE               -9
+#define ECP_ERR_HANDLER             -10
+#define ECP_ERR_COOKIE              -11
 
-#define ECP_ERR_NET_ADDR            -13
-#define ECP_ERR_MAX_PARENT          -14
-#define ECP_ERR_NEXT                -15
+#define ECP_ERR_NET_ADDR            -12
+#define ECP_ERR_MAX_PARENT          -13
+#define ECP_ERR_NEXT                -14
 
 #define ECP_ERR_ECDH_KEY_DUP        -21
 #define ECP_ERR_ECDH_IDX            -22
@@ -46,6 +46,7 @@
 #define ECP_MAX_MTYPE               16
 #define ECP_MAX_PARENT              3
 #define ECP_MAX_SEQ_FWD             1024
+#define ECP_MAX_EXP                 100
 
 #define ECP_SIZE_PROTO              2
 #define ECP_SIZE_NONCE              8
@@ -178,6 +179,9 @@ struct ECPConnection;
 struct ECPDirList;
 #endif
 
+#ifdef ECP_WITH_HTABLE
+#include "htable/htable.h"
+#endif
 #include "crypto/crypto.h"
 #include "transport.h"
 #include "timer.h"
@@ -253,14 +257,16 @@ typedef struct ECPContext {
 
 typedef struct ECPConnTable {
 #ifdef ECP_WITH_HTABLE
-    void *keys;
-    void *addrs;
+    ecp_ht_table_t *keys;
+    ecp_ht_table_t *keys_inb;
+    ecp_ht_table_t *addrs;
 #else
     struct ECPConnection *arr[ECP_MAX_SOCK_CONN];
     unsigned short size;
 #endif
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_t mutex;
+    pthread_mutex_t mutex_inb;
 #endif
 } ECPConnTable;
 
@@ -297,6 +303,7 @@ typedef struct ECPConnection {
     unsigned char key_next;
     unsigned char rkey_curr;
     ECPDHShkey shkey[ECP_MAX_NODE_KEY][ECP_MAX_NODE_KEY];
+    ecp_sts_t access_ts;
 #ifdef ECP_WITH_PTHREAD
     pthread_mutex_t mutex;
 #endif
@@ -327,6 +334,7 @@ int ecp_sock_dhkey_new(ECPSocket *sock);
 int ecp_sock_dhkey_get(ECPSocket *sock, unsigned char idx, ECPDHKey *key);
 int ecp_sock_dhkey_get_pub(ECPSocket *sock, unsigned char *idx, ecp_ecdh_public_t *public);
 void ecp_sock_get_nonce(ECPSocket *sock, ecp_nonce_t *nonce);
+int ecp_sock_expire_inb(ECPSocket *sock, ecp_sts_t to);
 
 int ecp_cookie_gen(ECPSocket *sock, unsigned char *cookie, unsigned char *public_buf);
 int ecp_cookie_verify(ECPSocket *sock, unsigned char *cookie, unsigned char *public_buf);
@@ -349,12 +357,13 @@ int ecp_conn_init_inb(ECPConnection *conn, ECPConnection *parent, unsigned char 
 int ecp_conn_init_outb(ECPConnection *conn, ECPNode *node);
 
 int ecp_conn_insert(ECPConnection *conn);
+int ecp_conn_insert_inb(ECPConnection *conn);
 void ecp_conn_remove(ECPConnection *conn, unsigned short *refcount);
 void ecp_conn_remove_addr(ECPConnection *conn);
 
 int ecp_conn_open(ECPConnection *conn, ECPNode *node);
 int ecp_conn_reset(ECPConnection *conn);
-void _ecp_conn_close(ECPConnection *conn);
+int _ecp_conn_close(ECPConnection *conn);
 int ecp_conn_close(ECPConnection *conn);
 void ecp_conn_refcount_inc(ECPConnection *conn);
 void ecp_conn_refcount_dec(ECPConnection *conn);

@@ -94,24 +94,18 @@ unsigned int
 hashtable_prime_size(unsigned int minsize);
 
 /*****************************************************************************/
-/* hashtable_iterator_key
- * - return the key of the (key,value) pair at the current position */
+/* hashtable_entry_key
+ * - return the key of the (key,value) pair from hash table entry */
 
-extern inline void *
-hashtable_entry_key(struct entry *e)
-{
-    return e->v;
-}
+void *
+hashtable_entry_key(struct entry *e);
 
 /*****************************************************************************/
-/* hashtable_iterator_value
- * - return the value of the (key,value) pair at the current position */
+/* hashtable_entry_value
+ * - return the value of the (key,value) pair from hash table entry */
 
-extern inline void *
-hashtable_entry_value(struct entry *e)
-{
-    return e->v;
-}
+void *
+hashtable_entry_value(struct entry *e);
 
 /*****************************************************************************
  * hashtable_insert

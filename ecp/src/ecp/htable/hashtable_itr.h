@@ -21,38 +21,29 @@ struct hashtable_itr
 /* hashtable_iterator
  */
 
-int
-hashtable_iterator(struct hashtable_itr *, struct hashtable *h);
+void
+hashtable_iterator(struct hashtable_itr *i, struct hashtable *h);
 
 /*****************************************************************************/
 /* hashtable_iterator_key
  * - return the key of the (key,value) pair at the current position */
 
-extern inline void *
-hashtable_iterator_key(struct hashtable_itr *i)
-{
-    return i->e->k;
-}
+void *
+hashtable_iterator_key(struct hashtable_itr *i);
 
 /*****************************************************************************/
 /* hashtable_iterator_value
  * - return the value of the (key,value) pair at the current position */
 
-extern inline void *
-hashtable_iterator_value(struct hashtable_itr *i)
-{
-    return i->e->v;
-}
+void *
+hashtable_iterator_value(struct hashtable_itr *i);
 
 /*****************************************************************************/
 /* hashtable_iterator_entry
  * - return the hash table entry at the current position */
 
-extern inline struct entry *
-hashtable_iterator_entry(struct hashtable_itr *i)
-{
-    return i->e;
-}
+struct entry *
+hashtable_iterator_entry(struct hashtable_itr *i);
 
 /*****************************************************************************/
 /* advance - advance the iterator to the next element
