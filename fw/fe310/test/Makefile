@@ -16,10 +16,10 @@ app_:
 	(cd app && $(MAKE)) || exit;
 
 %.o: %.c
-	$(CC) $(CFLAGS) -c $<
+	riscv64-none-elf-gcc $(CFLAGS) -c $<
 
 $(TARGET): app_ $(DEPS)
-	$(CC) $(DEPS) $(LDFLAGS) -o $@
+	riscv64-none-elf-gcc $(DEPS) $(LDFLAGS) -o $@
 
 clean:
 	(cd app && $(MAKE) clean) || exit;

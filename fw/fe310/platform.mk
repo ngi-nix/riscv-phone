@@ -1,5 +1,5 @@
-CC =     $(RISCV_HOME)/bin/riscv64-unknown-elf-gcc
-AR =     $(RISCV_HOME)/bin/riscv64-unknown-elf-ar
-RANLIB = $(RISCV_HOME)/bin/riscv64-unknown-elf-ranlib
+CC =     riscv64-none-elf-gcc
+AR =     riscv64-none-elf-ar
+RANLIB = riscv64-none-elf-ranlib
 
-CFLAGS = -march=rv32imac -mabi=ilp32 -mcmodel=medlow -ffunction-sections -fdata-sections --specs=nano.specs -O2
+CFLAGS = -march=rv32imac -mabi=ilp32 -mcmodel=medlow -ffunction-sections -fdata-sections -O2
