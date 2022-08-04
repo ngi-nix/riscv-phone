@@ -28,8 +28,6 @@
 #include "wifi.h"
 #include "cam.h"
 #include "fs.h"
-#include "audio.h"
-#include "ecp.h"
 #include "test.h"
 
 void app_home_page(EVEWindow *window, EVEViewStack *stack) {
