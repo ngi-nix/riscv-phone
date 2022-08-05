@@ -12,7 +12,7 @@
           import nixpkgs {
             localSystem = "${system}";
             crossSystem = {
-              config = "riscv64-none-elf";
+              config = "riscv32-none-elf";
               libc = "newlib";
               abi = "ilp32";
             };
