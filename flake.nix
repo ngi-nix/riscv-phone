@@ -1,7 +1,7 @@
 {
   inputs.flake-utils.url = "github:numtide/flake-utils";
   #inputs.nixpkgs.url = "github:NixOS/nixpkgs";
-  
+
   outputs = { self, nixpkgs, flake-utils, ... }:
     flake-utils.lib.eachDefaultSystem (system:
       let
@@ -13,26 +13,60 @@
             localSystem = "${system}";
             crossSystem = {
               config = "riscv64-none-elf";
-              libc = "newlib";              
+              libc = "newlib";
               abi = "ilp32";
             };
           };
       in
-#        with import <nixpkgs> {};
         {
-          devShell = pkgs.mkShell {
+          packages.fe310 = riscv-toolchain.stdenv.mkDerivation {
+            name = "riscv-fe310-firmware";
+
+            src = ./.;
+
             buildInputs = with pkgs; [
               riscv-toolchain.buildPackages.gcc
               riscv-toolchain.buildPackages.binutils.bintools
-              openocd
-              mkspiffs-presets.esp-idf              
-            ];           
-            shellHook = ''
-              RISCV_HOME=${riscv-toolchain.buildPackages.gcc}
-              RISCV_OPENOCD_PATH=${pkgs.openocd}
+            ];
+
+            buildPhase = ''
+              make -C fw/fe310
             '';
+
+            installPhase = ''
+              cp -r fw/fe310/libeos.a $out
+            '';
+
+            # TODO add check phase once we can build tests
+            # checkPhase = ''
+            #   make -C fw/fe310/test
+            # '';
+
+          };
+
+          devShells = {
+            # usage: nix develop .#riscvShell
+            riscvShell = pkgs.mkShell {
+              buildInputs = with pkgs; [
+                riscv-toolchain.buildPackages.gcc
+                riscv-toolchain.buildPackages.binutils.bintools
+                openocd
+                mkspiffs-presets.esp-idf
+              ];
+              shellHook = ''
+                RISCV_HOME=${riscv-toolchain.buildPackages.gcc}
+                RISCV_OPENOCD_PATH=${pkgs.openocd}
+              '';
+            };
+            # usage: nix develop .#esp32Shell
+            esp32Shell = pkgs.mkShell {
+              buildInputs = with pkgs; [
+                # TODO get working
+                mkspiffs-presets.esp-idf
+              ];
+            };
           };
         }
     );
- 
+
 }
