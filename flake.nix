@@ -13,7 +13,7 @@
             localSystem = "${system}";
             crossSystem = {
               config = "riscv32-none-elf";
-              libc = "newlib";
+              libc = "newlib-nano";
               abi = "ilp32";
             };
           };
