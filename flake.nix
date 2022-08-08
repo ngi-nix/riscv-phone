@@ -1,5 +1,6 @@
 {
   inputs.flake-utils.url = "github:numtide/flake-utils";
+  # Temporary fix while NixOS/nixpkgs#182187 isn't merged
   inputs.nixpkgs.url = "github:adisbladis/nixpkgs/newlib-nano-cc";
 
   outputs = { self, nixpkgs, flake-utils, ... }:
