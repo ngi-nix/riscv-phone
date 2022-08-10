@@ -7,8 +7,6 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
         riscv-toolchain =
-#          (import <nixpkgs> {}).pkgsCross.riscv32;
-#          (import <nixpkgs> {}).pkgsCross.riscv64;
           import nixpkgs {
             localSystem = "${system}";
             crossSystem = {
@@ -41,7 +39,7 @@
             # checkPhase = ''
             #   make -C fw/fe310/test
             # '';
-
+              
           };
 
           devShells = {
@@ -52,11 +50,8 @@
                 riscv-toolchain.buildPackages.binutils.bintools
                 riscv-toolchain.newlib-nano
                 openocd
-                mkspiffs-presets.esp-idf
               ];
               shellHook = ''
-                RISCV_HOME=${riscv-toolchain.buildPackages.gcc}
-                RISCV_OPENOCD_PATH=${pkgs.openocd}
                 export NANO=${riscv-toolchain.newlib-nano}/riscv64-none-elf/lib/*.a
               '';
             };
