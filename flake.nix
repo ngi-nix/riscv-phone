@@ -56,6 +56,7 @@
               shellHook = ''
                 RISCV_HOME=${riscv-toolchain.buildPackages.gcc}
                 RISCV_OPENOCD_PATH=${pkgs.openocd}
+                export NANO=${riscv-toolchain.newlib-nano}/riscv64-none-elf/lib/*.a
               '';
             };
             # usage: nix develop .#esp32Shell
