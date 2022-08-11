@@ -19,7 +19,7 @@ app_:
 	$(CC) $(CFLAGS) -c $<
 
 $(TARGET): app_ $(DEPS)
-	$(CC) -L/home/nuno/pendente/riscv-phone/fw/fe310/test/testlibs/ $(DEPS) $(LDFLAGS) -o $@
+	$(CC) -L$(out) $(DEPS) $(LDFLAGS) -o $@
 
 clean:
 	(cd app && $(MAKE) clean) || exit;
