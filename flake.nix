@@ -24,19 +24,17 @@
 
               src = ./.;
 
-            buildPhase = ''
-              make -C fw/fe310
-            '';
               buildInputs = with pkgs; [
                 riscv-toolchain.buildPackages.gcc
               ];
 
-            installPhase = ''
-              cp -r fw/fe310/libeos.a $out
-            '';
+              buildPhase = ''
+                make -C fw/fe310
+              '';
 
-              
-          };
+              installPhase = ''
+                cp -r fw/fe310/libeos.a $out
+              '';
 
               postInstall = ''
                 mkdir -p $out
