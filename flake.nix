@@ -26,6 +26,9 @@
             buildPhase = ''
               make -C fw/fe310
             '';
+              buildInputs = with pkgs; [
+                riscv-toolchain.buildPackages.gcc
+              ];
 
             installPhase = ''
               cp -r fw/fe310/libeos.a $out
