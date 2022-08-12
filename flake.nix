@@ -34,10 +34,6 @@
               cp -r fw/fe310/libeos.a $out
             '';
 
-            # TODO add check phase once we can build tests
-            # checkPhase = ''
-            #   make -C fw/fe310/test
-            # '';
               
           };
 
@@ -51,6 +47,9 @@
                 done
               #'';
 
+              checkPhase = ''
+                make -C fw/fe310/test
+              '';              
           devShells = {
             # usage: nix develop .#riscvShell
             riscvShell = pkgs.mkShell {
