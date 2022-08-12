@@ -17,11 +17,12 @@
           };
       in
         {
-          packages.fe310 = riscv-toolchain.stdenv.mkDerivation {
-            name = "riscv-fe310-firmware";
+          packages = {
 
-            src = ./.;
+            fe310 = riscv-toolchain.stdenv.mkDerivation {
+              name = "riscv-fe310-firmware";
 
+              src = ./.;
 
             buildPhase = ''
               make -C fw/fe310
