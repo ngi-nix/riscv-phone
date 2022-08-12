@@ -59,8 +59,9 @@
           };
           
           devShells = {
-            # usage: nix develop .#riscvShell
-            riscvShell = pkgs.mkShell {
+
+            # usage: nix develop .#fe310Shell
+            fe310Shell = pkgs.mkShell {
               buildInputs = with pkgs; [
                 riscv-toolchain.buildPackages.gcc
                 openocd
