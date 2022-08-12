@@ -46,8 +46,6 @@
             riscvShell = pkgs.mkShell {
               buildInputs = with pkgs; [
                 riscv-toolchain.buildPackages.gcc
-                riscv-toolchain.buildPackages.binutils.bintools
-                riscv-toolchain.newlib-nano
                 openocd
               ];
               shellHook = ''
