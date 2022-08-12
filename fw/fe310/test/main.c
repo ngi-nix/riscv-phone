@@ -74,7 +74,7 @@ void app_home_page(EVEWindow *window, EVEViewStack *stack) {
             .widget.type = EVE_WIDGET_TYPE_PAGE,
             .widget.g.w = APP_SCREEN_W,
             .widget.spec.page.title = "Test",
-            .widget.spec.page.constructor = app_test
+//            .widget.spec.page.constructor = app_test
         },
     };
 
