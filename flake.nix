@@ -22,10 +22,6 @@
 
             src = ./.;
 
-            buildInputs = with pkgs; [
-              riscv-toolchain.buildPackages.gcc
-              riscv-toolchain.buildPackages.binutils.bintools
-            ];
 
             buildPhase = ''
               make -C fw/fe310
