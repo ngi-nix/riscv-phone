@@ -65,6 +65,7 @@
                 riscv-toolchain.buildPackages.gcc
                 openocd
               ];
+
               shellHook = ''
                 mkdir -p $out
                 for file in ${riscv-toolchain.newlib-nano}/riscv32-none-elf/lib/*.a; do
@@ -75,6 +76,7 @@
                 done
               '';
             };
+            
             # usage: nix develop .#esp32Shell
             esp32Shell = pkgs.mkShell {
               buildInputs = with pkgs; [
@@ -82,6 +84,7 @@
                 mkspiffs-presets.esp-idf
               ];
             };
+            
           };
         }
     );
