@@ -49,6 +49,15 @@
               checkPhase = ''
                 make -C fw/fe310/test
               '';              
+            };
+            
+            esp32 = riscv-toolchain.stdenv.mkDerivation {
+              name = "riscv-esp32Shell-firmware";            
+              src = ./.;
+            };
+            
+          };
+          
           devShells = {
             # usage: nix develop .#riscvShell
             riscvShell = pkgs.mkShell {
