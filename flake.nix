@@ -51,11 +51,6 @@
               '';              
             };
             
-            esp32 = riscv-toolchain.stdenv.mkDerivation {
-              name = "riscv-esp32Shell-firmware";            
-              src = ./.;
-            };
-            
           };
           
           devShells = {
@@ -77,14 +72,6 @@
                 mv "$file" "''${file%%.a}_nano.a"                
                 done
               '';
-            };
-            
-            # usage: nix develop .#esp32Shell
-            esp32Shell = pkgs.mkShell {
-              buildInputs = with pkgs; [
-                # TODO get working
-                mkspiffs-presets.esp-idf
-              ];
             };
             
           };
