@@ -26,4 +26,4 @@ clean:
 	rm -f *.o *.a $(TARGET)
 
 upload: $(TARGET)
-	../bsp/upload --elf ./$(TARGET) --openocd $(RISCV_OPENOCD_HOME)/bin/openocd --gdb $(RISCV_HOME)/bin/riscv64-unknown-elf-gdb --openocd-config ../bsp/openocd.cfg
+	../bsp/upload --elf ./$(TARGET) --openocd $(RISCV_OPENOCD_HOME)/bin/openocd --gdb $(RISCV_HOME)/bin/riscv32-unknown-elf-gdb --openocd-config ../bsp/openocd.cfg
