@@ -68,6 +68,7 @@
               ];
 
               shellHook = ''
+                rm -fr $out/*.a
                 mkdir -p $out
                 for file in ${riscv-toolchain.newlib-nano}/riscv32-none-elf/lib/*.a; do
                 ln -s $file $out
