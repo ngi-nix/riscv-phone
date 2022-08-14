@@ -42,7 +42,7 @@
                   ln -s $file $out
                 done
                 for file in $out/*.a; do
-                mv "$file" "''${file%%.a}_nano.a"                
+                  mv "$file" "''${file%%.a}_nano.a"                
                 done
               #'';
 
