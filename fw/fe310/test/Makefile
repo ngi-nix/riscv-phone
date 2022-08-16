@@ -19,7 +19,7 @@ app_:
 	$(CC) $(CFLAGS) -c $<
 
 $(TARGET): app_ $(DEPS)
-	$(CC) -L$(out) $(DEPS) $(LDFLAGS) -o $@
+	$(CC)  -L../../../nanolibs $(DEPS) $(LDFLAGS) -o $@
 
 clean:
 	(cd app && $(MAKE) clean) || exit;

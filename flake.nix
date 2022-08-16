@@ -63,13 +63,13 @@
               ];
 
               shellHook = ''
-                rm -fr $out/*.a
-                mkdir -p $out
+                rm -fr nanolibs/*.a
+                mkdir -p nanolibs
                 for file in ${riscv-toolchain.newlib-nano}/riscv32-none-elf/lib/*.a; do
-                ln -s $file $out
+                   ln -s $file nanolibs
                 done
-                for file in $out/*.a; do
-                mv "$file" "''${file%%.a}_nano.a"                
+                for file in nanolibs/*.a; do
+                   mv "$file" "''${file%%.a}_nano.a"                
                 done
               '';
             };
