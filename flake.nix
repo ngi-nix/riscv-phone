@@ -48,20 +48,10 @@
                 cp -r fw/fe310/libeos.a $out
               '';
 
-              postInstall = ''
-                mkdir -p $out
-                for file in ${riscv-toolchain.newlib-nano}/riscv32-none-elf/lib/*.a; do
-                  ln -s $file $out
-                done
-                for file in $out/*.a; do
-                  mv "$file" "''${file%%.a}_nano.a"                
-                done
-              #'';
-
-              patchPhase = nanolibsPatch;
               checkPhase = ''
                 make -C fw/fe310/test
-              '';              
+              '';
+
             };
             
           };
