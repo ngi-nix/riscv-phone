@@ -38,6 +38,7 @@
 
               buildInputs = with pkgs; [
                 riscv-toolchain.buildPackages.gcc
+                openocd
               ];
 
               buildPhase = ''
