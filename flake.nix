@@ -57,6 +57,15 @@
 
             };
             
+          nanolibsPath = pkgs.symlinkJoin {
+            name = "nanolibs-path";
+            paths = [ nanolibs-script.script ];
+            buildInputs = with pkgs; [
+              makeWrapper
+            ];
+            postBuild = ''
+              wrapProgram $out/bin/${nanolibs-script.name}
+            '';
           };
           
           devShells = {
