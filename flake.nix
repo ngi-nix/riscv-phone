@@ -19,6 +19,10 @@
                mv "$file" "''${file%%.a}_nano.a"                
             done
           '';
+          '';          
+          buildInputs = [
+            riscv-toolchain.newlib-nano
+          ];
         };
         riscv-toolchain =
           import nixpkgs {
@@ -59,12 +63,12 @@
             
           nanolibsPath = pkgs.symlinkJoin {
             name = "nanolibs-path";
-            paths = [ nanolibs-script.script ];
+            paths = [ nanolibs-script.script ] ++ nanolibs-script.buildInputs;
             buildInputs = with pkgs; [
               makeWrapper
             ];
             postBuild = ''
-              wrapProgram $out/bin/${nanolibs-script.name}
+              wrapProgram $out/bin/${nanolibs-script.name}  --prefix PATH : $out/bin
             '';
           };
           
