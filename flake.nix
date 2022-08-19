@@ -76,11 +76,10 @@
                 riscv-toolchain.buildPackages.gcc
                 openocd
               ];
-              
-              shellHook = nanolibsPatch;
-
-            };
-            
+              shellHook = ''
+                nix run .#nanolibsPath
+              '';
+            };            
           };
         }
     );
