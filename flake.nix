@@ -7,18 +7,12 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
-        nanolibs-script = {
+        nanolibs-script = rec {
           name = "nanolibs-path";
-          script = pkgs.writeShellScriptBin nanolibs-script.name ''
-            rm -fr nanolibs/*.a
-            mkdir -p nanolibs
-            for file in ${riscv-toolchain.newlib-nano}/riscv32-none-elf/lib/*.a; do
-               ln -s $file nanolibs
-            done
-            for file in nanolibs/*.a; do
-               mv "$file" "''${file%%.a}_nano.a"
-            done
-          '';
+          source = builtins.readFile ./nanolibs-script.sh;
+          script = (pkgs.writeShellScriptBin name source).overrideAttrs(old: {
+            buildCommand = "${old.buildCommand}\n patchShebangs $out";
+          });
           buildInputs = [
             riscv-toolchain.newlib-nano
           ];
