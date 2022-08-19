@@ -7,7 +7,7 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
-        nanolibs-script = {       
+        nanolibs-script = {
           name = "nanolibs-path";
           script = pkgs.writeShellScriptBin nanolibs-script.name ''
             rm -fr nanolibs/*.a
@@ -16,14 +16,14 @@
                ln -s $file nanolibs
             done
             for file in nanolibs/*.a; do
-               mv "$file" "''${file%%.a}_nano.a"                
+               mv "$file" "''${file%%.a}_nano.a"
             done
           '';
-          '';          
           buildInputs = [
             riscv-toolchain.newlib-nano
           ];
         };
+
         riscv-toolchain =
           import nixpkgs {
             localSystem = "${system}";
@@ -33,34 +33,11 @@
               abi = "ilp32d";
             };
           };
-      in
-        {
-          packages = {
 
-            fe310 = riscv-toolchain.stdenv.mkDerivation {
-              name = "riscv-fe310-firmware";
+      in {
 
-              src = ./.;
+        packages = {
 
-              buildInputs = with pkgs; [
-                riscv-toolchain.buildPackages.gcc
-                openocd
-              ];
-
-              buildPhase = ''
-                make -C fw/fe310
-              '';
-
-              installPhase = ''
-                cp -r fw/fe310/libeos.a $out
-              '';
-
-              checkPhase = ''
-                make -C fw/fe310/test
-              '';
-
-            };
-            
           nanolibsPath = pkgs.symlinkJoin {
             name = "nanolibs-path";
             paths = [ nanolibs-script.script ] ++ nanolibs-script.buildInputs;
@@ -71,21 +48,38 @@
               wrapProgram $out/bin/${nanolibs-script.name}  --prefix PATH : $out/bin
             '';
           };
-          
-          devShells = {
 
-            # usage: nix develop .#fe310Shell
-            fe310Shell = pkgs.mkShell {
-              buildInputs = with pkgs; [
-                riscv-toolchain.buildPackages.gcc
-                openocd
-              ];
-              shellHook = ''
-                nix run .#nanolibsPath
-              '';
-            };            
+          fe310 = riscv-toolchain.stdenv.mkDerivation {
+            name = "riscv-fe310-firmware";
+            src = ./.;
+            buildInputs = with pkgs; [
+              riscv-toolchain.buildPackages.gcc
+              openocd
+            ];
+            buildPhase = ''
+              make -C fw/fe310
+            '';
+            installPhase = ''
+              cp -r fw/fe310/libeos.a $out
+            '';
+            checkPhase = ''
+              make -C fw/fe310/test
+            '';
           };
-        }
-    );
+        };
 
+        devShells = {
+
+          # usage: nix develop .#fe310Shell
+          fe310Shell = pkgs.mkShell {
+            buildInputs = with pkgs; [
+              riscv-toolchain.buildPackages.gcc
+              openocd
+            ];
+            shellHook = ''
+              nix run .#nanolibsPath
+            '';
+          };
+        };
+      });
 }
