@@ -7,17 +7,6 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
-        nanolibs-script = rec {
-          name = "nanolibs-path";
-          source = builtins.readFile ./nanolibs-script.sh;
-          script = (pkgs.writeShellScriptBin name source).overrideAttrs(old: {
-            buildCommand = "${old.buildCommand}\n patchShebangs $out";
-          });
-          buildInputs = [
-            riscv-toolchain.newlib-nano
-          ];
-        };
-
         riscv-toolchain =
           import nixpkgs {
             localSystem = "${system}";
@@ -32,23 +21,12 @@
 
         packages = {
 
-#          nanolibsPath = pkgs.writeShellApplication {
-#            name = "nanolibs-path";
-#            runtimeInputs = with pkgs; [
-#              riscv-toolchain.newlib-nano
-#            ];
-#            text = builtins.readFile ./nanolibs-script.sh;
-#          };
-
-          nanolibsPath = pkgs.symlinkJoin {
+          nanolibsPath = pkgs.writeShellApplication {
             name = "nanolibs-path";
-            paths = [ nanolibs-script.script ] ++ nanolibs-script.buildInputs;
-            nativeBuildInputs = with pkgs; [
-              makeWrapper
+            runtimeInputs = with pkgs; [
+              riscv-toolchain.newlib-nano
             ];
-            postBuild = ''
-              wrapProgram $out/bin/${nanolibs-script.name}  --prefix PATH : $out/bin
-            '';
+            text = builtins.readFile ./nanolibs-script.sh;
           };
 
           fe310 = riscv-toolchain.stdenv.mkDerivation {
