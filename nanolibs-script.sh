@@ -2,9 +2,9 @@
 
 rm -fr nanolibs/*.a
 mkdir -p nanolibs
-for file in "${riscv-toolchain.newlib-nano}"/riscv32-none-elf/lib/*.a; do
+for file in $NANOLIBS_PATH; do
    ln -s "$file" nanolibs
 done
 for file in nanolibs/*.a; do
-   mv "$file" "${file%%.a}_nano.a"                
+   mv "$file" "${file%%.a}_nano.a"
 done

@@ -32,10 +32,18 @@
 
         packages = {
 
+#          nanolibsPath = pkgs.writeShellApplication {
+#            name = "nanolibs-path";
+#            runtimeInputs = with pkgs; [
+#              riscv-toolchain.newlib-nano
+#            ];
+#            text = builtins.readFile ./nanolibs-script.sh;
+#          };
+
           nanolibsPath = pkgs.symlinkJoin {
             name = "nanolibs-path";
             paths = [ nanolibs-script.script ] ++ nanolibs-script.buildInputs;
-            buildInputs = with pkgs; [
+            nativeBuildInputs = with pkgs; [
               makeWrapper
             ];
             postBuild = ''
@@ -50,6 +58,10 @@
               riscv-toolchain.buildPackages.gcc
               openocd
             ];
+            preBuild = ''
+              export NANOLIBS_PATH=${riscv-toolchain.newlib-nano}/riscv32-none-elf/lib/*.a
+              nix run .#nanolibsPath
+            '';
             buildPhase = ''
               make -C fw/fe310
             '';
@@ -71,6 +83,7 @@
               openocd
             ];
             shellHook = ''
+              export NANOLIBS_PATH=${riscv-toolchain.newlib-nano}/riscv32-none-elf/lib/*.a
               nix run .#nanolibsPath
             '';
           };
