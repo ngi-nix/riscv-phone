@@ -13,7 +13,7 @@
             crossSystem = {
               config = "riscv32-none-elf";
               libc = "newlib-nano";
-              abi = "ilp32d";
+              abi = "ilp32";
             };
           };
 
