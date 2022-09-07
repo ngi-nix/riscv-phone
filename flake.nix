@@ -1,6 +1,6 @@
 {
-  inputs.flake-utils.url = "github:numtide/flake-utils";
-  #inputs.nixpkgs.url = "github:NixOS/nixpkgs";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/c11d08f02390aab49e7c22e6d0ea9b176394d961";
+  inputs.nixpkgs-esp-dev.url = "github:mirrexagon/nixpkgs-esp-dev";
 
   outputs = { self, nixpkgs, flake-utils, ... }:
     flake-utils.lib.eachDefaultSystem (system:
