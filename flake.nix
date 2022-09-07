@@ -2,71 +2,41 @@
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/c11d08f02390aab49e7c22e6d0ea9b176394d961";
   inputs.nixpkgs-esp-dev.url = "github:mirrexagon/nixpkgs-esp-dev";
 
-  outputs = { self, nixpkgs, flake-utils, ... }:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
-        pkgs = nixpkgs.legacyPackages.${system};
-        riscv-toolchain =
-#          (import <nixpkgs> {}).pkgsCross.riscv32;
-#          (import <nixpkgs> {}).pkgsCross.riscv64;
-          import nixpkgs {
-            localSystem = "${system}";
-            crossSystem = {
-              config = "riscv32-none-elf";
-              libc = "newlib";
-              abi = "ilp32";
-            };
-          };
-      in
-        {
-          packages.fe310 = riscv-toolchain.stdenv.mkDerivation {
-            name = "riscv-fe310-firmware";
+  outputs = { self, nixpkgs, nixpkgs-esp-dev }:
+    let
+      system = "x86_64-linux";
 
-            src = ./.;
+      pkgs = import nixpkgs { inherit system; overlays = [ (import "${nixpkgs-esp-dev}/overlay.nix") ]; };
 
-            buildInputs = with pkgs; [
-              riscv-toolchain.buildPackages.gcc
-              riscv-toolchain.buildPackages.binutils.bintools
-            ];
+      esp32-toolchain = with pkgs; pkgs.stdenv.mkDerivation {
+        name = "riscv-esp32-firmware";
+        src = ./.;
+        nativeBuildInputs = with pkgs; [
+          gcc-xtensa-esp32-elf-bin
+          openocd-esp32-bin
+          esp-idf
+        ];
+        buildInputs = with pkgs; [
+          esptool
+          git
+          wget
+          gnumake
+          flex
+          bison
+          gperf
+          pkgconfig
+          cmake
+          ninja
+          ncurses5
+        ];
+        preBuild = ''
+          export IDF_PATH=$(pwd)/esp-idf
+        '';
 
-            buildPhase = ''
-              make -C fw/fe310
-            '';
+      };
 
-            installPhase = ''
-              cp -r fw/fe310/libeos.a $out
-            '';
+    in
+    {
 
-            # TODO add check phase once we can build tests
-            # checkPhase = ''
-            #   make -C fw/fe310/test
-            # '';
-
-          };
-
-          devShells = {
-            # usage: nix develop .#riscvShell
-            riscvShell = pkgs.mkShell {
-              buildInputs = with pkgs; [
-                riscv-toolchain.buildPackages.gcc
-                riscv-toolchain.buildPackages.binutils.bintools
-                openocd
-                mkspiffs-presets.esp-idf
-              ];
-              shellHook = ''
-                RISCV_HOME=${riscv-toolchain.buildPackages.gcc}
-                RISCV_OPENOCD_PATH=${pkgs.openocd}
-              '';
-            };
-            # usage: nix develop .#esp32Shell
-            esp32Shell = pkgs.mkShell {
-              buildInputs = with pkgs; [
-                # TODO get working
-                mkspiffs-presets.esp-idf
-              ];
-            };
-          };
-        }
-    );
 
 }
