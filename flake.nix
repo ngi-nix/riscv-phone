@@ -1,6 +1,7 @@
 {
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/c11d08f02390aab49e7c22e6d0ea9b176394d961";
   inputs.nixpkgs-esp-dev.url = "github:mirrexagon/nixpkgs-esp-dev";
+  
 
   outputs = { self, nixpkgs, nixpkgs-esp-dev }:
     let
@@ -38,5 +39,27 @@
     in
     {
 
+      packages.x86_64-linux.default = pkgs.callPackage esp32-toolchain { };
 
+      devShells = {
+        x86_64-linux.default = pkgs.mkShell {
+          shellHook = ''            
+          echo use 
+          echo "nix develop .#esp32Shell"
+          echo or 
+          echo "nix develop .#fe310Shell"
+          exit
+          '';
+        };
+        # usage: nix develop .#esp32Shell
+        x86_64-linux.esp32Shell = pkgs.mkShell {
+          buildInputs = [
+            (pkgs.callPackage esp32-toolchain { })
+          ];
+          shellHook = ''            
+            export IDF_PATH=$(pwd)/esp-idf
+          '';
+        };
+      };
+    };
 }
