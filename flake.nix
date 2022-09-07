@@ -9,7 +9,7 @@
 
       pkgs = import nixpkgs { inherit system; overlays = [ (import "${nixpkgs-esp-dev}/overlay.nix") ]; };
 
-      esp32-toolchain = with pkgs; pkgs.stdenv.mkDerivation {
+      esp32-toolchain-drv = pkgs.stdenv.mkDerivation {
         name = "riscv-esp32-firmware";
         src = ./.;
         nativeBuildInputs = with pkgs; [
@@ -36,10 +36,12 @@
 
       };
 
+      esp32-toolchain = pkgs.callPackage esp32-toolchain-drv { };
+
     in
     {
 
-      packages.x86_64-linux.default = pkgs.callPackage esp32-toolchain { };
+      packages.x86_64-linux.default = esp32-toolchain;
 
       devShells = {
         x86_64-linux.default = pkgs.mkShell {
@@ -54,7 +56,7 @@
         # usage: nix develop .#esp32Shell
         x86_64-linux.esp32Shell = pkgs.mkShell {
           buildInputs = [
-            (pkgs.callPackage esp32-toolchain { })
+            esp32-toolchain
           ];
           shellHook = ''            
             export IDF_PATH=$(pwd)/esp-idf
