@@ -39,7 +39,7 @@
           make -C fw/fe310
         '';
         installPhase = ''
-          cp -r fw/fe310/libeos.a $out
+          cp -r fw/fe310/libeos.a $out/build
         '';
         checkPhase = ''
           make -C fw/fe310/test
