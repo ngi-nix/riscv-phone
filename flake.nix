@@ -37,6 +37,7 @@
         '';
         buildPhase = ''
           export NANOLIBS_PATH=${riscv-toolchain.newlib-nano}/riscv32-none-elf/lib/*.a
+          ${nanolibsPath}/bin/nanolibs-path
           make -C fw/fe310
         '';
         installPhase = ''
