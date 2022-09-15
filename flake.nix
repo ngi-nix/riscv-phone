@@ -29,7 +29,6 @@
         src = ./.;
         buildInputs = with pkgs; [
           riscv-toolchain.buildPackages.gcc          
-          openocd
         ];              
         preBuild = ''
           export NANOLIBS_PATH=${riscv-toolchain.newlib-nano}/riscv32-none-elf/lib/*.a
@@ -61,7 +60,6 @@
           x86_64-linux.fe310 = pkgs.mkShell {
             buildInputs = with pkgs; [
               riscv-toolchain.buildPackages.gcc          
-              openocd
             ];
           shellHook = ''
             export NANOLIBS_PATH=${riscv-toolchain.newlib-nano}/riscv32-none-elf/lib/*.a
