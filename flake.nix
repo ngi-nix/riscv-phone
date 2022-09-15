@@ -32,7 +32,6 @@
         ];              
         preBuild = ''
           export NANOLIBS_PATH=${riscv-toolchain.newlib-nano}/riscv32-none-elf/lib/*.a
-          nix run .#nanolibsPath
         '';
         buildPhase = ''
           make -C fw/fe310
