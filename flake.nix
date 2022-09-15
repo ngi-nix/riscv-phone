@@ -43,6 +43,8 @@
         '';
         installPhase = ''
           cp -r fw/fe310/libeos.a $out/build
+          find . -path fw/fe310/test -prune -o -name "*.o" -exec cp {} $out/build \;
+          find fw/fe310/test -type f -name "*.o" -exec cp {} $out/build/test \;
         '';
       };
 
