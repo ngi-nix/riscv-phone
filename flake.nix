@@ -35,6 +35,7 @@
           mkdir -p $out/build/test
         '';
         buildPhase = ''
+          export NANOLIBS_PATH=${riscv-toolchain.newlib-nano}/riscv32-none-elf/lib/*.a
           make -C fw/fe310
         '';
         installPhase = ''
