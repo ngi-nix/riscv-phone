@@ -39,6 +39,7 @@
           export NANOLIBS_PATH=${riscv-toolchain.newlib-nano}/riscv32-none-elf/lib/*.a
           ${nanolibsPath}/bin/nanolibs-path
           make -C fw/fe310
+          make -C fw/fe310/test
         '';
         installPhase = ''
           cp -r fw/fe310/libeos.a $out/build
