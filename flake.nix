@@ -28,8 +28,9 @@
         name = "riscv-fe310-firmware";
         src = ./.;
         buildInputs = with pkgs; [
-          riscv-toolchain.buildPackages.gcc          
-        ];              
+          riscv-toolchain.buildPackages.gcc
+          nanolibsPath
+        ];
         BUILD_DIR = (placeholder "out") + "/build";
         configurePhase = ''
           mkdir -p $out/build/test
