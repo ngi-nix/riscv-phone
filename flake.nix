@@ -55,9 +55,8 @@
           make -C $out/src/fw/fe310
         '';
         installPhase = ''
-          cp -r fw/fe310/libeos.a $out/build
-          find . -path fw/fe310/test -prune -o -name "*.o" -exec cp {} $out/build \;
-          find fw/fe310/test -type f -name "*.o" -exec cp {} $out/build/test \;
+          # move compiled object and archive files into the build directory.
+          find $out/src/fw/fe310 -type f \( -iname "*.o" -o -iname "libe*.a" \) -exec mv {} $out/build \;
         '';
       };
 
