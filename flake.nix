@@ -30,7 +30,7 @@
       
       fe310-drv = riscv-toolchain.stdenv.mkDerivation {
         name = "riscv-fe310-firmware";
-        src = ./.;
+        src = "${riscvphone-src}";
         buildInputs = with pkgs; [
           riscv-toolchain.buildPackages.gcc
           nanolibsPath
@@ -45,6 +45,7 @@
           export RISCV_HOME=${riscv-toolchain.buildPackages.gcc}
           export RISCV_OPENOCD_HOME=${pkgs.openocd}
           ${nanolibsPath}/bin/nanolibs-path
+          make -C $src/fw/fe310
         '';
         installPhase = ''
           cp -r fw/fe310/libeos.a $out/build
