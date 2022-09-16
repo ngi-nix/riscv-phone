@@ -70,6 +70,7 @@
             export NANOLIBS_PATH=${riscv-toolchain.newlib-nano}/riscv32-none-elf/lib/*.a
             nix run .#nanolibsPath
           '';
+            # usage: cd fw/fe310 make, cd fw/fe310/test make upload
           };
         };
         
