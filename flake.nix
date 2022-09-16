@@ -64,12 +64,13 @@
       
         devShells = {
           # usage: nix develop .#fe310
+          # compile: cd fw/fe310 --> make --> cd fw/fe310/test --> make or make upload
+          # clean up: cd fw/fe310 make clean, fw/fe310/test make clean
           x86_64-linux.fe310 = pkgs.mkShell {
             buildInputs = with pkgs; [
               riscv-toolchain.buildPackages.gcc
               openocd
             ];
-            # usage: cd fw/fe310 make, cd fw/fe310/test make upload
             shellHook = ''
               export NANOLIBS_PATH=${riscv-toolchain.newlib-nano}/riscv32-none-elf/lib/*.a
               export RISCV_HOME=${riscv-toolchain.buildPackages.gcc}
