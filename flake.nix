@@ -1,11 +1,15 @@
 {
   inputs.nixpkgs.url = "github:NixOS/nixpkgs";
+  inputs.riscvphone-src = {
+    url = "git://majstor.org/rvPhone.git";
+    flake = false;
+  };
   
-  outputs = { self, nixpkgs }:
+  outputs = { self, nixpkgs, riscvphone-src }:
     let
       system = "x86_64-linux";
 
-      pkgs = import nixpkgs { inherit system; };
+      pkgs = import nixpkgs { inherit system; inherit riscvphone-src; };
         
       riscv-toolchain = import nixpkgs {
         localSystem = system;
@@ -67,6 +71,7 @@
           # compile: cd fw/fe310 --> make --> cd fw/fe310/test --> make or make upload
           # clean up: cd fw/fe310 make clean, fw/fe310/test make clean
           x86_64-linux.fe310 = pkgs.mkShell {
+            src = "${riscvphone-src}";
             buildInputs = with pkgs; [
               riscv-toolchain.buildPackages.gcc
               openocd
