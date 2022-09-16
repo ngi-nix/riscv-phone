@@ -24,7 +24,7 @@
         text = builtins.readFile ./nanolibs-script.sh;
       };
       
-      fe310-toolchain = riscv-toolchain.stdenv.mkDerivation {
+      fe310-drv = riscv-toolchain.stdenv.mkDerivation {
         name = "riscv-fe310-firmware";
         src = ./.;
         buildInputs = with pkgs; [
@@ -54,7 +54,7 @@
           x86_64-linux = {
             nanolibsPath = nanolibsPath;
             # usage: nix build .#fe310
-            fe310 = fe310-toolchain;
+            fe310 = fe310-drv;
           };
         };
       
