@@ -20,10 +20,11 @@ app_:
 
 $(TARGET): app_ $(DEPS)
 	$(CC)  -L../../../nanolibs $(DEPS) $(LDFLAGS) -o $@
-
+#	       ^^^^^^^^ we're forced to add this, revert back if possible
 clean:
 	(cd app && $(MAKE) clean) || exit;
 	rm -f *.o *.a $(TARGET)
 
 upload: $(TARGET)
-	../bsp/upload --elf ./$(TARGET) --openocd $(RISCV_OPENOCD_HOME)/bin/openocd --gdb $(RISCV_HOME)/bin/riscv32-unknown-elf-gdb --openocd-config ../bsp/openocd.cfg
+	bash ../bsp/upload --elf ./$(TARGET) --openocd $(RISCV_OPENOCD_HOME)/bin/openocd --gdb $(RISCV_HOME)/bin/riscv32-none-elf-gdb --openocd-config ../bsp/openocd.cfg
+#	^^^^needs 'bash' for some reason                                                                         ^^^^^^^^^^^^^^^^^^^^^^^ riscv32-none-elf-gdb doesn't seem to exist
