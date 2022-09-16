@@ -44,6 +44,8 @@
           export RISCV_OPENOCD_HOME=${pkgs.openocd}
           ${nanolibsPath}/bin/nanolibs-path
           make -C $src/fw/fe310
+          # replace the original tuple in the source file for one that we can find.
+          sed -i 's/riscv64-unknown-elf/riscv64-none-elf/g' $out/src/fw/fe310/platform.mk
         '';
         installPhase = ''
           cp -r fw/fe310/libeos.a $out/build
@@ -77,6 +79,8 @@
               export RISCV_HOME=${riscv-toolchain.buildPackages.gcc}
               export RISCV_OPENOCD_HOME=${pkgs.openocd}
               nix run .#nanolibsPath
+              # replace the original tuple in the source file for one that we can find.
+              sudo sed -i 's/riscv64-unknown-elf/riscv64-none-elf/g' ./src/fw/fe310/platform.mk
             '';
           };
         };
