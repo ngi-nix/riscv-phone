@@ -37,6 +37,11 @@
           openocd
         ];
         configurePhase = ''
+          # create the src and build directories.
+          mkdir -p $out/build && mkdir -p $out/src
+
+          # copy the upstream files and set permissions to make changes.
+          cp -r $src/* $out/src && chmod -R 755 $out
         '';
         buildPhase = ''
           export NANOLIBS_PATH=${riscv-toolchain.newlib-nano}/riscv64-none-elf/lib/*.a
@@ -79,6 +84,10 @@
               export RISCV_HOME=${riscv-toolchain.buildPackages.gcc}
               export RISCV_OPENOCD_HOME=${pkgs.openocd}
               nix run .#nanolibsPath
+
+              # copy the upstream files and set permissions to make changes.
+              mkdir -p src && cp -r $src/* ./src && chmod -R 755 ./src
+
               # replace the original tuple in the source file for one that we can find.
               sudo sed -i 's/riscv64-unknown-elf/riscv64-none-elf/g' ./src/fw/fe310/platform.mk
             '';
