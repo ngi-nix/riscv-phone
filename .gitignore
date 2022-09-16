@@ -1,3 +1,4 @@
+build
+nanolibs
 result
-*.o
-*.a
+src
