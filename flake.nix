@@ -47,6 +47,8 @@
           export NANOLIBS_PATH=${riscv-toolchain.newlib-nano}/riscv64-none-elf/lib/*.a
           export RISCV_HOME=${riscv-toolchain.buildPackages.gcc}
           export RISCV_OPENOCD_HOME=${pkgs.openocd}
+
+          # execute the nanolibs script.
           ${nanolibsPath}/bin/nanolibs-path
 
           # replace the original tuple in the source file for one that we can find.
@@ -72,8 +74,8 @@
       
         devShells = {
           # usage: nix develop .#fe310
-          # compile: cd fw/fe310 --> make
-          # clean up: cd fw/fe310 --> make clean
+          # compile: cd src/fw/fe310 --> make
+          # clean up: cd src/fw/fe310 --> make clean
           x86_64-linux.fe310 = pkgs.mkShell {
             src = "${riscvphone-src}";
             buildInputs = with pkgs; [
@@ -84,6 +86,8 @@
               export NANOLIBS_PATH=${riscv-toolchain.newlib-nano}/riscv64-none-elf/lib/*.a
               export RISCV_HOME=${riscv-toolchain.buildPackages.gcc}
               export RISCV_OPENOCD_HOME=${pkgs.openocd}
+
+              # execute the nanolibs script
               nix run .#nanolibsPath
 
               # copy the upstream files and set permissions to make changes.
