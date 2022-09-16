@@ -30,6 +30,7 @@
         buildInputs = with pkgs; [
           riscv-toolchain.buildPackages.gcc
           nanolibsPath
+          openocd
         ];
         BUILD_DIR = (placeholder "out") + "/build";
         configurePhase = ''
@@ -62,7 +63,8 @@
           # usage: nix develop .#fe310
           x86_64-linux.fe310 = pkgs.mkShell {
             buildInputs = with pkgs; [
-              riscv-toolchain.buildPackages.gcc          
+              riscv-toolchain.buildPackages.gcc
+              openocd
             ];
           shellHook = ''
             export NANOLIBS_PATH=${riscv-toolchain.newlib-nano}/riscv32-none-elf/lib/*.a
