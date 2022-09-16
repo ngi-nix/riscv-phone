@@ -68,8 +68,8 @@
       
         devShells = {
           # usage: nix develop .#fe310
-          # compile: cd fw/fe310 --> make --> cd fw/fe310/test --> make or make upload
-          # clean up: cd fw/fe310 make clean, fw/fe310/test make clean
+          # compile: cd fw/fe310 --> make
+          # clean up: cd fw/fe310 --> make clean
           x86_64-linux.fe310 = pkgs.mkShell {
             src = "${riscvphone-src}";
             buildInputs = with pkgs; [
