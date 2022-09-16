@@ -81,6 +81,7 @@
               export RISCV_HOME=${riscv-toolchain.buildPackages.gcc}
               export RISCV_OPENOCD_HOME=${pkgs.openocd}
               nix run .#nanolibsPath
+              cd $src
             '';
           };
         };
