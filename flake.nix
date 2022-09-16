@@ -1,8 +1,10 @@
 {
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs";
-  inputs.riscvphone-src = {
-    url = "git://majstor.org/rvPhone.git";
-    flake = false;
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs";
+    riscvphone-src = {
+      url = "git://majstor.org/rvPhone.git";
+      flake = false;
+    };
   };
   
   outputs = { self, nixpkgs, riscvphone-src }:
