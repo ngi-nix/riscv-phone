@@ -38,6 +38,8 @@
         '';
         buildPhase = ''
           export NANOLIBS_PATH=${riscv-toolchain.newlib-nano}/riscv32-none-elf/lib/*.a
+          export RISCV_HOME=${riscv-toolchain.buildPackages.gcc}
+          export RISCV_OPENOCD_HOME=${pkgs.openocd}
           ${nanolibsPath}/bin/nanolibs-path
           make -C fw/fe310
           #make -C fw/fe310/test
@@ -67,11 +69,13 @@
               riscv-toolchain.buildPackages.gcc
               openocd
             ];
-          shellHook = ''
-            export NANOLIBS_PATH=${riscv-toolchain.newlib-nano}/riscv32-none-elf/lib/*.a
-            nix run .#nanolibsPath
-          '';
             # usage: cd fw/fe310 make, cd fw/fe310/test make upload
+            shellHook = ''
+              export NANOLIBS_PATH=${riscv-toolchain.newlib-nano}/riscv32-none-elf/lib/*.a
+              export RISCV_HOME=${riscv-toolchain.buildPackages.gcc}
+              export RISCV_OPENOCD_HOME=${pkgs.openocd}
+              nix run .#nanolibsPath
+            '';
           };
         };
         
