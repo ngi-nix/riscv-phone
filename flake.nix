@@ -14,9 +14,9 @@
       riscv-toolchain = import nixpkgs {
         localSystem = system;
         crossSystem = {
-          config = "riscv32-none-elf";
+          config = "riscv64-none-elf";
           libc = "newlib-nano";
-          abi = "ilp32";
+          abi = "ilp64";
         };          
       };
       
@@ -41,7 +41,7 @@
           mkdir -p $out/build/test
         '';
         buildPhase = ''
-          export NANOLIBS_PATH=${riscv-toolchain.newlib-nano}/riscv32-none-elf/lib/*.a
+          export NANOLIBS_PATH=${riscv-toolchain.newlib-nano}/riscv64-none-elf/lib/*.a
           export RISCV_HOME=${riscv-toolchain.buildPackages.gcc}
           export RISCV_OPENOCD_HOME=${pkgs.openocd}
           ${nanolibsPath}/bin/nanolibs-path
@@ -75,7 +75,7 @@
               openocd
             ];
             shellHook = ''
-              export NANOLIBS_PATH=${riscv-toolchain.newlib-nano}/riscv32-none-elf/lib/*.a
+              export NANOLIBS_PATH=${riscv-toolchain.newlib-nano}/riscv64-none-elf/lib/*.a
               export RISCV_HOME=${riscv-toolchain.buildPackages.gcc}
               export RISCV_OPENOCD_HOME=${pkgs.openocd}
               nix run .#nanolibsPath
