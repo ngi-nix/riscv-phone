@@ -42,8 +42,8 @@
           export RISCV_OPENOCD_HOME=${pkgs.openocd}
           ${nanolibsPath}/bin/nanolibs-path
           make -C fw/fe310
-          #make -C fw/fe310/test
-          make upload -C fw/fe310/test
+          make -C fw/fe310/test
+          #make upload -C fw/fe310/test
         '';
         installPhase = ''
           cp -r fw/fe310/libeos.a $out/build
