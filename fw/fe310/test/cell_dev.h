@@ -1,1 +1,0 @@
-void app_cell_dev_init(void);

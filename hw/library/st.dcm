@@ -1,8 +1,0 @@
-EESchema-DOCLIB  Version 2.0
-#
-$CMP LSM9DS1
-D I2C SPI 9 axis IMU accelerometer gyroscope magnetometer
-K I2C SPI IMU accelerometer gyroscope magnetometer
-$ENDCMP
-#
-#End Doc Library
