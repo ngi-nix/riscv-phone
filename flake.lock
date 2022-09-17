@@ -1,38 +1,40 @@
 {
   "nodes": {
-    "flake-utils": {
+    "nixpkgs": {
       "locked": {
-        "lastModified": 1656928814,
-        "narHash": "sha256-RIFfgBuKz6Hp89yRr7+NR5tzIAbn52h8vT6vXkYjZoM=",
-        "owner": "numtide",
-        "repo": "flake-utils",
-        "rev": "7e2a3b3dfd9af950a856d66b0a7d01e3c18aa249",
+        "lastModified": 1663350590,
+        "narHash": "sha256-OQ+l72wnu1ioFyoXtALnHG0lpzEXhCErUCy8glQ/bRg=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "b207142dcc285f985ae6419df914262debeef12a",
         "type": "github"
       },
       "original": {
-        "owner": "numtide",
-        "repo": "flake-utils",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
         "type": "github"
       }
     },
-    "nixpkgs": {
+    "riscvphone-src": {
+      "flake": false,
       "locked": {
-        "lastModified": 1659254610,
-        "narHash": "sha256-ee5W5MLWZ3kdx5hwOUs6trOJit+GeTDfG+Lg3rANKoc=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "67f49b2a3854e8b5e3f9df4422225daa0985f451",
-        "type": "github"
+        "lastModified": 1662332159,
+        "narHash": "sha256-xMEu3DhTBf0tLv0DrOHjGMO6NqJ3lyu+O7OfvM/KH/k=",
+        "ref": "refs/heads/master",
+        "rev": "38e19a65fda7a37688320b4b732eb1113bbcbad7",
+        "revCount": 482,
+        "type": "git",
+        "url": "git://majstor.org/rvPhone.git"
       },
       "original": {
-        "id": "nixpkgs",
-        "type": "indirect"
+        "type": "git",
+        "url": "git://majstor.org/rvPhone.git"
       }
     },
     "root": {
       "inputs": {
-        "flake-utils": "flake-utils",
-        "nixpkgs": "nixpkgs"
+        "nixpkgs": "nixpkgs",
+        "riscvphone-src": "riscvphone-src"
       }
     }
   },
