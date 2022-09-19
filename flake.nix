@@ -2,9 +2,13 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs";
     nixpkgs-esp-dev.url = "github:mirrexagon/nixpkgs-esp-dev";
+    riscvphone-src = {
+      url = "git://majstor.org/rvPhone.git";
+      flake = false;
+    };
   };
-  
-  outputs = { self, nixpkgs, nixpkgs-esp-dev }:
+
+  outputs = { self, nixpkgs, nixpkgs-esp-dev, riscvphone-src }:
     let
       system = "x86_64-linux";
 
@@ -12,7 +16,7 @@
 
       esp32-toolchain = pkgs.stdenv.mkDerivation {
         name = "riscv-esp32-firmware";
-        src = ./.;
+        src = riscvphone-src;
         nativeBuildInputs = with pkgs; [
           # commented for now
           # gcc-riscv32-esp32-elf-bin
@@ -44,6 +48,24 @@
 
       packages.x86_64-linux.default = esp32-toolchain;
 
+      packages.x86_64-linux.esp32 = pkgs.callPackage pkgs.mkDerivation {
+        name = "esp32";
+        src = riscvphone-src;
+        preBuild = ''
+        export CONFIG_LWIP_PPP_SUPPORT=y
+        export CONFIG_LWIP_PPP_NOTIFY_PHASE_SUPPORT=y
+        export CONFIG_LWIP_PPP_PAP_SUPPORT=y
+        export CONFIG_LWIP_PPP_CHAP_SUPPORT=y
+        '';
+        buildInputs = [
+
+        ] ++ esp32-toolchain.buildInputs;
+        nativeBuildInputs = [
+
+        ] ++ esp32-toolchain.nativeBuildInputs;
+
+      };
+
       devShells = {
         x86_64-linux = {
           default = pkgs.mkShell {
@@ -53,11 +75,12 @@
             '';
           };
           # usage: nix develop .#mirrexagon
-          mirrexagon = nixpkgs-esp-dev.devShells.x86_64-linux.esp32-idf {
-            shellHook = ''
-              export IDF_PATH=$(pwd)/esp-idf              
-            '';
-          };
+          mirrexagon = nixpkgs-esp-dev.devShells.x86_64-linux.esp32-idf //
+            {
+              shellHook = ''
+                export IDF_PATH=$(pwd)/esp-idf              
+              '';
+            };
           # usage: nix develop .#esp32
           esp32 = pkgs.mkShell {
             buildInputs = [
