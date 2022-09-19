@@ -64,10 +64,27 @@
         "type": "indirect"
       }
     },
+    "riscvphone-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1662332159,
+        "narHash": "sha256-xMEu3DhTBf0tLv0DrOHjGMO6NqJ3lyu+O7OfvM/KH/k=",
+        "ref": "refs/heads/master",
+        "rev": "38e19a65fda7a37688320b4b732eb1113bbcbad7",
+        "revCount": 482,
+        "type": "git",
+        "url": "git://majstor.org/rvPhone.git"
+      },
+      "original": {
+        "type": "git",
+        "url": "git://majstor.org/rvPhone.git"
+      }
+    },
     "root": {
       "inputs": {
         "nixpkgs": "nixpkgs",
-        "nixpkgs-esp-dev": "nixpkgs-esp-dev"
+        "nixpkgs-esp-dev": "nixpkgs-esp-dev",
+        "riscvphone-src": "riscvphone-src"
       }
     }
   },

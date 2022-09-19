@@ -48,7 +48,7 @@
 
       packages.x86_64-linux.default = esp32-toolchain;
 
-      packages.x86_64-linux.esp32 = pkgs.callPackage pkgs.mkDerivation {
+      packages.x86_64-linux.esp32 = pkgs.callPackage pkgs.stdenv.mkDerivation {
         name = "esp32";
         src = riscvphone-src;
         preBuild = ''
