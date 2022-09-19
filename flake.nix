@@ -59,8 +59,12 @@
           export CONFIG_LWIP_PPP_NOTIFY_PHASE_SUPPORT=y
           export CONFIG_LWIP_PPP_PAP_SUPPORT=y
           export CONFIG_LWIP_PPP_CHAP_SUPPORT=y
+          export CONFIG_SDK_TOOLPREFIX="xtensa-esp32-elf-"
+
+          export LC_ALL="en_US.UTF-8"
 
           export CONFIG_UNITY_ENABLE_IDF_TEST_RUNNER=false
+          sleep 9999999
         '';
         buildInputs = [
 
