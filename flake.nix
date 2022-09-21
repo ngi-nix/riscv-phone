@@ -51,55 +51,37 @@
 
       packages.x86_64-linux.esp32 = pkgs.stdenv.mkDerivation {
         name = "esp32";
-        src = riscvphone-src + "/fw/esp32";
+        src = riscvphone-src;
         dontUseCmakeConfigure = true;
         dontUseNinjaBuild = true;
         dontUseNinjaInstall = true;
         dontUseNinjaCheck = true;
         configurePhase = ''
+          cd fw/esp32
           export PROJECT_VER=${riscvphone-src.rev}
           export LC_ALL=C
           export LC_CTYPE="C.UTF-8"
           cat ${fw/esp32/sdkconfig} > sdkconfig
-          # sleep 99999999
-        '';
-        preBuild = ''
-          # cat ${fw/esp32/sdkconfig} > sdkonfig
-          # export HOME=$TMP
-          # sleep 99999999
-          # export CONFIG_LWIP_PPP_SUPPORT=y
-          # export CONFIG_LWIP_PPP_NOTIFY_PHASE_SUPPORT=y
-          # export CONFIG_LWIP_PPP_PAP_SUPPORT=y
-          # export CONFIG_LWIP_PPP_CHAP_SUPPORT=y
-          # export CONFIG_SDK_TOOLPREFIX="xtensa-esp32-elf-"
-          #
-          # export LC_ALL=C
-          # export LC_CTYPE="C.UTF-8"
-
-          # export CONFIG_UNITY_ENABLE_IDF_TEST_RUNNER=false
-          # export IDF_PATH=./esp-idf              
-          # idf.py set-target esp32
-          # idf.py menuconfig
-          # export LOCALE_ARCHIVE="$(nix-env --installed --no-name --out-path --query glibc-locales)/lib/locale/locale-archive"
-          # export IDF_PATH=${riscvphone-src}/esp-idf
-          # idf.py set-target esp32
-          # idf.py menuconfig
         '';
         buildPhase = ''
           make
+        '';
+        installPhase = ''
+        mkdir -p $out/bin
+        cp -r build/* $out/bin
         '';
         nativeBuildInputs = [
           nixpkgs-esp-dev.packages.x86_64-linux.esp-idf
           nixpkgs-esp-dev.packages.x86_64-linux.gcc-xtensa-esp32-elf-bin
           nixpkgs-esp-dev.packages.x86_64-linux.openocd-esp32-bin
-          nixpkgs-esp-dev.packages.x86_64-linux.esptool
+          pkgs.esptool
         ] ++ esp32-toolchain.nativeBuildInputs;
         buildInputs = [
           nixpkgs-esp-dev.packages.x86_64-linux.esp-idf
           pkgs.git
           nixpkgs-esp-dev.packages.x86_64-linux.gcc-xtensa-esp32-elf-bin
           nixpkgs-esp-dev.packages.x86_64-linux.openocd-esp32-bin
-          nixpkgs-esp-dev.packages.x86_64-linux.esptool
+          pkgs.esptool
         ] ++ esp32-toolchain.buildInputs;
 
 
