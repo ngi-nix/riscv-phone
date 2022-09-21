@@ -20,7 +20,6 @@ riscv-toolchain.stdenv.mkDerivation {
           cp -r $src/* $out/src && chmod -R 755 $out
         '';
         buildPhase = ''
-          export NANOLIBS_PATH=${riscv-toolchain.newlib-nano}/riscv64-none-elf/lib/*.a
           export RISCV_HOME=${riscv-toolchain.buildPackages.gcc}
           export RISCV_OPENOCD_HOME=${openocd}
 
