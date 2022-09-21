@@ -1,3 +1,0 @@
-(fp_lib_table
-  (lib (name panelization)(type KiCad)(uri ${KIPRJMOD}/../panelization.pretty)(options "")(descr ""))
-)

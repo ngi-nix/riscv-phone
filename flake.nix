@@ -1,6 +1,5 @@
 {
   inputs = {
-    # nixpkgs.url = "github:NixOS/nixpkgs";
     nixpkgs.url = "github:NixOS/nixpkgs/c11d08f02390aab49e7c22e6d0ea9b176394d961";
     nixpkgs-esp-dev.url = "github:mirrexagon/nixpkgs-esp-dev";
     riscvphone-src = {
@@ -38,7 +37,7 @@
 
           configurePhase = ''
             cd fw/esp32
-            cat ${fw/esp32/sdkconfig} > sdkconfig
+            cat ${./sdkconfig} > sdkconfig
           '';
 
           buildPhase = ''
@@ -81,8 +80,7 @@
       };
 
       packages.x86_64-linux = {
-        inherit (pkgs) esp32 esp32-toolchain;
-        default = pkgs.esp32-toolchain;
+        inherit (pkgs) esp32;
       };
 
       devShells.x86_64-linux = {
