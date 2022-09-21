@@ -1,5 +1,0 @@
-source "/nix/store/li7ixzvasab190cj5dywrbab9dlp4zk2-esp-idf-v4.4.1/components/app_update/Kconfig.projbuild"
-source "/nix/store/li7ixzvasab190cj5dywrbab9dlp4zk2-esp-idf-v4.4.1/components/bootloader/Kconfig.projbuild"
-source "/nix/store/li7ixzvasab190cj5dywrbab9dlp4zk2-esp-idf-v4.4.1/components/esp_rom/Kconfig.projbuild"
-source "/nix/store/li7ixzvasab190cj5dywrbab9dlp4zk2-esp-idf-v4.4.1/components/esptool_py/Kconfig.projbuild"
-source "/nix/store/li7ixzvasab190cj5dywrbab9dlp4zk2-esp-idf-v4.4.1/components/partition_table/Kconfig.projbuild"
