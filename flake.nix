@@ -18,7 +18,6 @@
         inherit system;
         overlays = [
           (import "${nixpkgs-esp-dev}/overlay.nix")
-          self.overlays.default
         ];
       };
 
@@ -41,7 +40,7 @@
       };
 
       packages.x86_64-linux = {
-        inherit (pkgs-esp32) esp32 nanolibsPath fe310-drv;
+        inherit (self.overlays.default null nixpkgs.legacyPackages.${system}) esp32 nanolibsPath fe310-drv;
       };
 
       devShells.x86_64-linux = {
