@@ -84,18 +84,8 @@
       };
 
       devShells.x86_64-linux = {
-        # usage: nix develop .#mirrexagon
-        mirrexagon = nixpkgs-esp-dev.devShells.x86_64-linux.esp32-idf;
-
         # usage: nix develop .#esp32
-        esp32 = pkgs.mkShell {
-          buildInputs = [
-            pkgs.esp32-toolchain
-          ];
-          shellHook = ''
-            export IDF_PATH=$(pwd)/esp-idf
-          '';
-        };
+        esp32 = nixpkgs-esp-dev.devShells.x86_64-linux.esp32-idf;
       };
     };
 }
