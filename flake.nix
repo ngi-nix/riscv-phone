@@ -37,7 +37,7 @@
 
           configurePhase = ''
             cd fw/esp32
-            cat ${./sdkconfig} > sdkconfig
+            cat ${./sdkconfig-esp32} > sdkconfig
           '';
 
           buildPhase = ''
