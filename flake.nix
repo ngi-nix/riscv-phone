@@ -14,7 +14,7 @@
     let
       system = "x86_64-linux";
 
-      pkgs = import nixpkgs-esp32 {
+      pkgs-esp32 = import nixpkgs-esp32 {
         inherit system;
         overlays = [
           (import "${nixpkgs-esp-dev}/overlay.nix")
@@ -34,14 +34,14 @@
     in
     {
 
-      overlays.default = final: prev: rec {
-        esp32 = prev.callPackage ./esp32.nix { inherit riscvphone-src nixpkgs-esp-dev; };
+      overlays.default = _: prev: rec {
+        esp32 = pkgs-esp32.callPackage ./esp32.nix { inherit riscvphone-src nixpkgs-esp-dev; };
         fe310-drv = prev.callPackage ./fe310.nix { inherit riscvphone-src riscv-toolchain nanolibsPath; };
         nanolibsPath = prev.callPackage ./nanolibs.nix { inherit (riscv-toolchain) newlib-nano; };
       };
 
       packages.x86_64-linux = {
-        inherit (pkgs) esp32 nanolibsPath fe310-drv;
+        inherit (pkgs-esp32) esp32 nanolibsPath fe310-drv;
       };
 
       devShells.x86_64-linux = {

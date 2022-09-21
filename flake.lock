@@ -49,6 +49,22 @@
         "type": "github"
       }
     },
+    "nixpkgs-esp32": {
+      "locked": {
+        "lastModified": 1636377693,
+        "narHash": "sha256-mxnUQZEA361xcupT9RIEcWrNer/+Ik/pbRMDmdRr8gQ=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "c11d08f02390aab49e7c22e6d0ea9b176394d961",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "c11d08f02390aab49e7c22e6d0ea9b176394d961",
+        "type": "github"
+      }
+    },
     "nixpkgs_2": {
       "locked": {
         "lastModified": 1636377693,
@@ -84,6 +100,7 @@
       "inputs": {
         "nixpkgs": "nixpkgs",
         "nixpkgs-esp-dev": "nixpkgs-esp-dev",
+        "nixpkgs-esp32": "nixpkgs-esp32",
         "riscvphone-src": "riscvphone-src"
       }
     }
