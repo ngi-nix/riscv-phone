@@ -20,6 +20,26 @@
           self.overlays.default
         ];
       };
+        
+      riscv-toolchain = import nixpkgs {
+        localSystem = system;
+        crossSystem = {
+          config = "riscv64-none-elf";
+          libc = "newlib-nano";
+          abi = "ilp64";
+        };          
+      };
+      
+      nanolibsPath = pkgs.writeShellApplication {
+        name = "nanolibs-path";
+        runtimeInputs = with nixpkgs; [
+          riscv-toolchain.newlib-nano
+        ];
+        text = builtins.readFile ./nanolibs-script.sh;
+      };
+      
+      fe310-drv = pkgs.callPackage ./fe310.nix { inherit riscvphone-src riscv-toolchain nanolibsPath; };
+
     in
     {
 
