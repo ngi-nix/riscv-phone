@@ -1,6 +1,7 @@
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/c11d08f02390aab49e7c22e6d0ea9b176394d961";
+    # Requires specific nixpkgs version due to: https://github.com/mirrexagon/nixpkgs-esp-dev/issues/10
     nixpkgs-esp-dev.url = "github:mirrexagon/nixpkgs-esp-dev";
     riscvphone-src = {
       url = "git://majstor.org/rvPhone.git";
