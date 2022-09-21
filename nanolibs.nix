@@ -1,12 +1,11 @@
 { writeShellScriptBin
-, riscv-toolchain
-
+, newlib-nano
 }:
 writeShellScriptBin "nanolibs-path"
   ''
     rm -fr nanolibs/*.a
     mkdir -p nanolibs
-    for file in ${riscv-toolchain.newlib-nano}/riscv64-none-elf/lib/*.a; do
+    for file in ${newlib-nano}/riscv64-none-elf/lib/*.a; do
        ln -s "$file" nanolibs
     done
     for file in nanolibs/*.a; do
