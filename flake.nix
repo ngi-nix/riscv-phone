@@ -50,8 +50,10 @@
             exit
           '';
         };
+
         # usage: nix develop .#esp32
         esp32 = nixpkgs-esp-dev.devShells.x86_64-linux.esp32-idf;
+
         # usage: nix develop .#fe310
         fe310 = pkgs.mkShell {
           src = "${riscvphone-src}";
@@ -74,6 +76,7 @@
             sudo sed -i 's/riscv64-unknown-elf/riscv64-none-elf/g' ./src/fw/fe310/platform.mk
           '';
         };
+        
       };
     };
 }
