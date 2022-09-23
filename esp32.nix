@@ -15,7 +15,7 @@
 , wget
 , riscvphone-src
 , stdenv
-, sdkconfig ? ./sdkconfig-esp32
+, sdkconfig ? ./sdkconfig.defaults
 }:
 
 stdenv.mkDerivation
@@ -33,7 +33,7 @@ stdenv.mkDerivation
 
   configurePhase = ''
     cd fw/esp32
-    cat ${sdkconfig} > sdkconfig
+    cat ${sdkconfig} > sdkconfig.defaults
   '';
 
   buildPhase = ''

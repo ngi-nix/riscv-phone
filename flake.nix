@@ -61,6 +61,9 @@
           shellHook = ''
             # copy upstream files and set permissions.
             mkdir -p src && cp -r $src/* ./src && chmod -R 755 ./src
+
+            # make will generate a full sdkconfig configuration, just override a few values.
+            cp sdkconfig.defaults ./src/fw/esp32
           '';
         };
 
