@@ -52,7 +52,17 @@
         };
 
         # usage: nix develop .#esp32
-        esp32 = nixpkgs-esp-dev.devShells.x86_64-linux.esp32-idf;
+        esp32 = pkgs.mkShell {
+          src = "${riscvphone-src}";
+          buildInputs = with pkgs; [
+            nixpkgs-esp-dev.packages.x86_64-linux.esp-idf
+            gcc-xtensa-esp32-elf-bin
+          ];
+          shellHook = ''
+            # copy upstream files and set permissions.
+            mkdir -p src && cp -r $src/* ./src && chmod -R 755 ./src
+          '';
+        };
 
         # usage: nix develop .#fe310
         fe310 = pkgs.mkShell {
