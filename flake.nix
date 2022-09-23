@@ -14,7 +14,7 @@
     let
       system = "x86_64-linux";
 
-      pkgs-esp32 = import nixpkgs-esp32 {
+      pkgs = import nixpkgs-esp32 {
         inherit system;
         overlays = [
           (import "${nixpkgs-esp-dev}/overlay.nix")
@@ -34,18 +34,46 @@
     {
 
       overlays.default = _: prev: rec {
-        esp32 = pkgs-esp32.callPackage ./esp32.nix { inherit riscvphone-src nixpkgs-esp-dev; };
-        fe310-drv = prev.callPackage ./fe310.nix { inherit riscvphone-src riscv-toolchain nanolibsPath; };
+        esp32 = pkgs.callPackage ./esp32.nix { inherit riscvphone-src nixpkgs-esp-dev; };
+        fe310 = prev.callPackage ./fe310.nix { inherit riscvphone-src riscv-toolchain nanolibsPath; };
         nanolibsPath = prev.callPackage ./nanolibs.nix { inherit (riscv-toolchain) newlib-nano; };
       };
 
       packages.x86_64-linux = {
-        inherit (self.overlays.default null nixpkgs.legacyPackages.${system}) esp32 nanolibsPath fe310-drv;
+        inherit (self.overlays.default null nixpkgs.legacyPackages.${system}) esp32 nanolibsPath fe310;
       };
 
       devShells.x86_64-linux = {
+        default = pkgs.mkShell {
+          shellHook = ''
+            echo -e "use 'nix develop .#esp32'\nor 'nix develop .#fe310'."
+            exit
+          '';
+        };
         # usage: nix develop .#esp32
         esp32 = nixpkgs-esp-dev.devShells.x86_64-linux.esp32-idf;
+        # usage: nix develop .#fe310
+        fe310 = pkgs.mkShell {
+          src = "${riscvphone-src}";
+          buildInputs = with pkgs; [
+            riscv-toolchain.buildPackages.gcc
+            openocd
+          ];
+          shellHook = ''
+            export NANOLIBS_PATH=${riscv-toolchain.newlib-nano}/riscv64-none-elf/lib/*.a
+            export RISCV_HOME=${riscv-toolchain.buildPackages.gcc}
+            export RISCV_OPENOCD_HOME=${pkgs.openocd}
+
+            # execute the nanolibs script
+            nix run .#nanolibsPath
+
+            # copy upstream files and set permissions.
+            mkdir -p fe310Shell/src && cp -r $src/* ./src && chmod -R 755 ./src
+
+            # replace the original tuple in the source file for one that we can find.
+            sudo sed -i 's/riscv64-unknown-elf/riscv64-none-elf/g' ./src/fw/fe310/platform.mk
+          '';
+        };
       };
     };
 }
