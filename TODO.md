@@ -1,6 +1,7 @@
 # Todo
 
 - Try generate sdkcongig programatically using `idf.py save-defconfig` (see [this](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/kconfig.html#using-sdkconfig-defaults))
+- Merge all the other branches into main (probably mob/movingfe310derivation and mob/improve-esp32-derivation/)
 
 ## Links
 
