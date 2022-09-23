@@ -70,7 +70,7 @@
             nix run .#nanolibsPath
 
             # copy upstream files and set permissions.
-            mkdir -p fe310Shell/src && cp -r $src/* ./src && chmod -R 755 ./src
+            mkdir -p src && cp -r $src/* ./src && chmod -R 755 ./src
 
             # replace the original tuple in the source file for one that we can find.
             sudo sed -i 's/riscv64-unknown-elf/riscv64-none-elf/g' ./src/fw/fe310/platform.mk
