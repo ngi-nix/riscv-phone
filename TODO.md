@@ -1,6 +1,6 @@
 # Todo
 
-- maybe building makes sense
+- Try generate sdkcongig programatically using `idf.py save-defconfig` (see [this](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/kconfig.html#using-sdkconfig-defaults))
 
 ## Links
 
