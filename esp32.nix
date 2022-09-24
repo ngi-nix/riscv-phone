@@ -42,10 +42,10 @@ stdenv.mkDerivation
   '';
 
   installPhase = ''
-    mkdir -p $out && cp -r build/* $out
+    mkdir -p $out && cp -r . $out
     #make flash
   '';
-    
+
   nativeBuildInputs = [
     nixpkgs-esp-dev.packages.x86_64-linux.esp-idf
     nixpkgs-esp-dev.packages.x86_64-linux.gcc-xtensa-esp32-elf-bin

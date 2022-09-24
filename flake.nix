@@ -35,12 +35,11 @@
 
       overlays.default = _: prev: rec {
         esp32 = pkgs.callPackage ./esp32.nix { inherit riscvphone-src nixpkgs-esp-dev; };
-        fe310 = prev.callPackage ./fe310.nix { inherit riscvphone-src riscv-toolchain nanolibsPath; };
-        nanolibsPath = prev.callPackage ./nanolibs.nix { inherit (riscv-toolchain) newlib-nano; };
+        fe310 = prev.callPackage ./fe310.nix { inherit riscvphone-src riscv-toolchain; };
       };
 
       packages.x86_64-linux = {
-        inherit (self.overlays.default null nixpkgs.legacyPackages.${system}) esp32 nanolibsPath fe310;
+        inherit (self.overlays.default null nixpkgs.legacyPackages.${system}) esp32 fe310;
       };
 
       devShells.x86_64-linux = {
@@ -60,16 +59,16 @@
           ];
           shellHook = ''
             # copy upstream files and set permissions.
-            mkdir -p src && cp -r $src/* ./src && chmod -R 755 ./src
+            mkdir -p esp32Shell && cp -r $src/* ./esp32Shell && chmod -R 755 ./esp32Shell
 
             # generate an empty sdkconfig file, which overrides the menu prompt.
-            touch ./src/fw/esp32/sdkconfig
-            
-            # override certain values when populating sdkconfig with make.
-            cp ./sdkconfig.defaults ./src/fw/esp32
+            touch ./esp32Shell/fw/esp32/sdkconfig
 
-            # suggested make commands: http://majstor.org/rvphone/build.html
-            cd ./src/fw/esp32 
+            # override certain values when populating sdkconfig with make.
+            cp ./sdkconfig.defaults ./esp32Shell/fw/esp32
+
+            # make commands: http://majstor.org/rvphone/build.html
+            cd ./esp32Shell/fw/esp32
           '';
         };
 
@@ -85,17 +84,17 @@
             export RISCV_HOME=${riscv-toolchain.buildPackages.gcc}
             export RISCV_OPENOCD_HOME=${pkgs.openocd}
 
-            # execute the nanolibs script
-            nix run .#nanolibsPath
-
             # copy upstream files and set permissions.
-            mkdir -p src && cp -r $src/* ./src && chmod -R 755 ./src
+            mkdir -p fe310Shell && cp -r $src/* ./fe310Shell && chmod -R 755 ./fe310Shell
 
             # replace the original tuple in the source file for one that we can find.
-            sudo sed -i 's/riscv64-unknown-elf/riscv64-none-elf/g' ./src/fw/fe310/platform.mk
+            sudo sed -i 's/riscv64-unknown-elf/riscv64-none-elf/g' ./fe310Shell/fw/fe310/platform.mk
+
+            # make commands: http://majstor.org/rvphone/build.html
+            cd ./fe310Shell/fw/fe310
           '';
         };
-        
+
       };
     };
 }
