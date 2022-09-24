@@ -62,8 +62,14 @@
             # copy upstream files and set permissions.
             mkdir -p src && cp -r $src/* ./src && chmod -R 755 ./src
 
-            # make will generate a full sdkconfig configuration, just override a few values.
-            cp sdkconfig.defaults ./src/fw/esp32
+            # generate an empty sdkconfig file, which overrides the menu prompt.
+            touch ./src/fw/esp32/sdkconfig
+            
+            # override certain values when populating sdkconfig with make.
+            cp ./sdkconfig.defaults ./src/fw/esp32
+
+            # suggested make commands: http://majstor.org/rvphone/build.html
+            cd ./src/fw/esp32 
           '';
         };
 

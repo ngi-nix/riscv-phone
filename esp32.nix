@@ -15,7 +15,7 @@
 , wget
 , riscvphone-src
 , stdenv
-, sdkconfig ? ./sdkconfig.defaults
+, sdkconfig-defaults ? ./sdkconfig.defaults
 }:
 
 stdenv.mkDerivation
@@ -33,18 +33,19 @@ stdenv.mkDerivation
 
   configurePhase = ''
     cd fw/esp32
-    cat ${sdkconfig} > sdkconfig.defaults
-  '';
 
-  buildPhase = ''
-    make
+    # generate an empty sdkconfig file to override the menu prompt.
+    touch sdkconfig
+
+    # copy custom configuration defaults to pass to sdkconfig.
+    cat ${sdkconfig-defaults} > sdkconfig.defaults
   '';
 
   installPhase = ''
-    mkdir -p $out
-    cp -r build/* $out
+    mkdir -p $out && cp -r build/* $out
+    #make flash
   '';
-
+    
   nativeBuildInputs = [
     nixpkgs-esp-dev.packages.x86_64-linux.esp-idf
     nixpkgs-esp-dev.packages.x86_64-linux.gcc-xtensa-esp32-elf-bin
