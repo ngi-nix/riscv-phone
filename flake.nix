@@ -80,7 +80,6 @@
             openocd
           ];
           shellHook = ''
-            export NANOLIBS_PATH=${riscv-toolchain.newlib-nano}/riscv64-none-elf/lib/*.a
             export RISCV_HOME=${riscv-toolchain.buildPackages.gcc}
             export RISCV_OPENOCD_HOME=${pkgs.openocd}
 
