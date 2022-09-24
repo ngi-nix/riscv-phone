@@ -25,4 +25,4 @@ You can enter a developer shell by typing `nix develop .#fe310` or `nix develop 
 
 Navigate into `fw/fe310` or `fw/esp32` and type `make` to compile. Typing `make clean` will delete the compiled files.
 
-When typing `make` in `fw/esp32`, a configuration menu will open if no `sdkconfig` configuration file exists, even if empty. You can manually choose the configuration values in this menu at any time by typing `make menuconfig` or pass them automatically via the [sdkconfig.defaults]([sdkconfig.defaults](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/kconfig.html#using-sdkconfig-defaults)) file.
+When typing `make` in `fw/esp32`, a configuration menu will open if no `sdkconfig` configuration file exists, even if empty. You can manually choose the configuration values in this menu at any time by typing `make menuconfig` or pass them automatically via the [sdkconfig.defaults](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/kconfig.html#using-sdkconfig-defaults) file.
