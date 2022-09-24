@@ -17,11 +17,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1663771233,
-        "narHash": "sha256-pcTdNltp9u5DLf3HJxtn3+3KG07RPj+ROUAmhm4Lapw=",
+        "lastModified": 1664046478,
+        "narHash": "sha256-tUujyYcKyl4O0ogISM9PiMswnCHrW4OrYeDJDQKZxmk=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "1ef96c2f2453385f543a8042f63afe48e58183f5",
+        "rev": "17ff1e6ca119b8a7f09ce95f06b2debce7c17d8b",
         "type": "github"
       },
       "original": {
@@ -83,11 +83,11 @@
     "riscvphone-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1662332159,
-        "narHash": "sha256-xMEu3DhTBf0tLv0DrOHjGMO6NqJ3lyu+O7OfvM/KH/k=",
+        "lastModified": 1663957238,
+        "narHash": "sha256-P+uHau8fklnwe9m1CG11wxCvCPzol47pByRL2kOAD7s=",
         "ref": "refs/heads/master",
-        "rev": "38e19a65fda7a37688320b4b732eb1113bbcbad7",
-        "revCount": 482,
+        "rev": "f30abc1f75f483ffe78d92d5109b6c1d700925a3",
+        "revCount": 486,
         "type": "git",
         "url": "git://majstor.org/rvPhone.git"
       },
