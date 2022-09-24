@@ -7,7 +7,6 @@
 , git
 , gnumake
 , gperf
-, ncurses5
 , ninja
 , nixpkgs-esp-dev
 , openocd-esp32-bin
@@ -71,6 +70,5 @@ stdenv.mkDerivation
     pkgconfig
     cmake
     ninja
-    ncurses5
   ];
 }

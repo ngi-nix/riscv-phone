@@ -1,16 +1,15 @@
 # RISC-V Phone
 
-This Nix flake packages the firmware for the Freedom E310 and the Espressif ESP32 SoCs.
+This flake packages the firmware for the Freedom E310 and the Espressif ESP32 SoCs.
 
-You will find more information about this project [here](http://majstor.org/rvphone/).
-
-This flake is currently based against $HEAD of upstream for the [source files](http://majstor.org/gitweb/?p=rvPhone.git;a=tree).
+It is currently based against $HEAD of upstream for the [source files](http://majstor.org/gitweb/?p=rvPhone.git;a=tree).
 
 If anything breaks, you can always pin the `riscvphone-src` input to a working revision:
 
 ```
 url = "git://majstor.org/rvPhone.git?rev=38e19a65fda7a37688320b4b732eb1113bbcbad7";
 ```
+You may find more information about this project [here](http://majstor.org/rvphone/) and [here](http://majstor.org/rvphone/build.html).
 
 For further details, please refer to the documentation in the flake itself.
 
@@ -26,4 +25,4 @@ You can enter a developer shell by typing `nix develop .#fe310` or `nix develop 
 
 Navigate into `fw/fe310` or `fw/esp32` and type `make` to compile. Typing `make clean` will delete the compiled files.
 
-See [here](http://majstor.org/rvphone/build.html) for more information, including how to flash the firmware.
+Typing `make menuconfig` on `fw/esp32` will get you a ncurses menu where you can customize the default configuration values.
