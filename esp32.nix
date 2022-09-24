@@ -42,8 +42,8 @@ stdenv.mkDerivation
   '';
 
   installPhase = ''
-    #mkdir -p $out && cp -r . $out
-    make flash
+    mkdir -p $out && cp -r . $out
+    #make flash
   '';
 
   nativeBuildInputs = [
