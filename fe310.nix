@@ -13,10 +13,10 @@ riscv-toolchain.stdenv.mkDerivation {
     openocd
   ];
 
-  configurePhase = ''
-    export RISCV_HOME=${riscv-toolchain.buildPackages.gcc}
-    export RISCV_OPENOCD_HOME=${openocd}
+  RISCV_HOME=riscv-toolchain.buildPackages.gcc;
+  RISCV_OPENOCD_HOME=openocd;
 
+  configurePhase = ''
     mkdir -p $out && cp -r . $out  && chmod -R 755 $out
 
     # replace the original tuple in the source file for one that we can find.

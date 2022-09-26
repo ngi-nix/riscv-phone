@@ -33,7 +33,7 @@
     in
     {
 
-      overlays.default = _: prev: rec {
+      overlays.default = _: prev: {
         esp32 = pkgs.callPackage ./esp32.nix { inherit riscvphone-src nixpkgs-esp-dev; };
         fe310 = prev.callPackage ./fe310.nix { inherit riscvphone-src riscv-toolchain; };
       };
